@@ -15,7 +15,7 @@ exports.run=async({win,store,desktopWidget})=>{
     const taskId=await js("document.querySelector('.checklist-row').dataset.id"),previous=store.data.tasks.find(t=>t.id===taskId).status;
     await click('.checklist-row input');await until(()=>store.data.tasks.find(t=>t.id===taskId).status!==previous);assert.equal(await js("document.querySelector('#task-dialog').open"),false);
     assert.equal(await js("document.querySelectorAll('.sidebar #theme-button').length"),0);
-    assert.equal(await js("document.querySelector('.sidebar #settings-button').textContent.trim()"),'设置');
+    assert.equal(await js("document.querySelector('.profile #settings-button').getAttribute('aria-label')"),'设置');
     await click('#settings-button');await until(()=>js("document.querySelector('#settings-dialog').open"));await delay(220);
     await click('#theme-button');await until(()=>js("document.querySelector('#theme-dialog').open"));await delay(220);
     assert.equal(await js("document.querySelector('#theme-dialog h2').textContent"),'自定义外观');

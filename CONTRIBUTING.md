@@ -19,15 +19,15 @@ npm start
 每个提交围绕一个明确目的，采用 Conventional Commits 形式：
 
 ```text
-fix(calendar): keep date picker inside the viewport
+fix(calendar): 修复日期选择器超出窗口边界
 
-Keep the picker within the visible area when resizing the task dialog.
-Preserve the selected date and one-minute time increments.
+调整待办弹窗尺寸时，将日期选择器保持在可见区域。
+保留选中日期，时间按钮使用一分钟步长。
 
-Validation: npm test; npm run smoke -- --smoke-ui-only
+验证：npm test；npm run smoke -- --smoke-ui-only
 ```
 
-常用类型：`feat`、`fix`、`refactor`、`test`、`docs`、`build`、`chore`。标题说明具体变化；复杂提交正文写明原因、行为变化、验证结果和限制。不能只写“修改”“优化”或“初始化”。未通过或未执行的检查须如实标注。
+常用类型：`feat`、`fix`、`refactor`、`test`、`docs`、`build`、`chore`。标题和正文使用中文，必要的专业术语保留英文。标题说明具体变化；复杂提交正文写明原因、行为变化、验证结果和限制。不能只写“修改”“优化”或“初始化”。未通过或未执行的检查须如实标注。
 
 推送前查看 `git status` 和暂存差异，确认提交范围，不自动混入无关改动；正常推送不使用强制覆盖。
 

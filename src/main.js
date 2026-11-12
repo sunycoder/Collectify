@@ -691,6 +691,7 @@ app.whenReady().then(async () => {
     });
     if (smoke) {
         try {
+            if(process.argv.includes('--smoke-appearance-only')){await require('./smoke-v12').run({win,store,desktopWidget});app.exit(0);return;}
             if(!process.argv.includes('--smoke-ui-only')) {
             if (!process.argv.includes('--smoke-v6-only')) {
                 await require('./smoke').run({
@@ -711,6 +712,7 @@ app.whenReady().then(async () => {
             }
             await require('./smoke-v10').run({win, store});
             await require('./smoke-v11').run({win,store,desktopWidget});
+            await require('./smoke-v12').run({win,store,desktopWidget});
         } catch (error) {
             console.error(error);
             app.exit(1);

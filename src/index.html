@@ -39,10 +39,9 @@
     </div>
     <nav id="categories" class="category-list" aria-label="收藏分类"></nav>
 
-    <button id="settings-button" class="theme-nav settings-entry"><i data-icon="sliders"></i><span>设置</span></button>
     <div class="profile"><span class="avatar">我</span>
         <div>个人工作空间<small>收藏 · 待办 · 便签 · v5.4</small></div>
-        <span class="local-dot"></span></div>
+        <button id="settings-button" class="icon-button profile-settings" title="设置" aria-label="设置"><i data-icon="gear"></i></button></div>
 </aside>
 <main>
     <header class="topbar">
@@ -400,10 +399,10 @@
                 <option value="compact">紧凑</option>
             </select></label><label class="checkbox-label motion-control"><input id="theme-motion" type="checkbox">轻量动效</label>
             </div>
-            <section class="glass-controls"><h3>桌面待办材质</h3><div class="form-grid"><label>显示效果<select id="theme-widgetMaterial"><option value="solid">清晰实色</option><option value="glass">毛玻璃</option></select></label><label class="range-label">底色浓度 <output id="glass-opacity-value"></output><input id="theme-glassOpacity" type="range" min="55" max="95" step="1"></label></div><p class="form-help">毛玻璃使用系统透明材质。支持的 Windows 与 macOS 可模糊窗口后方；不支持时保留清晰底色。</p></section>
+            <section class="glass-controls"><h3>桌面待办材质</h3><div class="form-grid"><label>显示效果<select id="theme-widgetMaterial"><option value="solid">清晰实色</option><option value="glass">毛玻璃</option></select></label><label class="range-label">底色浓度 <output id="glass-opacity-value"></output><input id="theme-glassOpacity" type="range" min="20" max="90" step="1"></label></div><p class="form-help">毛玻璃使用系统透明材质。支持的 Windows 与 macOS 可模糊窗口后方；不支持时保留清晰底色。</p></section>
         </div>
         <aside class="theme-preview">
-            <div class="preview-top"><span>实时预览</span>
+            <div class="preview-top"><span>实时预览</span><div class="appearance-preview-tabs" role="tablist" aria-label="预览对象"><button type="button" id="preview-main" role="tab" aria-selected="true">主界面</button><button type="button" id="preview-widget" role="tab" aria-selected="false">桌面待办</button></div>
                 <div class="preview-swatches"><i></i><i></i><i></i></div>
             </div>
             <div class="widget-glass-scene"><div class="widget-glass-preview"><span>桌面待办 · 材质预览</span><strong>今天，做一点重要的事</strong><div><time>09:30</time><span>整理工作安排</span></div><div><time>14:00</time><span>留一段专注时间</span></div></div></div><div class="preview-mini-app">
@@ -417,7 +416,7 @@
                     </div>
                 </div>
             </div>
-            <p>文本与按钮会根据底色调整对比度。<br>主题只包含配色与布局参数。</p>
+            <p id="appearance-preview-caption">主界面预览：切换配色和信息密度查看变化。</p>
             <div class="theme-file-actions">
                 <button id="import-theme" class="quiet">导入主题</button>
                 <button id="export-theme" class="quiet">导出已保存主题</button>

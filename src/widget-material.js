@@ -4,8 +4,8 @@ function nativeMaterial(platform=process.platform,release=os.release()){
     if(platform==='win32'&&Number(release.split('.')[2])>=22621)return 'acrylic';
     return 'solid';
 }
-function applyWidgetMaterial(win,theme,{platform=process.platform,release=os.release(),smoke=false}={}){
-    const kind=theme.widgetMaterial==='glass'&&!smoke?nativeMaterial(platform,release):'solid';
+function applyWidgetMaterial(win,theme,{platform=process.platform,release=os.release(),smoke=false,reducedTransparency=false}={}){
+    const kind=theme.widgetMaterial==='glass'&&!smoke&&!reducedTransparency?nativeMaterial(platform,release):'solid';
     try{
         if(platform==='win32')win.setBackgroundMaterial(kind==='acrylic'?'acrylic':'none');
         if(platform==='darwin')win.setVibrancy(kind==='vibrancy'?'under-window':null);

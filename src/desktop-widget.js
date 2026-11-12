@@ -1,4 +1,4 @@
-const {BrowserWindow, ipcMain, screen} = require('electron');
+const {BrowserWindow, ipcMain, screen, nativeTheme} = require('electron');
 const path = require('node:path');
 const {pathToFileURL} = require('node:url');
 const {loadAuxiliary} = require('./auxiliary-window');
@@ -54,10 +54,15 @@ class DesktopWidget {
 
     update() {
         if (this.win && !this.win.isDestroyed()) {
-            const theme=this.store.data.settings.theme,key=JSON.stringify([theme.widgetMaterial,theme.surface]);
-            if(this.materialKey!==key){this.material=applyWidgetMaterial(this.win,theme,{smoke:this.smoke});this.materialKey=key;}
+            this.updateMaterial();
             this.win.webContents.send('widget-state', this.snapshot());
         }
+    }
+
+    updateMaterial(){
+        const theme=this.store.data.settings.theme,reducedTransparency=nativeTheme.prefersReducedTransparency;
+        const key=JSON.stringify([theme.widgetMaterial,theme.surface,reducedTransparency]);
+        if(this.materialKey!==key){this.material=applyWidgetMaterial(this.win,theme,{smoke:this.smoke&&!process.argv.includes('--smoke-native-glass'),reducedTransparency});this.materialKey=key;}
     }
 
     persist(patch) {
@@ -79,10 +84,11 @@ class DesktopWidget {
                 minWidth: 300,
                 minHeight: 300,
                 frame: false,
+                transparent: true,
                 resizable: true,
                 skipTaskbar: mode === 'floating',
                 title: 'Collectify · 桌面待办',
-                backgroundColor: '#f5f4f0',
+                backgroundColor: '#00000000',
                 show: false,
                 icon: path.join(__dirname, '..', 'assets', 'icon.png'),
                 webPreferences: {
@@ -90,7 +96,7 @@ class DesktopWidget {
                     nodeIntegration: false,
                     sandbox: true,
                     contextIsolation: true,
-                    offscreen: this.smoke
+                    offscreen: this.smoke&&!process.argv.includes('--smoke-native-glass')
                 }
             });
             this.win.webContents.setWindowOpenHandler(() => ({action: 'deny'}));
@@ -109,9 +115,12 @@ class DesktopWidget {
                 this.win = null;
                 this.materialKey=null;
             });
+            // 首次 state 请求发出前就设置材质，避免旧的实色状态覆盖后来的玻璃更新。
+            this.updateMaterial();
             await loadAuxiliary(this.win, path.join(__dirname, 'widget.html'));
         }
         this.win.setSkipTaskbar(mode === 'floating');
+        this.materialKey=null;
         if (!this.smoke) this.win.showInactive();
         // Windows 修改任务栏样式可能重建 HWND；最后再设置置顶，避免样式更新撤销置顶。
         this.win.setAlwaysOnTop(mode === 'floating', 'floating');

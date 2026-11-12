@@ -35091,7 +35091,7 @@ var LocalMcpService = class {
     };
   }
   server() {
-    const server = new McpServer({ name: "collectify-workspace", version: "5.5.0" });
+    const server = new McpServer({ name: "collectify-workspace", version: "5.5.1" });
     const tool = (name, description, schema, write, handler) => server.registerTool(name, {
       description,
       inputSchema: schema,

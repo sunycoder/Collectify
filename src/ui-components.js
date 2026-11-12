@@ -2,8 +2,9 @@
     const selects = new Map(), dates = new Map();
     let pending = false;
 
+    function selectOptions(select){return [...select.options].filter(option=>option.value!==''||option.text.trim()!=='');}
     function optionsSignature(select) {
-        return JSON.stringify([...select.options].map(o => [o.value, o.text, o.disabled]));
+        return JSON.stringify(selectOptions(select).map(o => [o.value, o.text, o.disabled]));
     }
 
     function positionCalendar(instance) {
@@ -24,13 +25,16 @@
                     const parent = select.closest('dialog') || document.body;
                     const instance = new TomSelect(select, {
                         create: false,
-                        allowEmptyOption: true,
+                        allowEmptyOption: selectOptions(select).some(option=>option.value===''),
                         searchField: 'text',
                         controlInput: select.options.length > 8 ? undefined : null,
                         dropdownParent: parent,
                         plugins: [],
                         render: {no_results: () => '<div class="no-results">没有匹配选项</div>'},
                         onDropdownOpen() {
+                            if(!selectOptions(select).some(option=>option.value===''))this.removeOption('');
+                            // 小型枚举无需搜索输入；组件会在某些焦点状态恢复 display，统一收起空输入。
+                            if(this.settings.controlInput===null&&this.control_input){this.control_input.hidden=true;this.control_input.style.display='none';}
                             window.WorkspaceOverlay.show(this.control, this.dropdown, {width: Math.max(this.control.getBoundingClientRect().width, 145)});
                         },
                         onDropdownClose() {
@@ -43,13 +47,9 @@
                         if (String(instance.getValue()) !== select.value) instance.setValue(select.value, true);
                     });
                 } else if (signature !== record.signature) {
-                    const value = select.value;
+                    const value = select.value,options=selectOptions(select).map(o=>({value:o.value,text:o.text,disabled:o.disabled}));
                     record.instance.clearOptions();
-                    record.instance.addOptions([...select.options].map(o => ({
-                        value: o.value,
-                        text: o.text,
-                        disabled: o.disabled
-                    })));
+                    record.instance.addOptions(options);
                     record.instance.setValue(value, true);
                     record.signature = optionsSignature(select);
                 } else if (String(record.instance.getValue()) !== select.value) record.instance.setValue(select.value, true);

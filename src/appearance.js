@@ -1,4 +1,4 @@
-let draftTheme, savedTheme, themeSaved = false;
+let draftTheme, savedTheme, themeSaved = false, appearanceParent = null, appearancePreview='main';
 const Theme = window.ShiyueTheme;
 
 function syncThemeControls() {
@@ -12,9 +12,14 @@ function renderAppearance() {
     $('#radius-value').textContent = `${draftTheme.radius}px`;
     $('#glass-opacity-value').textContent=`${draftTheme.glassOpacity}%`;
     $('#theme-glassOpacity').disabled=draftTheme.widgetMaterial!=='glass';
+    $('.theme-preview').dataset.preview=appearancePreview;
+    $('#preview-main').setAttribute('aria-selected',String(appearancePreview==='main'));
+    $('#preview-widget').setAttribute('aria-selected',String(appearancePreview==='widget'));
+    $('#appearance-preview-caption').textContent=appearancePreview==='main'?'主界面预览：配色、圆角和信息密度。':'桌面待办预览：底图透过玻璃并被模糊，文字保持清晰。';
     $('#theme-presets').replaceChildren();
     for (const preset of Theme.PRESETS) {
         const node = button(preset.name, null, () => {
+            appearancePreview='main';
             draftTheme = Theme.validate({
                 ...preset,
                 preset: preset.id,
@@ -39,25 +44,32 @@ function renderAppearance() {
 
 $('#theme-button').onclick = task(async () => {
     hideMenu();
+    appearanceParent=$('#settings-dialog').open?$('.settings-navigation .selected')?.dataset.settingsPanel||'general':null;
     $('#settings-dialog').close();
     await call('overlay', true);
     savedTheme = Theme.validate(state.settings?.theme);
     draftTheme = {...savedTheme};
     themeSaved = false;
+    appearancePreview='main';
     $('#theme-error').textContent = '';
     syncThemeControls();
     $('#theme-dialog').showModal();
 });
 for (const field of ['accent', 'background', 'surface', 'sidebar', 'radius', 'density', 'motion','widgetMaterial','glassOpacity']) {
     $(`#theme-${field}`).addEventListener('input', () => {
+        appearancePreview=['widgetMaterial','glassOpacity'].includes(field)?'widget':'main';
         draftTheme[field] = field === 'motion' ? $('#theme-motion').checked : ['radius','glassOpacity'].includes(field) ? Number($(`#theme-${field}`).value) : $(`#theme-${field}`).value;
         renderAppearance();
     });
 }
 $('#theme-dialog').addEventListener('close', () => {
     if (!themeSaved && savedTheme) Theme.apply(savedTheme);
+    const parent=appearanceParent;appearanceParent=null;
+    if(parent)queueMicrotask(()=>void openSettings(parent));
 });
-$('#appearance-back').onclick=task(async()=>{$('#theme-dialog').close();await openSettings();});
+$('#appearance-back').onclick=()=>{if(!appearanceParent)appearanceParent='general';$('#theme-dialog').close();};
+$('#preview-main').onclick=()=>{appearancePreview='main';renderAppearance();};
+$('#preview-widget').onclick=()=>{appearancePreview='widget';renderAppearance();};
 $('#save-theme').onclick = task(async () => {
     await call('theme-save', draftTheme);
     themeSaved = true;

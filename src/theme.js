@@ -78,7 +78,7 @@
             density: input.density === 'compact' ? 'compact' : 'comfortable',
             motion: input.motion !== false,
             widgetMaterial: input.widgetMaterial === 'glass' ? 'glass' : 'solid',
-            glassOpacity: Number.isFinite(Number(input.glassOpacity)) ? Math.max(55,Math.min(95,Number(input.glassOpacity))) : 78
+            glassOpacity: Number.isFinite(Number(input.glassOpacity)) ? Math.max(20,Math.min(90,Number(input.glassOpacity))) : 42
         };
     }
 

@@ -22,6 +22,7 @@ function render(next) {
     $('#mode').classList.toggle('active', data.mode === 'floating');
     $('#mode').textContent = data.mode === 'floating' ? '已置顶' : '桌面';
     $('#mode-description').textContent = data.mode === 'floating' ? '悬浮置顶' : '独立桌面窗口';
+    if(data.theme.widgetMaterial==='glass')$('#mode-description').textContent+=data.material==='solid'?' · 系统实色回退':' · 毛玻璃';
     $('#day-title').textContent = selectedDate ? selectedDate === day(new Date()) ? '今天的安排' : `${Number(selectedDate.slice(5, 7))} 月 ${Number(selectedDate.slice(8))} 日` : '手边的事';
     const at = t => t.startAt || t.dueAt || '';
     const tasks = data.tasks.filter(t => !t.archived && (!selectedDate || (at(t) && day(at(t)) === selectedDate))).sort((a, b) => (Date.parse(at(a)) || Infinity) - (Date.parse(at(b)) || Infinity));
