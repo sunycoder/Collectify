@@ -6,7 +6,7 @@ exports.run=async({win,store,desktopWidget})=>{
     async function wait(fn){for(let i=0;i<120;i++){if(await fn())return;await delay(80);}throw Error('V12 等待界面超时');}
     async function click(selector){await js(`document.querySelector(${JSON.stringify(selector)}).scrollIntoView({block:'nearest'})`);await delay(140);const p=await js(`(()=>{const e=document.querySelector(${JSON.stringify(selector)}),r=e.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2,hit=document.elementFromPoint(x,y);if(!e.contains(hit))throw Error('无法命中 '+${JSON.stringify(selector)});return{x,y}})()`);const z=win.webContents.getZoomFactor(),x=Math.round(p.x*z),y=Math.round(p.y*z);win.webContents.sendInputEvent({type:'mouseDown',x,y,button:'left',clickCount:1});win.webContents.sendInputEvent({type:'mouseUp',x,y,button:'left',clickCount:1});await delay(230);}
     win.setSize(1440,1000);await js("document.querySelector('dialog[open]')?.close();document.querySelector('#all-nav').click();document.querySelector('#grid-view').click()");await delay(180);
-    assert.ok(await js("!!document.querySelector('.profile #settings-button [data-icon=gear]')"));
+    assert.ok(await js("getComputedStyle(document.querySelector('.profile #settings-button .settings-svg')).maskImage.includes('.svg')"));
     const sizes=async()=>js("({card:document.querySelector('.bookmark-card').getBoundingClientRect().height,padding:parseFloat(getComputedStyle(document.querySelector('.bookmark-card')).paddingTop)})");
     await js("ShiyueTheme.apply({...state.settings.theme,density:'comfortable'})");const comfortable=await sizes();
     await js("ShiyueTheme.apply({...state.settings.theme,density:'compact'})");const compact=await sizes();assert.ok(compact.card<comfortable.card||compact.padding<comfortable.padding-4);
@@ -31,8 +31,8 @@ exports.run=async({win,store,desktopWidget})=>{
     await wait(()=>wjs("typeof data==='object'&&!!data.theme"));
     // 测试最终 CSS 绘制链；即使原生测试关闭，也必须验证办公主题不会覆盖透明材质。
     await delay(250);
-    const paint=await wjs("(()=>{render({...data,material:'acrylic'});const alpha=e=>getComputedStyle(e).backgroundColor;return{html:alpha(document.documentElement),body:alpha(document.body),header:alpha(document.querySelector('header')),section:alpha(document.querySelector('section')),image:getComputedStyle(document.body).backgroundImage}})()");
-    assert.equal(paint.html,'rgba(0, 0, 0, 0)');assert.equal(paint.header,'rgba(0, 0, 0, 0)');assert.equal(paint.section,'rgba(0, 0, 0, 0)');assert.ok(paint.image.includes('gradient'));
+    const paint=await wjs("(()=>{render({...data,material:'acrylic'});const alpha=e=>getComputedStyle(e).backgroundColor;return{html:alpha(document.documentElement),body:alpha(document.querySelector('.widget-shell')),header:alpha(document.querySelector('header')),section:alpha(document.querySelector('section')),image:getComputedStyle(document.querySelector('.widget-shell')).backgroundImage}})()");
+    assert.equal(paint.html,'rgba(0, 0, 0, 0)');assert.equal(paint.header,'rgba(0, 0, 0, 0)');assert.equal(paint.section,'rgba(0, 0, 0, 0)');assert.notEqual(paint.body,'rgba(0, 0, 0, 0)');
     const directory=require('./verification-output').directory;
     desktopWidget.win.setBackgroundColor('#00000000');
     await wjs("render({...data,material:'acrylic'})");await delay(350);

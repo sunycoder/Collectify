@@ -1,10 +1,14 @@
 /* 放在办公主题之后：背景链任一层为纯色都会遮住原生 Acrylic / Vibrancy。 */
-html[data-native-material=acrylic],html[data-native-material=vibrancy]{background:transparent!important;color-scheme:normal!important}
-html[data-native-material=acrylic] body,html[data-native-material=vibrancy] body{
-    background:linear-gradient(145deg,color-mix(in srgb,var(--surface) calc(var(--glass-wash) + 5%),transparent),color-mix(in srgb,var(--surface) var(--glass-wash),transparent))!important;
-    border:1px solid #ffffff94;
-    border-radius:20px;box-shadow:inset 0 1px #ffffffb8,inset 1px 0 #ffffff48,inset 0 -1px #ffffff34;backdrop-filter:none;
+html,body{background:transparent!important;color-scheme:normal!important}
+body{border:0!important;border-radius:0;clip-path:none;box-shadow:none!important;backdrop-filter:none!important}
+.widget-shell{position:relative;isolation:isolate;height:100dvh;overflow:hidden;border:1px solid var(--line);border-radius:20px;background:var(--surface);display:flex;flex-direction:column}
+.widget-shell>header{flex-shrink:0}.widget-shell>section{flex:1;min-height:0;display:flex;flex-direction:column}.widget-shell #tasks{flex:1;min-height:0;max-height:none!important}.widget-shell .widget-heading,.widget-shell .date-row,.widget-shell footer{flex-shrink:0}.widget-shell footer{margin-top:12px;padding-top:10px}
+html[data-native-material=acrylic] .widget-shell,html[data-native-material=vibrancy] .widget-shell{
+    background:color-mix(in srgb,#eeebff var(--glass-wash),transparent)!important;
+    border:2px solid transparent;background-clip:padding-box!important;
+    border-radius:20px;box-shadow:inset 0 0 0 1px #ffffff2b;backdrop-filter:none;
 }
+html[data-native-material=acrylic] .widget-shell:before,html[data-native-material=vibrancy] .widget-shell:before{content:'';position:absolute;inset:0;z-index:4;border-radius:20px;padding:2px;background:linear-gradient(125deg,#ffebd9cc,#ffffff24 37%,#ffffff1f 65%,#ffcd26eb);mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask-composite:exclude;-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;pointer-events:none}
 html[data-native-material=acrylic] header,html[data-native-material=acrylic] section,
 html[data-native-material=vibrancy] header,html[data-native-material=vibrancy] section{background:transparent!important}
 html[data-widget-material=glass] header{border-bottom-color:color-mix(in srgb,var(--ink) 10%,transparent)}

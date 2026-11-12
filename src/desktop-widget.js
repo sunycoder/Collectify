@@ -61,11 +61,12 @@ class DesktopWidget {
 
     updateMaterial(){
         const theme=this.store.data.settings.theme,reducedTransparency=nativeTheme.prefersReducedTransparency;
-        const key=JSON.stringify([theme.widgetMaterial,theme.surface,reducedTransparency]);
+        const windowHandle=this.win.getNativeWindowHandle().toString('hex');
+        const key=JSON.stringify([windowHandle,theme.widgetMaterial,theme.surface,reducedTransparency]);
         if(this.materialKey!==key){this.material=applyWidgetMaterial(this.win,theme,{smoke:this.smoke&&!process.argv.includes('--smoke-native-glass'),reducedTransparency});this.materialKey=key;}
         if(process.platform==='win32'){
-            const {width,height}=this.win.getBounds(),shapeKey=`${theme.widgetMaterial}:${this.material}:${width}:${height}`;
-            if(shapeKey!==this.shapeKey){this.win.setShape(theme.widgetMaterial==='glass'?roundedWindowShape(width,height):[]);this.shapeKey=shapeKey;}
+            const {width,height}=this.win.getBounds(),shapeKey=`${windowHandle}:${theme.widgetMaterial}:${this.material}:${width}:${height}`;
+            if(shapeKey!==this.shapeKey){this.win.setShape(roundedWindowShape(width,height));this.shapeKey=shapeKey;}
         }
     }
 
@@ -127,6 +128,7 @@ class DesktopWidget {
         }
         this.win.setSkipTaskbar(mode === 'floating');
         this.materialKey=null;
+        this.shapeKey=null;
         if (!this.smoke) this.win.showInactive();
         // Windows 修改任务栏样式可能重建 HWND；最后再设置置顶，避免样式更新撤销置顶。
         this.win.setAlwaysOnTop(mode === 'floating', 'floating');
