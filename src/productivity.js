@@ -20,7 +20,8 @@ function validateTask(input) {
         endAt = date(input.endAt);
     if (endAt && (!startAt || Date.parse(endAt) <= Date.parse(startAt))) throw new Error('结束时间必须晚于开始时间');
     const attachments = (input.attachments || []).map(p => string(p, 2048));
-    if (attachments.length > 20 || attachments.some(p => !require('node:path').isAbsolute(p))) throw new Error('请选择有效的本地文件或文件夹，最多 20 项');
+    const path=require('node:path');
+    if (attachments.length > 20 || attachments.some(p => !path.posix.isAbsolute(p)&&!path.win32.isAbsolute(p))) throw new Error('请选择有效的本地文件或文件夹，最多 20 项');
     return {
         id: input.id || randomUUID(),
         title,

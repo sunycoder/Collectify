@@ -1,4 +1,4 @@
-async function openSettings() {
+async function openSettings(panel='general') {
     hideMenu();
     await call('overlay', true);
     $('#settings-error').textContent = '';
@@ -10,7 +10,14 @@ async function openSettings() {
     renderMcpStatus(info.mcp);
     $('#settings-dialog').showModal();
     $('#widget-auto-restore').checked = state.settings?.widget?.autoRestore === true;
+    selectSettingsPanel(typeof panel==='string'?panel:'general');
 }
+
+function selectSettingsPanel(panel){
+    document.querySelectorAll('.settings-panel').forEach(node=>node.hidden=node.dataset.panel!==panel);
+    document.querySelectorAll('[data-settings-panel]').forEach(node=>node.classList.toggle('selected',node.dataset.settingsPanel===panel));
+}
+document.querySelectorAll('[data-settings-panel]').forEach(node=>node.onclick=()=>selectSettingsPanel(node.dataset.settingsPanel));
 
 function renderMcpStatus(status) {
     $('#mcp-status').textContent = status.enabled ? '已开启 · ' + status.url : '未开启';

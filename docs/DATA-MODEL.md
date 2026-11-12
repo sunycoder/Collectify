@@ -1,6 +1,6 @@
 # Collectify SQLite 数据模型
 
-应用版本 5.4.3。数据库结构版本 2，记录于 `PRAGMA user_version` 和 `schema_migrations`。JSON 收藏交换格式版本 2，与数据库版本、应用版本分别管理。
+应用版本 5.5.0。数据库结构版本 2，记录于 `PRAGMA user_version` 和 `schema_migrations`。全局 JSON 交换格式版本 1，原默认收藏配置版本 2；格式、数据库和应用版本分别管理。
 
 本地项目直接建立新库，不读取旧 JSON 数据文件，不执行旧数据迁移或旧密文解密。以后需要调整表结构时在事务中编写明确的结构迁移；不能通过 UI 改版重置数据库。
 
@@ -67,7 +67,11 @@ MCP 写工具的审计记录随业务提交进入同一事务。连接配置单�
 
 位置为平台 appData 下的 `Collectify/collectify.sqlite`，可在设置页确认。新库创建表与初始结构版本在同一事务中完成；首次默认数据成功提交后标记 initialized。初始化失败可修正配置后重试，不留下半份业务数据。
 
-JSON 默认配置只初始化空库；收藏导入/导出仅用于当前 version 2 交换格式。替换导入不清除任务、便签、设置和 MCP 配置；删除资源所产生的任务关联会解除。任务/便签整库恢复不能使用收藏导入按钮。
+JSON 默认配置只初始化空库，保留 version 2。全局交换文件使用 format=collectify-workspace、version=1，sections 显式声明 bookmarks/tasks/notes/settings。导出仅写入勾选类型；settings 内不包含窗口位置、可见状态或 MCP 身份。
+
+导入预览只返回文件名、类型和数量，不把登录资料发送到预览界面。用户确认的类型先在隔离 Store 快照中验证，再备份并单事务提交。替换只替换所选类型；合并更新同 ID 任务/便签，收藏复用现有资源去重规则。同步导入收藏和任务时，按资源映射重建 bookmarkId；缺少目标时解除关联。未勾选类型不被替换；删除收藏时原任务按既有业务语义解除关联。
+
+原 version 2 收藏文件适配为只包含 bookmarks 的交换文件。只有全局数据库备份包含 mcp_connection 和 mcp_audit，不通过跨机器 JSON 导入覆盖本机令牌。settings 仍使用键值 JSON；新增 widgetMaterial 和 glassOpacity 属于 theme 参数，不改变 SQLite 表结构。
 
 设置页“备份数据库”调用 `VACUUM INTO`，得到包含已提交 WAL 数据的一致数据库文件。导入前也生成 `collectify.sqlite.before-import.bak`。备份失败则不继续导入；备份不复制原文件的临时状态。正常运行时不要单独复制主库作为备份。
 

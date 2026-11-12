@@ -22,7 +22,10 @@ const {DesktopWidget} = require('./desktop-widget');
 const {LoginHelper} = require('./login-helper');
 const {LocalMcpService} = require('./vendor/mcp-service.cjs');
 const {validate: validateTheme} = require('./theme');
+const {exportWorkspace,parseWorkspace,describeWorkspace,importWorkspace}=require('./workspace-transfer');
+const {randomUUID}=require('node:crypto');
 let desktopWidget, createMainWindow, loginHelper, localMcp;
+let importDraft;
 
 function dataChanged() {
     desktopWidget?.update();
@@ -529,43 +532,51 @@ function registerApi() {
                     return {ok: true};
                 }
                 case 'export': {
+                    const exported=exportWorkspace(store,payload?.sections,payload?.includeCredentials!==false);
                     const result = await dialog.showSaveDialog(win, {
-                        title: '导出入口配置',
-                        defaultPath: 'workbench-config.json',
+                        title: '导出工作空间数据',
+                        defaultPath: 'Collectify-workspace.json',
                         filters: [{name: 'JSON', extensions: ['json']}]
                     });
                     if (result.canceled) return {ok: true, data: null};
-                    const exported = store.snapshot();
-                    delete exported.tasks;
-                    delete exported.notes;
-                    delete exported.settings;
-                    delete exported.sourceName;
-                    delete exported.configSource;
-                    fs.writeFileSync(result.filePath, JSON.stringify(exported, null, 2), 'utf8');
+                    if([store.file,`${store.file}-wal`,`${store.file}-shm`].some(file=>path.resolve(file)===path.resolve(result.filePath)))throw Error('不能用导出文件覆盖正在使用的数据库');
+                    const serialized=JSON.stringify(exported,null,2);
+                    if(Buffer.byteLength(serialized,'utf8')>20*1024*1024)throw Error('所选数据超过 20 MB，请分类型导出或使用数据库备份');
+                    fs.writeFileSync(result.filePath, serialized, 'utf8');
                     return {ok: true, data: result.filePath};
                 }
+                case 'import-cancel':
+                    if(importDraft?.token===payload)importDraft=null;
+                    return {ok:true};
+                case 'import-preview':
                 case 'import': {
-                    const result = await dialog.showOpenDialog(win, {
-                        title: '导入入口配置',
+                    let draft=payload?.token&&importDraft?.token===payload.token?importDraft:null;
+                    if(payload?.token&&!draft)throw Error('导入预览已失效，请重新选择文件');
+                    if(!draft){
+                        const result = await dialog.showOpenDialog(win, {
+                        title: '导入工作空间数据',
                         properties: ['openFile'],
                         filters: [{name: 'JSON', extensions: ['json']}]
                     });
                     if (result.canceled) return {ok: true, data: null};
-                    if (fs.statSync(result.filePaths[0]).size > 2 * 1024 * 1024) throw new Error('配置文件不能超过 2 MB');
+                    if (fs.statSync(result.filePaths[0]).size > 20 * 1024 * 1024) throw new Error('数据文件不能超过 20 MB');
                     const raw = JSON.parse(fs.readFileSync(result.filePaths[0], 'utf8').replace(/^\uFEFF/, ''));
-                    if (Array.isArray(raw.entries)) raw.entries = await Promise.all(raw.entries.map(async entry => {
-                        const clean = {...entry};
-                        return credentials.prepare(clean);
-                    }));
-                    // 完整业务校验与数据库事务成功后再修改本机配置；导入优先于默认配置。
-                    store.backup(`${store.file}.before-import.bak`);
-                    const count = store.import(raw, {
+                    const parsed=parseWorkspace(raw);
+                    if(parsed.sections.includes('bookmarks'))parsed.data.entries=await Promise.all(parsed.data.entries.map(entry=>credentials.prepare(entry)));
+                    draft={token:randomUUID(),raw:parsed,name:path.basename(result.filePaths[0])};
+                    }
+                    if(action==='import-preview'){
+                        importDraft=draft;
+                        return {ok:true,data:{...describeWorkspace(draft.raw),token:draft.token,name:draft.name}};
+                    }
+                    const result=importWorkspace(store,draft.raw,{
                         mode: payload?.mode === 'replace' ? 'replace' : 'merge',
-                        override: true,
-                        sourceName: path.basename(result.filePaths[0])
+                        sections:payload?.sections||draft.raw.sections,
+                        sourceName:draft.name
                     });
-                    for (const tab of [...tabs.values()]) closeTab(tab.id);
-                    return {ok: true, data: count};
+                    if(result.sections.includes('bookmarks'))for (const tab of [...tabs.values()]) closeTab(tab.id);
+                    importDraft=null;dataChanged();
+                    return {ok: true, data: result};
                 }
                 default:
                     throw new Error('未知操作');
@@ -620,6 +631,7 @@ app.whenReady().then(async () => {
             }
         });
         win.webContents.setWindowOpenHandler(() => ({action: 'deny'}));
+        if(smoke)win.webContents.on('console-message',event=>{if(event.level===3)console.error('Renderer:',event.message);});
         win.webContents.on('will-navigate', event => event.preventDefault());
         win.on('resize', layout);
         win.on('close', event => {
@@ -698,6 +710,7 @@ app.whenReady().then(async () => {
             await require('./smoke-v9').run({win, store});
             }
             await require('./smoke-v10').run({win, store});
+            await require('./smoke-v11').run({win,store,desktopWidget});
         } catch (error) {
             console.error(error);
             app.exit(1);

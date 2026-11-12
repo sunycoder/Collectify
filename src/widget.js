@@ -18,6 +18,7 @@ async function call(action, payload) {
 function render(next) {
     data = next;
     window.ShiyueTheme.apply(data.theme);
+    document.documentElement.dataset.nativeMaterial=data.material||'solid';
     $('#mode').classList.toggle('active', data.mode === 'floating');
     $('#mode').textContent = data.mode === 'floating' ? '已置顶' : '桌面';
     $('#mode-description').textContent = data.mode === 'floating' ? '悬浮置顶' : '独立桌面窗口';

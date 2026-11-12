@@ -34,7 +34,7 @@ function validateEntry(input) {
         if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) throw new Error('网址仅支持 HTTP / HTTPS，且不能包含账号密码');
     }
     const localPath = text(input, 'localPath', 2048);
-    if (['file', 'folder'].includes(type) && !path.isAbsolute(localPath)) throw new Error('请选择本地文件或文件夹的绝对路径');
+    if (['file', 'folder'].includes(type) && !path.posix.isAbsolute(localPath) && !path.win32.isAbsolute(localPath)) throw new Error('请选择本地文件或文件夹的绝对路径');
     const content = typeof input.content === 'string' ? input.content : '';
     if (content.length > 30000 || (type === 'text' && !content.trim())) throw new Error('请填写文本片段，最多 30000 字');
     return {

@@ -4,7 +4,7 @@ Collectify 5.4 自带本机 MCP 服务，可供群枢 / AIOA 等支持 Streamabl
 
 ## 在Collectify开启
 
-1. 打开Collectify，点击侧栏底部“设置与 AI 连接”。
+1. 打开 Collectify，点击左下角“设置”，选择“AI 连接”。
 2. 在 AI / MCP 连接区域选择本机端口，默认 17863，点击“开启 MCP”。
 3. 确认显示“已开启”和本机地址。如果端口被其他程序占用，会直接报错，换一个端口后重试。
 4. 点击“复制 MCP 连接配置”。内容含 `url` 和 `Authorization: Bearer ...` 请求头；令牌只在本机生成，不需要从外部申请。

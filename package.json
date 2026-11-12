@@ -1,6 +1,6 @@
 {
   "name": "collectify",
-  "version": "5.4.3",
+  "version": "5.5.0",
   "description": "Collectify · 收藏、日程、待办与便签",
   "main": "src/main.js",
   "author": "Collectify",

@@ -34964,7 +34964,8 @@ var require_productivity = __commonJS({
       const dueAt = date(input.dueAt), remindAt = date(input.remindAt), startAt = date(input.startAt), endAt = date(input.endAt);
       if (endAt && (!startAt || Date.parse(endAt) <= Date.parse(startAt))) throw new Error("\u7ED3\u675F\u65F6\u95F4\u5FC5\u987B\u665A\u4E8E\u5F00\u59CB\u65F6\u95F4");
       const attachments = (input.attachments || []).map((p) => string(p, 2048));
-      if (attachments.length > 20 || attachments.some((p) => !require("node:path").isAbsolute(p))) throw new Error("\u8BF7\u9009\u62E9\u6709\u6548\u7684\u672C\u5730\u6587\u4EF6\u6216\u6587\u4EF6\u5939\uFF0C\u6700\u591A 20 \u9879");
+      const path = require("node:path");
+      if (attachments.length > 20 || attachments.some((p) => !path.posix.isAbsolute(p) && !path.win32.isAbsolute(p))) throw new Error("\u8BF7\u9009\u62E9\u6709\u6548\u7684\u672C\u5730\u6587\u4EF6\u6216\u6587\u4EF6\u5939\uFF0C\u6700\u591A 20 \u9879");
       return {
         id: input.id || randomUUID(),
         title,
@@ -35090,7 +35091,7 @@ var LocalMcpService = class {
     };
   }
   server() {
-    const server = new McpServer({ name: "collectify-workspace", version: "5.4.3" });
+    const server = new McpServer({ name: "collectify-workspace", version: "5.5.0" });
     const tool = (name, description, schema, write, handler) => server.registerTool(name, {
       description,
       inputSchema: schema,

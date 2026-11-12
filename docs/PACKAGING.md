@@ -35,7 +35,7 @@ Windows：`%APPDATA%\Collectify\collectify.sqlite`。
 macOS：`~/Library/Application Support/Collectify/collectify.sqlite`。
 Linux：一般为 `~/.config/Collectify/collectify.sqlite`。
 
-实际路径在“设置与 AI 连接”查看。备份使用该页面“备份数据库”，不要在运行期间只复制主文件。完整表结构和恢复步骤见 [数据模型](DATA-MODEL.md)。
+实际路径在“设置”查看。备份使用该页面“备份数据库”，不要在运行期间只复制主文件。完整表结构和恢复步骤见 [数据模型](DATA-MODEL.md)。
 
 ## 图标
 

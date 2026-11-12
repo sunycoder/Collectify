@@ -1,8 +1,9 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 exports.run=async({win,store})=>{
+    win.webContents.on('console-message',event=>{if(event.level===3)console.error('V10 renderer:',event.message);});
     const js=code=>win.webContents.executeJavaScript(code).catch(error=>{console.error('V10 step:',code);throw error;});
-    async function until(fn){for(let i=0;i<100;i++){if(await fn())return;await delay(70);}throw Error('V10 timeout');}
+    async function until(fn){for(let i=0;i<100;i++){if(await fn())return;await delay(70);}console.error('V10 diagnostic:',await js("({toast:document.querySelector('#toast').textContent,handler:typeof document.querySelector('#new-task').onclick,showTask:typeof showTask,taskSection:document.querySelector('#tasks-page').hidden,modals:[...document.querySelectorAll('dialog[open]')].map(x=>x.id)})"));throw Error('V10 timeout');}
     async function point(x,y){const z=win.webContents.getZoomFactor();x=Math.round(x*z);y=Math.round(y*z);win.webContents.sendInputEvent({type:'mouseMove',x,y});win.webContents.sendInputEvent({type:'mouseDown',x,y,button:'left',clickCount:1});win.webContents.sendInputEvent({type:'mouseUp',x,y,button:'left',clickCount:1});await delay(140);}
     async function click(selector){const p=await js(`(()=>{const e=document.querySelector(${JSON.stringify(selector)}),r=e.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2,hit=document.elementFromPoint(x,y);if(!e.contains(hit))throw Error('not hit-testable: '+${JSON.stringify(selector)});return {x,y}})()`);await point(p.x,p.y);}
     win.setSize(1280,900);await js("document.querySelector('dialog[open]')?.close();document.querySelector('#all-nav').click();document.querySelector('#list-view').click()");await delay(200);

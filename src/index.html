@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="interaction-fixes.css">
     <link rel="stylesheet" href="readability.css">
     <link rel="stylesheet" href="board.css">
+    <link rel="stylesheet" href="workspace-settings.css">
 </head>
 <body>
 <aside class="sidebar">
@@ -38,9 +39,7 @@
     </div>
     <nav id="categories" class="category-list" aria-label="收藏分类"></nav>
 
-    <button id="settings-button" class="theme-nav"><i data-icon="sliders"></i><span>设置与 AI 连接</span></button>
-    <button id="theme-button" class="theme-nav"><i data-icon="sliders"></i><span>外观与调色板</span><span
-            class="theme-dots"><b></b><b></b><b></b></span></button>
+    <button id="settings-button" class="theme-nav settings-entry"><i data-icon="sliders"></i><span>设置</span></button>
     <div class="profile"><span class="avatar">我</span>
         <div>个人工作空间<small>收藏 · 待办 · 便签 · v5.4</small></div>
         <span class="local-dot"></span></div>
@@ -57,7 +56,7 @@
     </header>
     <section id="dashboard" class="dashboard">
         <div class="config-bar"><span id="config-source">本机数据 · 已自动保存</span>
-            <button id="import-main" class="quiet">导入 JSON</button>
+            <button id="import-main" class="quiet">导入 / 导出</button>
         </div>
         <div class="page-heading">
             <div class="heading-copy"><h1 id="heading">全部收藏</h1>
@@ -381,7 +380,7 @@
 </dialog>
 <dialog id="theme-dialog">
     <div class="dialog-head">
-        <div><h2>配色实验室</h2></div>
+        <div><h2>自定义外观</h2><button id="appearance-back" class="quiet">返回设置</button></div>
         <button class="icon-button dialog-close" data-icon="close" aria-label="关闭"></button>
     </div>
     <p class="dialog-intro">换一种心情，让空间更像你。所有调整均可实时预览。</p>
@@ -401,12 +400,13 @@
                 <option value="compact">紧凑</option>
             </select></label><label class="checkbox-label motion-control"><input id="theme-motion" type="checkbox">轻量动效</label>
             </div>
+            <section class="glass-controls"><h3>桌面待办材质</h3><div class="form-grid"><label>显示效果<select id="theme-widgetMaterial"><option value="solid">清晰实色</option><option value="glass">毛玻璃</option></select></label><label class="range-label">底色浓度 <output id="glass-opacity-value"></output><input id="theme-glassOpacity" type="range" min="55" max="95" step="1"></label></div><p class="form-help">毛玻璃使用系统透明材质。支持的 Windows 与 macOS 可模糊窗口后方；不支持时保留清晰底色。</p></section>
         </div>
         <aside class="theme-preview">
             <div class="preview-top"><span>实时预览</span>
                 <div class="preview-swatches"><i></i><i></i><i></i></div>
             </div>
-            <div class="preview-mini-app">
+            <div class="widget-glass-scene"><div class="widget-glass-preview"><span>桌面待办 · 材质预览</span><strong>今天，做一点重要的事</strong><div><time>09:30</time><span>整理工作安排</span></div><div><time>14:00</time><span>留一段专注时间</span></div></div></div><div class="preview-mini-app">
                 <div class="preview-sidebar"><b>Collectify</b><span
                         class="preview-selected">我的收藏</span><span>我的待办</span><span>便签</span></div>
                 <div class="preview-content"><strong>刚刚好的秩序。</strong>
@@ -433,15 +433,18 @@
 </dialog>
 <dialog id="settings-dialog">
     <div class="dialog-head">
-        <div><h2>设置与 AI 连接</h2>
+        <div><h2>设置</h2>
             <p class="dialog-intro">版本 <span id="app-version"></span></p></div>
         <button class="icon-button dialog-close" data-icon="close" aria-label="关闭"></button>
     </div>
+    <nav class="settings-navigation" aria-label="设置分类"><button id="settings-general" class="selected" data-settings-panel="general">通用</button><button id="theme-button">自定义外观</button><button id="settings-ai" data-settings-panel="ai">AI 连接</button><button id="settings-data" data-settings-panel="data">导入 / 导出</button></nav>
+    <div class="settings-panel" data-panel="general">
     <section class="settings-section"><h3>本机数据</h3>
         <p>收藏、待办、日历、便签和外观设置统一存储在：</p><code id="data-file"></code><small id="data-directory"></small>
         <button id="open-data-directory" class="subtle">打开数据文件夹</button><button id="backup-database" class="subtle">备份数据库</button>
         <p>业务数据存储于 SQLite。备份数据库可保留收藏、待办、便签、设置和 MCP 配置，包含明文账号密码；网页登录状态在 Partitions 目录。</p></section>
-    <section class="settings-section"><label class="checkbox-label"><input id="widget-auto-restore" type="checkbox">启动时恢复桌面待办窗口</label>
+    <section class="settings-section"><label class="checkbox-label"><input id="widget-auto-restore" type="checkbox">启动时恢复桌面待办窗口</label></section></div>
+    <div class="settings-panel" data-panel="ai" hidden><section class="settings-section">
         <h3>AI / MCP 连接</h3>
         <p>让支持 MCP 的 AI 工具查询收藏与待办、批量安排日程、创建便签和整理分类。</p>
         <div class="mcp-controls"><label>本机端口<input id="mcp-port" type="number" min="1024" max="65535"
@@ -453,8 +456,10 @@
         <button id="mcp-copy" class="subtle">复制 MCP 连接配置</button>
         <p>在群枢等工具中添加 Streamable HTTP MCP，填写复制出的 URL 和 Authorization
             请求头。Collectify需保持运行；连接令牌在本机生成，接口只监听本机，不返回密码。AI
-            写入会直接生效，可从界面查看结果。</p></section>
+            写入会直接生效，可从界面查看结果。</p></section></div>
+    <div class="settings-panel" data-panel="data" hidden><section class="settings-section"><h3>工作空间数据</h3><p>按需选择收藏、待办与日历、便签及偏好设置，在不同电脑之间整理和迁移。</p><div class="settings-data-actions"><button id="settings-export" class="primary">导出数据</button><button id="settings-import" class="subtle">导入数据</button></div><p>登录资料可单独选择是否导出；文件不包含浏览器 Cookie、附件原文件和本机 MCP 连接令牌。</p></section></div>
     <p id="settings-error" class="form-error"></p></dialog>
+<dialog id="transfer-dialog"><div class="dialog-head"><div><h2 id="transfer-title">导出数据</h2><p class="dialog-intro">选择这次要处理的工作空间内容。</p></div><button class="icon-button dialog-close" data-icon="close" aria-label="关闭"></button></div><div id="transfer-file-summary" class="transfer-file-summary" hidden></div><div class="transfer-options"><label><input type="checkbox" value="bookmarks" checked><span><strong>收藏与分类</strong><small>网页、本地路径、文本与账号资料</small></span><b data-count="bookmarks"></b></label><label><input type="checkbox" value="tasks" checked><span><strong>待办与日历</strong><small>清单、四象限、看板、日程与归档</small></span><b data-count="tasks"></b></label><label><input type="checkbox" value="notes" checked><span><strong>便签</strong><small>标题、正文与便签颜色</small></span><b data-count="notes"></b></label><label><input type="checkbox" value="settings" checked><span><strong>偏好设置</strong><small>自定义外观、托盘与桌面待办偏好</small></span></label></div><label id="transfer-credentials" class="checkbox-label"><input type="checkbox" checked>包含收藏的登录账号与密码（明文）</label><div id="transfer-import-options" hidden><label>导入方式<select id="transfer-mode"><option value="merge">合并：相同 ID 更新，其他内容保留</option><option value="replace">替换：只替换勾选的数据类型</option></select></label><p class="form-help">导入前自动备份数据库。未勾选的类型不变；选择“替换”会清除该类型原有内容。导入的偏好设置按文件覆盖。</p></div><p class="form-help">日历使用同一份待办数据；附件只保存路径。MCP 令牌和网页登录状态使用本机数据库备份保留。</p><p id="transfer-error" class="form-error" role="alert"></p><div class="dialog-actions"><button class="cancel-dialog subtle">取消</button><button id="transfer-confirm" class="primary">选择保存位置</button></div></dialog>
 <div id="toast" class="toast" role="status" hidden></div>
 <script src="vendor/tom-select.js"></script>
 <script src="vendor/flatpickr.js"></script>
@@ -471,5 +476,6 @@
 <script src="appearance.js"></script>
 <script src="ui-components.js"></script>
 <script src="settings-ui.js"></script>
+<script src="transfer-ui.js"></script>
 </body>
 </html>

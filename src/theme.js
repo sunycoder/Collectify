@@ -76,7 +76,9 @@
             sidebar: hex(input.sidebar, preset.sidebar),
             radius: Number.isFinite(Number(input.radius)) ? Math.max(8, Math.min(22, Number(input.radius))) : preset.id === 'office' ? 8 : 14,
             density: input.density === 'compact' ? 'compact' : 'comfortable',
-            motion: input.motion !== false
+            motion: input.motion !== false,
+            widgetMaterial: input.widgetMaterial === 'glass' ? 'glass' : 'solid',
+            glassOpacity: Number.isFinite(Number(input.glassOpacity)) ? Math.max(55,Math.min(95,Number(input.glassOpacity))) : 78
         };
     }
 
@@ -126,6 +128,8 @@
         target.dataset.motion = String(theme.motion);
         target.dataset.density = theme.density;
         target.dataset.theme = theme.preset;
+        target.dataset.widgetMaterial=theme.widgetMaterial;
+        target.style.setProperty('--glass-opacity',`${theme.glassOpacity}%`);
         return theme;
     }
 

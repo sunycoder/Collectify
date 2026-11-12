@@ -273,6 +273,9 @@ function checklistRow(t) {
     }, 'icon-button'));
     actions.append(button('编辑待办', 'edit', () => showTask(t), 'icon-button'), button('删除待办', 'trash', () => confirmDelete('tasks', t), 'icon-button'));
     row.append(check, content, tags, actions);
+    row.tabIndex=0;row.setAttribute('aria-label',`查看待办详情：${t.title}`);
+    row.onclick=task(async event=>{if(!event.target.closest('button,input,select,a,.ts-wrapper'))await showTask(t);});
+    row.onkeydown=task(async event=>{if(event.target===row&&['Enter',' '].includes(event.key)){event.preventDefault();await showTask(t);}});
     return row;
 }
 

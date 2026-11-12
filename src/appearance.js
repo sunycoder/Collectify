@@ -2,7 +2,7 @@ let draftTheme, savedTheme, themeSaved = false;
 const Theme = window.ShiyueTheme;
 
 function syncThemeControls() {
-    for (const field of ['accent', 'background', 'surface', 'sidebar', 'radius', 'density']) $(`#theme-${field}`).value = draftTheme[field];
+    for (const field of ['accent', 'background', 'surface', 'sidebar', 'radius', 'density','widgetMaterial','glassOpacity']) $(`#theme-${field}`).value = draftTheme[field];
     $('#theme-motion').checked = draftTheme.motion;
     renderAppearance();
 }
@@ -10,6 +10,8 @@ function syncThemeControls() {
 function renderAppearance() {
     Theme.apply(draftTheme);
     $('#radius-value').textContent = `${draftTheme.radius}px`;
+    $('#glass-opacity-value').textContent=`${draftTheme.glassOpacity}%`;
+    $('#theme-glassOpacity').disabled=draftTheme.widgetMaterial!=='glass';
     $('#theme-presets').replaceChildren();
     for (const preset of Theme.PRESETS) {
         const node = button(preset.name, null, () => {
@@ -18,7 +20,9 @@ function renderAppearance() {
                 preset: preset.id,
                 radius: draftTheme.radius,
                 density: draftTheme.density,
-                motion: draftTheme.motion
+                motion: draftTheme.motion,
+                widgetMaterial:draftTheme.widgetMaterial,
+                glassOpacity:draftTheme.glassOpacity
             });
             syncThemeControls();
         }, `theme-preset${draftTheme.preset === preset.id ? ' active' : ''}`);
@@ -35,6 +39,7 @@ function renderAppearance() {
 
 $('#theme-button').onclick = task(async () => {
     hideMenu();
+    $('#settings-dialog').close();
     await call('overlay', true);
     savedTheme = Theme.validate(state.settings?.theme);
     draftTheme = {...savedTheme};
@@ -43,15 +48,16 @@ $('#theme-button').onclick = task(async () => {
     syncThemeControls();
     $('#theme-dialog').showModal();
 });
-for (const field of ['accent', 'background', 'surface', 'sidebar', 'radius', 'density', 'motion']) {
+for (const field of ['accent', 'background', 'surface', 'sidebar', 'radius', 'density', 'motion','widgetMaterial','glassOpacity']) {
     $(`#theme-${field}`).addEventListener('input', () => {
-        draftTheme[field] = field === 'motion' ? $('#theme-motion').checked : field === 'radius' ? Number($('#theme-radius').value) : $(`#theme-${field}`).value;
+        draftTheme[field] = field === 'motion' ? $('#theme-motion').checked : ['radius','glassOpacity'].includes(field) ? Number($(`#theme-${field}`).value) : $(`#theme-${field}`).value;
         renderAppearance();
     });
 }
 $('#theme-dialog').addEventListener('close', () => {
     if (!themeSaved && savedTheme) Theme.apply(savedTheme);
 });
+$('#appearance-back').onclick=task(async()=>{$('#theme-dialog').close();await openSettings();});
 $('#save-theme').onclick = task(async () => {
     await call('theme-save', draftTheme);
     themeSaved = true;

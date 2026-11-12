@@ -730,37 +730,6 @@ for (const name of ['grid', 'list']) $(`#${name}-view`).onclick = () => {
     render();
 };
 
-async function importBookmarks(mode) {
-    await call('overlay', true);
-    try {
-        const count = await call('import', {mode});
-        if (count !== null) {
-            await refresh();
-            toast(mode === 'replace' ? `已替换并保存 ${count} 条收藏；待办和便签保留` : `已合并保存，新增 ${count} 条收藏，重复项按导入数据更新`);
-        }
-    } finally {
-        await call('overlay', false);
-    }
-}
-
-$('#import-main').onclick = event => menu(event.currentTarget, [
-    {label: '替换收藏（保留待办）', icon: 'download', run: () => importBookmarks('replace')},
-    {label: '合并收藏（导入优先）', icon: 'plus', run: () => importBookmarks('merge')}
-]);
-$('#data-menu-button').onclick = event => menu(event.currentTarget, [
-    {label: '导入并替换收藏', icon: 'download', run: () => importBookmarks('replace')},
-    {label: '导入并合并收藏', icon: 'plus', run: () => importBookmarks('merge')},
-    {
-        label: '导出收藏', icon: 'upload', run: async () => {
-            await call('overlay', true);
-            try {
-                if (await call('export')) toast('分类与收藏已导出');
-            } finally {
-                await call('overlay', false);
-            }
-        }
-    }
-]);
 document.addEventListener('pointerdown', event => {
     if (!event.target.closest('#popup-menu')) hideMenu();
 });

@@ -2,6 +2,7 @@ const {BrowserWindow, ipcMain, screen} = require('electron');
 const path = require('node:path');
 const {pathToFileURL} = require('node:url');
 const {loadAuxiliary} = require('./auxiliary-window');
+const {applyWidgetMaterial}=require('./widget-material');
 
 class DesktopWidget {
     constructor(store, onChange, openMain, smoke = false) {
@@ -46,12 +47,17 @@ class DesktopWidget {
         return {
             tasks: this.store.snapshot().tasks,
             theme: this.store.data.settings.theme,
-            mode: this.store.data.settings.widget.mode
+            mode: this.store.data.settings.widget.mode,
+            material: this.material||'solid'
         };
     }
 
     update() {
-        if (this.win && !this.win.isDestroyed()) this.win.webContents.send('widget-state', this.snapshot());
+        if (this.win && !this.win.isDestroyed()) {
+            const theme=this.store.data.settings.theme,key=JSON.stringify([theme.widgetMaterial,theme.surface]);
+            if(this.materialKey!==key){this.material=applyWidgetMaterial(this.win,theme,{smoke:this.smoke});this.materialKey=key;}
+            this.win.webContents.send('widget-state', this.snapshot());
+        }
     }
 
     persist(patch) {
@@ -101,6 +107,7 @@ class DesktopWidget {
             this.win.on('closed', () => {
                 clearTimeout(boundsTimer);
                 this.win = null;
+                this.materialKey=null;
             });
             await loadAuxiliary(this.win, path.join(__dirname, 'widget.html'));
         }
