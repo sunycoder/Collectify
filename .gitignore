@@ -1,0 +1,12 @@
+node_modules/
+dist/
+artifacts/
+*.log
+.idea/
+.DS_Store
+build-tools/
+/default-config.json
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.bak

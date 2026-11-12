@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+    <title>Collectify · 个人工作空间</title>
+    <link rel="stylesheet" href="vendor/tom-select.css">
+    <link rel="stylesheet" href="vendor/flatpickr.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="office-ui.css">
+    <link rel="stylesheet" href="interaction-fixes.css">
+    <link rel="stylesheet" href="readability.css">
+    <link rel="stylesheet" href="board.css">
+</head>
+<body>
+<aside class="sidebar">
+    <div class="brand"><img class="brand-logo" src="../assets/icon.png" alt="Collectify">
+        <div><strong>Collectify<span> / </span></strong><small>把工作地址，好好收起来</small></div>
+    </div>
+    <div class="space-label">我的空间<span>LOCAL</span></div>
+    <nav class="primary-nav">
+        <button id="all-nav" class="nav-item" data-filter="all"><i data-icon="grid"></i><span>全部收藏</span><b
+                id="total-count"></b></button>
+        <button id="favorite-nav" class="nav-item" data-filter="favorite"><i data-icon="pin"></i><span>已置顶</span><b
+                id="favorite-count"></b></button>
+        <button id="recent-nav" class="nav-item" data-filter="recent"><i data-icon="clock"></i><span>最近打开</span>
+        </button>
+    </nav>
+    <nav class="productivity-nav">
+        <button id="tasks-nav" class="nav-item"><i data-icon="list"></i><span>我的待办</span><b id="tasks-count">0</b>
+        </button>
+        <button id="notes-nav" class="nav-item"><i data-icon="edit"></i><span>便签</span></button>
+    </nav>
+    <div class="category-label"><span>我的分类</span>
+        <button id="new-category" class="icon-button" title="新建分类" aria-label="新建分类" data-icon="plus"></button>
+    </div>
+    <nav id="categories" class="category-list" aria-label="收藏分类"></nav>
+
+    <button id="settings-button" class="theme-nav"><i data-icon="sliders"></i><span>设置与 AI 连接</span></button>
+    <button id="theme-button" class="theme-nav"><i data-icon="sliders"></i><span>外观与调色板</span><span
+            class="theme-dots"><b></b><b></b><b></b></span></button>
+    <div class="profile"><span class="avatar">我</span>
+        <div>个人工作空间<small>收藏 · 待办 · 便签 · v5.4</small></div>
+        <span class="local-dot"></span></div>
+</aside>
+<main>
+    <header class="topbar">
+        <div class="breadcrumb"><i data-icon="folder"></i><span>工作收藏夹</span><span>/</span><strong
+                id="breadcrumb-current">全部收藏</strong></div>
+        <div class="top-actions"><span id="tab-count" class="tab-count" hidden></span>
+            <button id="return-tabs" class="quiet" hidden>返回网页</button>
+            <button id="data-menu-button" class="icon-button" title="导入 / 导出" aria-label="导入 / 导出"
+                    data-icon="more"></button>
+        </div>
+    </header>
+    <section id="dashboard" class="dashboard">
+        <div class="config-bar"><span id="config-source">本机数据 · 已自动保存</span>
+            <button id="import-main" class="quiet">导入 JSON</button>
+        </div>
+        <div class="page-heading">
+            <div class="heading-copy"><h1 id="heading">全部收藏</h1>
+                <p id="description">常用的工作地址，按你的习惯整理。</p></div>
+            <div class="heading-actions">
+                <button id="category-menu-button" class="subtle" hidden><i data-icon="sliders"></i>管理分类</button>
+                <button id="add-button" class="primary"><i data-icon="plus"></i>添加收藏</button>
+            </div>
+        </div>
+        <div id="category-overview" class="category-overview"></div>
+        <div class="collection-toolbar">
+            <div class="search-wrap"><i data-icon="search"></i><input id="search" placeholder="搜索名称、网址或备注"
+                                                                      aria-label="搜索收藏"><kbd id="search-shortcut">Ctrl
+                K</kbd>
+                <button id="clear-search" class="icon-button" title="清空搜索" aria-label="清空搜索" hidden
+                        data-icon="close"></button>
+            </div>
+            <div class="toolbar-right"><span id="result-count"></span>
+                <div class="sort-wrap"><i data-icon="sort"></i><select id="sort" aria-label="收藏排序">
+                    <option value="manual">手动排序</option>
+                    <option value="name">名称 A–Z</option>
+                    <option value="recent">最近打开</option>
+                </select></div>
+                <div class="view-switch" role="group" aria-label="显示方式">
+                    <button id="grid-view" class="icon-button active" title="卡片视图" aria-label="卡片视图"
+                            data-icon="grid"></button>
+                    <button id="list-view" class="icon-button" title="列表视图" aria-label="列表视图"
+                            data-icon="list"></button>
+                </div>
+            </div>
+        </div>
+        <div id="entries" class="collections"></div>
+        <div id="empty" class="empty" hidden>
+            <div class="empty-illustration"><i data-icon="folder"></i><span>＋</span></div>
+            <h2 id="empty-title">给这个分类收下第一个地址</h2>
+            <p id="empty-description">填上名称和网址，下次就能一键打开。</p>
+            <button id="empty-add" class="primary"><i data-icon="plus"></i>添加收藏</button>
+        </div>
+        <footer><span><i
+                data-icon="lock"></i>你的收藏，仅保存在本机</span><span>拖动卡片调整顺序 · 拖到左侧分类即可移动</span>
+        </footer>
+    </section>
+    <section id="tasks-page" class="dashboard" hidden>
+        <div class="page-heading">
+            <div><h1>我的待办</h1>
+                <p class="page-description">先收集，再推进。让每一件事都有着落。</p></div>
+            <div class="heading-actions">
+                <button id="desktop-tasks" class="subtle"><i data-icon="external"></i>桌面待办</button>
+                <button id="new-task" class="primary"><i data-icon="plus"></i>新建待办</button>
+            </div>
+        </div>
+        <div class="task-stats" id="task-stats"></div>
+        <div class="task-toolbar"><label class="date-query-label">查询日期<input id="task-date-query" type="date"
+                                                                                 aria-label="查询某日待办"></label><select
+                id="task-date-field" aria-label="查询日期类型">
+            <option value="dueAt">按截止日</option>
+            <option value="startAt">按计划日</option>
+            <option value="createdAt">按创建日</option>
+            <option value="completedAt">按完成日</option>
+            <option value="remindAt">按提醒日</option>
+        </select>
+            <button id="clear-task-date" class="quiet" hidden>清除日期</button>
+            <input id="task-search" placeholder="搜索待办标题或备注" aria-label="搜索待办"><select id="task-filter"
+                                                                                                   aria-label="待办筛选">
+                <option value="active">全部未归档</option>
+                <option value="today">今天到期</option>
+                <option value="overdue">已逾期</option>
+                <option value="high">高优先级</option>
+                <option value="archive">已归档</option>
+            </select>
+            <div class="task-view-tabs">
+                <button id="task-list-button" class="subtle">清单</button>
+                <button id="task-matrix-button" class="subtle">四象限</button>
+                <button id="task-board-button" class="subtle">看板</button>
+                <button id="task-calendar-button" class="subtle">日历</button>
+            </div>
+        </div>
+        <div id="task-list" class="task-list-view"></div>
+        <div id="task-matrix" class="task-matrix" hidden></div>
+        <div id="task-board" class="task-board" hidden></div>
+        <div id="task-calendar" class="office-calendar" hidden>
+            <aside class="calendar-sidebar">
+                <div id="mini-calendar"></div>
+                <div class="calendar-legend"><strong>我的安排</strong><span><b
+                        class="legend-blue"></b>计划与进行中</span><span><b
+                        class="legend-red"></b>重要或已逾期</span><span><b class="legend-green"></b>已完成</span></div>
+                <div class="unscheduled-heading">尚未安排时间 <b id="unscheduled-count">0</b></div>
+                <div id="unscheduled-list"></div>
+            </aside>
+            <div class="calendar-main">
+                <div id="calendar-grid"></div>
+                <div id="calendar-summary" class="calendar-summary"></div>
+            </div>
+        </div>
+        <div class="reminder-settings"><label class="checkbox-label"><input id="keep-in-tray" type="checkbox">关闭窗口后驻留托盘，继续提醒</label><span
+                id="notification-status">运行期间自动提醒；完全退出后停止，下次启动补报错过的提醒。</span></div>
+    </section>
+    <section id="notes-page" class="dashboard" hidden>
+        <div class="page-heading">
+            <div><h1>便签</h1>
+                <p class="page-description">记录临时想法，需要跟进时再转为待办。</p></div>
+            <button id="new-note" class="primary"><i data-icon="plus"></i>写便签</button>
+        </div>
+        <div class="notes-toolbar"><input id="note-search" placeholder="搜索便签标题或正文" aria-label="搜索便签"><span
+                id="note-count"></span></div>
+        <div id="notes-grid" class="notes-grid"></div>
+    </section>
+    <section id="workspace" hidden>
+        <div id="tabs" class="tabs" role="tablist"></div>
+        <div class="browser-toolbar">
+            <button id="back-to-library" class="library-return"><i data-icon="left"></i>返回收藏夹</button>
+            <span class="toolbar-divider"></span>
+            <button id="back" class="icon-button" title="后退" aria-label="后退" data-icon="left"></button>
+            <button id="forward" class="icon-button" title="前进" aria-label="前进" data-icon="right"></button>
+            <button id="reload" class="icon-button" title="刷新" aria-label="刷新" data-icon="reload"></button>
+            <span id="environment-badge" class="badge"></span><span id="current-url" class="current-url"></span>
+            <button id="login-card-button" class="quiet" hidden><i data-icon="copy"></i>登录资料卡</button>
+            <button id="external" class="quiet"><i data-icon="external"></i>浏览器打开</button>
+        </div>
+        <div id="page-state" class="page-state"><i data-icon="globe"></i>
+            <h3 id="page-state-title">正在打开网页</h3>
+            <p id="page-state-message"></p>
+            <button id="retry" class="primary">重新加载</button>
+        </div>
+    </section>
+</main>
+<div id="popup-menu" class="popup-menu" role="menu" hidden></div>
+<dialog id="entry-dialog">
+    <form id="entry-form">
+        <div class="dialog-head">
+            <div class="dialog-symbol" data-icon="bookmark"></div>
+            <button type="button" class="icon-button dialog-close" title="关闭" aria-label="关闭"
+                    data-icon="close"></button>
+        </div>
+        <h2 id="dialog-title">添加收藏</h2>
+        <p class="dialog-intro">给地址取个好记的名字，放进合适的分类。</p><label>资源类型<select name="type"
+                                                                                               id="resource-type">
+        <option value="web">网页</option>
+        <option value="file">本地文件</option>
+        <option value="folder">文件夹</option>
+        <option value="text">文本片段</option>
+        <option value="credential">账号资料</option>
+    </select></label><label id="resource-url-label">网址 <em>*</em><input name="url" type="url" required
+                                                                          maxlength="2048"
+                                                                          placeholder="https:// 或 http://"
+                                                                          autofocus></label><label
+            id="resource-path-label" hidden>本地路径
+        <div class="path-picker"><input name="localPath" maxlength="2048" placeholder="选择或填写完整路径">
+            <button id="choose-resource" class="subtle" type="button">选择…</button>
+        </div>
+    </label><label id="resource-content-label" hidden>文本内容<textarea name="content" rows="5" maxlength="30000"
+                                                                        placeholder="代码片段、常用命令、资料…"></textarea></label><label>名称
+        <em>*</em><input name="name" required maxlength="80"
+                         placeholder="例如：三国 GM · trunk"></label><label>所属分类<select name="categoryId"
+                                                                                           required></select></label>
+        <details id="entry-details">
+            <summary>更多设置 <span>账号密码、备注、环境、打开方式</span></summary>
+            <label>备注<textarea name="note" rows="2" maxlength="5000"
+                                 placeholder="例如：版本验证用的测试后台"></textarea></label>
+            <div class="form-grid"><label>环境标签 <span class="optional">可选</span><input name="environment"
+                                                                                            maxlength="60"
+                                                                                            placeholder="trunk / 测试 / 生产"></label><label>默认打开方式<select
+                    name="mode">
+                <option value="internal">客户端内打开</option>
+                <option value="external">默认浏览器打开</option>
+            </select></label></div>
+            <div class="credential-editor">
+                <div class="form-grid"><label>登录账号<input name="username" maxlength="200" autocomplete="off"
+                                                             placeholder="可选"></label><label>登录密码<input
+                        name="password" type="text" maxlength="2000" autocomplete="new-password"
+                        placeholder="可直接查看和复制">
+                    <button type="button" id="editor-copy-password" class="quiet">复制密码</button>
+                </label></div>
+                <label>认证方式<select name="authMode">
+                    <option value="manual">普通登录表单（手动复制粘贴）</option>
+                    <option value="basic">HTTP Basic（浏览器认证弹框，不填网页表单）</option>
+                </select></label><label class="checkbox-label"><input name="clearPassword" type="checkbox">清除已保存的密码</label>
+                <p class="form-help">也支持粘贴含账号密码的网址，保存时自动拆分为登录资料。</p></div>
+            <label class="checkbox-label"><input name="favorite" type="checkbox">置顶，在“已置顶”中快速访问</label>
+        </details>
+        <p class="form-error" role="alert"></p>
+        <div class="dialog-actions">
+            <button type="button" class="cancel-dialog subtle">取消</button>
+            <button type="submit" class="primary">保存收藏</button>
+        </div>
+    </form>
+</dialog>
+<dialog id="category-dialog">
+    <form id="category-form">
+        <div class="dialog-head">
+            <div class="dialog-symbol" data-icon="folder"></div>
+            <button type="button" class="icon-button dialog-close" title="关闭" aria-label="关闭"
+                    data-icon="close"></button>
+        </div>
+        <h2 id="category-dialog-title">新建分类</h2>
+        <p class="dialog-intro">按工具或用途划分，让地址更容易找到。</p><label>分类名称 <em>*</em><input name="name"
+                                                                                                       required
+                                                                                                       maxlength="60"
+                                                                                                       placeholder="例如：GM、Jenkins、监控"></label><label>一句描述
+        <span class="optional">可选</span><input name="description" maxlength="160" placeholder="这个分类里放哪些地址？"></label>
+        <fieldset>
+            <legend>分类图标</legend>
+            <div id="icon-picker" class="icon-picker"></div>
+        </fieldset>
+        <fieldset>
+            <legend>标识颜色</legend>
+            <div id="color-picker" class="color-picker"></div>
+        </fieldset>
+        <p class="form-error" role="alert"></p>
+        <div class="dialog-actions">
+            <button type="button" class="cancel-dialog subtle">取消</button>
+            <button type="submit" class="primary">保存分类</button>
+        </div>
+    </form>
+</dialog>
+<dialog id="action-dialog">
+    <div class="dialog-head">
+        <div class="dialog-symbol" data-icon="folder"></div>
+        <button type="button" class="icon-button dialog-close" title="关闭" aria-label="关闭"
+                data-icon="close"></button>
+    </div>
+    <h2 id="action-title"></h2>
+    <p id="action-description" class="dialog-intro"></p><label id="target-label">接收分类<select
+        id="target-category"></select></label>
+    <p class="form-error" role="alert"></p>
+    <div class="dialog-actions">
+        <button class="cancel-dialog subtle">取消</button>
+        <button id="action-confirm" class="primary">确认</button>
+    </div>
+</dialog>
+<dialog id="task-dialog">
+    <form id="task-form">
+        <div class="dialog-head">
+            <div class="dialog-symbol" data-icon="list"></div>
+            <button type="button" class="icon-button dialog-close" data-icon="close" aria-label="关闭"></button>
+        </div>
+        <h2 id="task-dialog-title">新建待办</h2>
+        <p class="dialog-intro">可以先只记标题，再补充安排。</p><label>标题 *<input name="title" required maxlength="160"
+                                                                                  placeholder="这件事的下一步是什么？"></label>
+        <div class="form-grid"><label>状态<select name="status">
+            <option value="inbox">收集箱</option>
+            <option value="todo">待处理</option>
+            <option value="doing">进行中</option>
+            <option value="done">已完成</option>
+        </select></label><label>优先级<select name="priority">
+            <option value="medium">普通</option>
+            <option value="high">高优先级</option>
+            <option value="low">低优先级</option>
+        </select></label></div>
+        <div class="task-flags"><label class="checkbox-label"><input type="checkbox" name="important">重要</label><label
+                class="checkbox-label"><input type="checkbox" name="urgent">紧急</label><label
+                class="checkbox-label"><input type="checkbox" name="allDay">全天事项</label></div>
+        <div class="form-grid"><label>开始时间<input name="startAt" type="datetime-local"></label><label>结束时间<input
+                name="endAt" type="datetime-local"></label></div>
+        <div class="form-grid"><label>截止时间<input name="dueAt" type="datetime-local"></label><label>提醒时间<input
+                name="remindAt" type="datetime-local"></label></div>
+        <label>备注<textarea name="note" rows="4" maxlength="10000"
+                             placeholder="背景、步骤、验收条件…"></textarea></label><label>关联收藏<select
+            name="bookmarkId">
+        <option value="">不关联</option>
+    </select></label>
+        <div class="attachment-head"><span>本地文件 / 文件夹</span>
+            <button id="attach-file" type="button" class="quiet">＋ 文件</button>
+            <button id="attach-folder" type="button" class="quiet">＋ 文件夹</button>
+        </div>
+        <div id="task-attachments"></div>
+        <p class="form-help">文件仅保存路径，不复制文件；更换电脑后可能需要重新关联。</p>
+        <p class="form-error" role="alert"></p>
+        <div class="dialog-actions">
+            <button type="button" class="cancel-dialog subtle">取消</button>
+            <button type="submit" class="primary">保存待办</button>
+        </div>
+    </form>
+</dialog>
+<dialog id="note-dialog">
+    <form id="note-form">
+        <div class="dialog-head">
+            <div class="dialog-symbol" data-icon="edit"></div>
+            <button type="button" class="icon-button dialog-close" data-icon="close" aria-label="关闭"></button>
+        </div>
+        <h2>写便签</h2><label>标题<input name="title" maxlength="120" placeholder="给这段想法起个名字"></label><label>内容<textarea
+            name="content" rows="9" maxlength="30000" placeholder="随手记一点…"></textarea></label><label>颜色<select
+            name="color">
+        <option value="yellow">奶油黄</option>
+        <option value="blue">晴空蓝</option>
+        <option value="pink">樱花粉</option>
+        <option value="green">薄荷绿</option>
+    </select></label>
+        <p class="form-error" role="alert"></p>
+        <div class="dialog-actions">
+            <button type="button" class="cancel-dialog subtle">取消</button>
+            <button type="submit" class="primary">保存便签</button>
+        </div>
+    </form>
+</dialog>
+<dialog id="credential-dialog">
+    <div class="dialog-head">
+        <div class="dialog-symbol" data-icon="lock"></div>
+        <button class="icon-button dialog-close" data-icon="close" aria-label="关闭"></button>
+    </div>
+    <h2>登录资料</h2>
+    <p id="credential-name" class="dialog-intro"></p><label>账号<input id="credential-username" readonly></label><label>密码<input
+        id="credential-password" type="password" readonly placeholder="未保存密码"></label>
+    <div class="credential-actions">
+        <button id="copy-username" class="subtle">复制账号</button>
+        <button id="copy-password" class="subtle">复制密码</button>
+        <button id="reveal-password" class="subtle">显示密码</button>
+    </div>
+    <p class="form-help">密码按你的设置直接保存在本机，可随时查看和复制。网页登录表单请使用登录资料卡粘贴。</p></dialog>
+<dialog id="resource-dialog">
+    <div class="dialog-head">
+        <div class="dialog-symbol" data-icon="book"></div>
+        <button class="icon-button dialog-close" data-icon="close" aria-label="关闭"></button>
+    </div>
+    <h2 id="resource-title"></h2>
+    <p id="resource-note" class="dialog-intro"></p>
+    <pre id="resource-body"></pre>
+    <div class="dialog-actions">
+        <button id="copy-resource" class="primary">复制内容</button>
+    </div>
+</dialog>
+<dialog id="theme-dialog">
+    <div class="dialog-head">
+        <div><h2>配色实验室</h2></div>
+        <button class="icon-button dialog-close" data-icon="close" aria-label="关闭"></button>
+    </div>
+    <p class="dialog-intro">换一种心情，让空间更像你。所有调整均可实时预览。</p>
+    <div class="appearance-layout">
+        <div>
+            <div id="theme-presets" class="theme-presets"></div>
+            <div class="palette-controls"><label>强调色<input id="theme-accent"
+                                                              type="color"></label><label>内容背景<input
+                    id="theme-background" type="color"></label><label>卡片底色<input id="theme-surface"
+                                                                                     type="color"></label><label>侧栏底色<input
+                    id="theme-sidebar" type="color"></label></div>
+            <label class="range-label">组件圆角
+                <output id="radius-value"></output>
+                <input id="theme-radius" type="range" min="8" max="22" step="1"></label>
+            <div class="form-grid"><label>信息密度<select id="theme-density">
+                <option value="comfortable">舒适</option>
+                <option value="compact">紧凑</option>
+            </select></label><label class="checkbox-label motion-control"><input id="theme-motion" type="checkbox">轻量动效</label>
+            </div>
+        </div>
+        <aside class="theme-preview">
+            <div class="preview-top"><span>实时预览</span>
+                <div class="preview-swatches"><i></i><i></i><i></i></div>
+            </div>
+            <div class="preview-mini-app">
+                <div class="preview-sidebar"><b>Collectify</b><span
+                        class="preview-selected">我的收藏</span><span>我的待办</span><span>便签</span></div>
+                <div class="preview-content"><strong>刚刚好的秩序。</strong>
+                    <p>把常用的放在手边，把重要的留在心上。</p>
+                    <div class="preview-card"><span
+                            class="preview-glyph">↗</span><b>新的灵感</b><small>收藏、计划与一点留白</small>
+                        <button type="button" tabindex="-1">打开收藏 ↗</button>
+                    </div>
+                </div>
+            </div>
+            <p>文本与按钮会根据底色调整对比度。<br>主题只包含配色与布局参数。</p>
+            <div class="theme-file-actions">
+                <button id="import-theme" class="quiet">导入主题</button>
+                <button id="export-theme" class="quiet">导出已保存主题</button>
+            </div>
+        </aside>
+    </div>
+    <p id="theme-error" class="form-error"></p>
+    <div class="dialog-actions">
+        <button id="reset-theme" class="quiet">恢复默认</button>
+        <button class="cancel-dialog subtle">取消预览</button>
+        <button id="save-theme" class="primary">保存外观</button>
+    </div>
+</dialog>
+<dialog id="settings-dialog">
+    <div class="dialog-head">
+        <div><h2>设置与 AI 连接</h2>
+            <p class="dialog-intro">版本 <span id="app-version"></span></p></div>
+        <button class="icon-button dialog-close" data-icon="close" aria-label="关闭"></button>
+    </div>
+    <section class="settings-section"><h3>本机数据</h3>
+        <p>收藏、待办、日历、便签和外观设置统一存储在：</p><code id="data-file"></code><small id="data-directory"></small>
+        <button id="open-data-directory" class="subtle">打开数据文件夹</button><button id="backup-database" class="subtle">备份数据库</button>
+        <p>业务数据存储于 SQLite。备份数据库可保留收藏、待办、便签、设置和 MCP 配置，包含明文账号密码；网页登录状态在 Partitions 目录。</p></section>
+    <section class="settings-section"><label class="checkbox-label"><input id="widget-auto-restore" type="checkbox">启动时恢复桌面待办窗口</label>
+        <h3>AI / MCP 连接</h3>
+        <p>让支持 MCP 的 AI 工具查询收藏与待办、批量安排日程、创建便签和整理分类。</p>
+        <div class="mcp-controls"><label>本机端口<input id="mcp-port" type="number" min="1024" max="65535"
+                                                        value="17863"></label>
+            <button id="mcp-start" class="primary">开启 MCP</button>
+            <button id="mcp-stop" class="subtle">关闭</button>
+        </div>
+        <p id="mcp-status"></p>
+        <button id="mcp-copy" class="subtle">复制 MCP 连接配置</button>
+        <p>在群枢等工具中添加 Streamable HTTP MCP，填写复制出的 URL 和 Authorization
+            请求头。Collectify需保持运行；连接令牌在本机生成，接口只监听本机，不返回密码。AI
+            写入会直接生效，可从界面查看结果。</p></section>
+    <p id="settings-error" class="form-error"></p></dialog>
+<div id="toast" class="toast" role="status" hidden></div>
+<script src="vendor/tom-select.js"></script>
+<script src="vendor/flatpickr.js"></script>
+<script src="vendor/flatpickr-zh.js"></script>
+<script src="vendor/fullcalendar.js"></script>
+<script src="vendor/floating-ui.js"></script>
+<script src="overlay.js"></script>
+<script src="theme.js"></script>
+<script src="renderer.js"></script>
+<script src="task-query.js"></script>
+<script src="task-schedule.js"></script>
+<script src="task-calendar.js"></script>
+<script src="productivity-ui.js"></script>
+<script src="appearance.js"></script>
+<script src="ui-components.js"></script>
+<script src="settings-ui.js"></script>
+</body>
+</html>

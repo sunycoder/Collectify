@@ -1,0 +1,163 @@
+{
+  "version": 2,
+  "initializeExamples": true,
+  "categories": [
+    {
+      "id": "gm",
+      "name": "GM",
+      "description": "按内外网和版本区分游戏管理后台。",
+      "color": "blue",
+      "icon": "game"
+    },
+    {
+      "id": "jenkins",
+      "name": "Jenkins",
+      "description": "客户端和服务端构建平台。",
+      "color": "orange",
+      "icon": "build"
+    },
+    {
+      "id": "documents",
+      "name": "文档与共享",
+      "description": "项目文件与协作资料。",
+      "color": "sage",
+      "icon": "book"
+    },
+    {
+      "id": "repositories",
+      "name": "代码仓库",
+      "description": "复制 SVN 地址到本地 SVN 工具使用。",
+      "color": "purple",
+      "icon": "server"
+    },
+    {
+      "id": "network",
+      "name": "网络信息",
+      "description": "常用的本地网络资料。",
+      "color": "slate",
+      "icon": "server"
+    },
+    {
+      "id": "inbox",
+      "name": "未分类",
+      "description": "暂未整理的资源。",
+      "color": "slate",
+      "icon": "link"
+    }
+  ],
+  "entries": [
+    {
+      "id": "shared-documents",
+      "name": "文件共享",
+      "categoryId": "documents",
+      "type": "web",
+      "url": "https://example.com/shared-documents/",
+      "mode": "internal",
+      "authMode": "manual",
+      "note": "演示资源，请替换为自己的地址与登录资料。"
+    },
+    {
+      "id": "project-svn",
+      "name": "项目 SVN",
+      "categoryId": "repositories",
+      "type": "text",
+      "content": "svn://svn.example.com/project-svn",
+      "note": "示例 SVN 地址，请替换为自己的仓库地址。"
+    },
+    {
+      "id": "backend-svn",
+      "name": "时间测试服后台 SVN",
+      "categoryId": "repositories",
+      "type": "text",
+      "content": "svn://svn.example.com/backend-svn",
+      "note": "示例 SVN 地址，请替换为自己的仓库地址。"
+    },
+    {
+      "id": "jenkins-client",
+      "name": "客户端 Jenkins",
+      "categoryId": "jenkins",
+      "type": "web",
+      "url": "https://example.com/jenkins-client/",
+      "mode": "internal",
+      "authMode": "manual",
+      "note": "演示资源，请替换为自己的地址与登录资料。"
+    },
+    {
+      "id": "jenkins-server",
+      "name": "服务端 Jenkins",
+      "categoryId": "jenkins",
+      "type": "web",
+      "url": "https://example.com/jenkins-server/",
+      "mode": "internal",
+      "authMode": "manual",
+      "note": "演示资源，请替换为自己的地址与登录资料。"
+    },
+    {
+      "id": "gm-external-time",
+      "name": "外网时间测试服",
+      "categoryId": "gm",
+      "type": "web",
+      "url": "https://example.com/gm-external-time/",
+      "mode": "internal",
+      "authMode": "manual",
+      "environment": "外网 · 时间服",
+      "favorite": false,
+      "note": "演示资源，请替换为自己的地址与登录资料。"
+    },
+    {
+      "id": "gm-trunk",
+      "name": "外网trunk测试服",
+      "categoryId": "gm",
+      "type": "web",
+      "url": "https://example.com/gm-trunk/",
+      "mode": "internal",
+      "authMode": "manual",
+      "environment": "外网 · trunk",
+      "favorite": true,
+      "note": "演示资源，请替换为自己的地址与登录资料。"
+    },
+    {
+      "id": "gm-2-0-0",
+      "name": "外网2.0.0测试服",
+      "categoryId": "gm",
+      "type": "web",
+      "url": "https://example.com/gm-2-0-0/",
+      "mode": "internal",
+      "authMode": "manual",
+      "environment": "外网 · 2.0.0",
+      "favorite": false,
+      "note": "演示资源，请替换为自己的地址与登录资料。"
+    },
+    {
+      "id": "gm-internal-time",
+      "name": "内网时间测试服",
+      "categoryId": "gm",
+      "type": "web",
+      "url": "https://example.com/gm-internal-time/",
+      "mode": "internal",
+      "authMode": "manual",
+      "environment": "内网 · 时间服",
+      "favorite": false,
+      "note": "演示资源，请替换为自己的地址与登录资料。"
+    },
+    {
+      "id": "time-backend",
+      "name": "时间测试服后台",
+      "categoryId": "gm",
+      "type": "web",
+      "url": "https://example.com/time-backend/",
+      "mode": "internal",
+      "authMode": "manual",
+      "environment": "内网 · 时间服",
+      "note": "演示资源，请替换为自己的地址与登录资料。"
+    },
+    {
+      "id": "personal-ip",
+      "name": "示例 · 个人 IP",
+      "categoryId": "network",
+      "type": "text",
+      "content": "192.0.2.10",
+      "note": "演示资源，请替换为自己的地址与登录资料。"
+    }
+  ]
+}

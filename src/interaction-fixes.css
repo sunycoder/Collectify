@@ -1,0 +1,388 @@
+/* 所有交互弹层使用浏览器顶层，坐标由 Floating UI 计算。 */
+/* 列表操作保留完整文字宽度，长地址与标题在各自列内省略。 */
+.collections.list .bookmark-card{grid-template-columns:40px minmax(120px,1fr) minmax(130px,.9fr) max-content;gap:18px}
+.collections.list .card-bottom{width:max-content;min-width:210px;gap:8px;padding:0;flex-wrap:nowrap}
+.collections.list .card-open{flex:0 0 auto;white-space:nowrap;min-width:85px;gap:7px;margin-right:6px}
+.collections.list .card-name,.collections.list .card-address{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.collections.list .card-address span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+dialog, #theme-dialog{padding:0;overflow:hidden;max-height:calc(100dvh - 40px)}
+.dialog-scroll{max-height:calc(100dvh - 42px);overflow-y:auto;overflow-x:hidden;padding:29px 31px;overscroll-behavior:contain;scrollbar-width:auto;scrollbar-color:auto;scrollbar-gutter:stable}
+.dialog-scroll::-webkit-scrollbar{width:6px}
+.dialog-scroll::-webkit-scrollbar-track{background:transparent;margin-block:18px}
+.dialog-scroll::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--muted) 40%,transparent);border-radius:8px}
+.dialog-scroll::-webkit-scrollbar-button{display:none;width:0;height:0}
+.dialog-scroll .dialog-actions{position:relative;background:var(--surface);padding:14px 0 0;margin-bottom:0}
+body:has(dialog[open]){overflow:hidden}
+body:has(dialog[open]) #toast{visibility:hidden;pointer-events:none}
+.task-filter-summary{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:-5px 0 15px;font-size:12px;color:var(--paper-muted,var(--muted))}
+.task-filter-summary strong{font-size:13px;font-weight:500;color:var(--paper-ink,var(--ink))}
+.task-filter-summary .quiet{padding:3px 7px;color:var(--accent-text)}
+@media(max-width:1230px){.collections.list .bookmark-card{grid-template-columns:36px minmax(100px,1fr) minmax(100px,.8fr) max-content;gap:10px}.collections.list .card-bottom{min-width:198px;gap:5px}}
+.managed-overlay {
+    position: fixed !important;
+    inset: auto;
+    margin: 0;
+    box-sizing: border-box;
+    transform: none !important;
+    animation: none !important;
+    overscroll-behavior: contain;
+    max-width: calc(100vw - 20px);
+    outline: 0
+}
+
+.managed-overlay::backdrop {
+    background: transparent;
+    backdrop-filter: none
+}
+
+.flatpickr-calendar.managed-overlay {
+    padding: 0;
+    max-height: calc(100dvh - 20px)
+}
+
+.ts-dropdown.managed-overlay {
+    padding: 5px
+}
+
+.ts-dropdown.managed-overlay .ts-dropdown-content {
+    max-height: 240px;
+    overscroll-behavior: contain
+}
+
+.flatpickr-time {
+    display: grid !important;
+    grid-template-columns:minmax(0, 1fr) 14px minmax(0, 1fr);
+    gap: 0;
+    align-items: center !important;
+    height: 48px !important;
+    padding: 6px 10px !important;
+    line-height: 34px !important;
+    overflow: visible !important
+}
+
+.flatpickr-time > .numInputWrapper {
+    float: none !important;
+    display: block !important;
+    width: 100% !important;
+    min-width: 0;
+    height: 34px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: relative !important;
+    border: 1px solid var(--line) !important;
+    border-radius: 6px !important;
+    overflow: hidden;
+    background: var(--paper) !important;
+    flex: none !important
+}
+
+.flatpickr-time > .numInputWrapper > input {
+    appearance: textfield !important;
+    -moz-appearance: textfield !important;
+    display: block !important;
+    float: none !important;
+    margin: 0 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 32px !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    line-height: 32px !important;
+    font-size: 14px !important;
+    font-weight: 450 !important;
+    text-align: center !important;
+    padding: 0 26px 0 8px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    outline: 0 !important;
+    background: transparent !important;
+    color: var(--ink) !important;
+    box-shadow: none !important;
+    position: static !important;
+    top: auto !important;
+    left: auto !important
+}
+
+.flatpickr-time input::-webkit-inner-spin-button, .flatpickr-time input::-webkit-outer-spin-button {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    margin: 0 !important
+}
+
+.flatpickr-time > .numInputWrapper > .arrowUp, .flatpickr-time > .numInputWrapper > .arrowDown {
+    display: block !important;
+    opacity: 1 !important;
+    position: absolute !important;
+    left: auto !important;
+    right: 0 !important;
+    width: 23px !important;
+    height: 16px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-left: 1px solid var(--line) !important;
+    cursor: pointer;
+    z-index: 2;
+    background: color-mix(in srgb, var(--accent) 4%, var(--surface))
+}
+
+.flatpickr-time > .numInputWrapper > .arrowUp {
+    top: 0 !important;
+    bottom: auto !important;
+    border-bottom: 1px solid var(--line) !important
+}
+
+.flatpickr-time > .numInputWrapper > .arrowDown {
+    bottom: 0 !important;
+    top: auto !important
+}
+
+.flatpickr-time > .numInputWrapper > .arrowUp:hover, .flatpickr-time > .numInputWrapper > .arrowDown:hover {
+    background: var(--soft)
+}
+
+.flatpickr-time > .numInputWrapper > .arrowUp:after, .flatpickr-time > .numInputWrapper > .arrowDown:after {
+    content: '';
+    position: absolute !important;
+    left: 8px !important;
+    right: auto !important;
+    top: 5px !important;
+    border: 0 !important;
+    border-left: 3px solid transparent !important;
+    border-right: 3px solid transparent !important
+}
+
+.flatpickr-time > .numInputWrapper > .arrowUp:after {
+    border-bottom: 4px solid var(--muted) !important
+}
+
+.flatpickr-time > .numInputWrapper > .arrowDown:after {
+    border-top: 4px solid var(--muted) !important;
+    top: 6px !important
+}
+
+.flatpickr-time > .flatpickr-time-separator {
+    width: 14px !important;
+    height: 34px !important;
+    line-height: 34px !important;
+    text-align: center !important;
+    float: none !important;
+    display: block !important;
+    color: var(--muted) !important
+}
+
+.fc .fc-event .fc-event-main, .fc .fc-event .fc-event-title, .fc .fc-event .fc-event-time, .fc .fc-event .fc-event-main-frame {
+    color: inherit !important;
+    text-shadow: none !important
+}
+
+.fc .fc-timegrid-event {
+    color: #2455ab !important
+}
+
+.fc .event-important {
+    color: #ac3e37 !important
+}
+
+.fc .event-done {
+    color: #2d7355 !important;
+    opacity: 1
+}
+
+.fc .fc-timegrid-event .fc-event-main-frame {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    min-height: 100%;
+    overflow: hidden
+}
+
+.fc .fc-timegrid-event .fc-event-time {
+    font-size: 11px !important;
+    line-height: 16px !important;
+    flex-shrink: 0;
+    width: 100%;
+    text-align: center
+}
+
+.fc .fc-timegrid-event .fc-event-title-container {
+    flex: none !important;
+    min-height: 0;
+    width: 100%
+}
+
+.fc .fc-timegrid-event .fc-event-title {
+    font-size: 12px !important;
+    line-height: 18px !important;
+    font-weight: 500;
+    text-align: center;
+    width: 100%;
+    padding: 0;
+    white-space: normal;
+    overflow-wrap: anywhere
+}
+
+/* 隐藏页头/全天栏只是用于对齐的空滚动条；时间轴保留真正的纵向滚动。 */
+.fc .fc-scrollgrid-section-header .fc-scroller, .fc .fc-scrollgrid-section-body:not(.fc-scrollgrid-section-liquid) .fc-scroller {
+    overflow-y: hidden !important;
+    scrollbar-width: none
+}
+
+.fc .fc-scrollgrid-section-header .fc-scroller::-webkit-scrollbar, .fc .fc-scrollgrid-section-body:not(.fc-scrollgrid-section-liquid) .fc-scroller::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0
+}
+
+.fc-scroller::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0
+}
+
+.fc .fc-scrollgrid-section-liquid .fc-scroller {
+    scrollbar-width: thin;
+    scrollbar-color: #c7ced9 transparent
+}
+
+.office-calendar {
+    grid-template-columns:272px minmax(0, 1fr)
+}
+
+.calendar-sidebar {
+    padding: 17px 15px
+}
+
+.calendar-sidebar #mini-calendar > .flatpickr-calendar {
+    width: 240px;
+    transform: none !important;
+    margin: 0 !important;
+    background: transparent
+}
+
+.calendar-sidebar .flatpickr-rContainer, .calendar-sidebar .flatpickr-days {
+    width: 240px
+}
+
+.calendar-sidebar .dayContainer {
+    width: 240px;
+    min-width: 240px;
+    max-width: 240px;
+    grid-template-columns:repeat(7, 34.285px)
+}
+
+.calendar-sidebar .flatpickr-weekdaycontainer {
+    width: 240px;
+    grid-template-columns:repeat(7, 34.285px)
+}
+
+.calendar-sidebar .flatpickr-day {
+    height: 31px;
+    width: 31px;
+    line-height: 31px;
+    font-size: 12px;
+    margin: 2px 1.5px
+}
+
+.calendar-sidebar .flatpickr-day.today {
+    line-height: 29px
+}
+
+.calendar-sidebar .flatpickr-weekday {
+    font-size: 11px
+}
+
+.calendar-sidebar .flatpickr-weekdays {
+    height: 30px
+}
+
+.calendar-sidebar .flatpickr-current-month {
+    font-size: 14px
+}
+
+.calendar-sidebar .flatpickr-current-month input.cur-year {
+    font-size: 13px
+}
+
+.calendar-sidebar .flatpickr-months {
+    height: 42px;
+    padding-bottom: 6px
+}
+
+.calendar-sidebar .flatpickr-months .flatpickr-prev-month, .calendar-sidebar .flatpickr-months .flatpickr-next-month {
+    height: 27px;
+    width: 27px;
+    top: 2px
+}
+
+.calendar-sidebar .flatpickr-months .flatpickr-next-month {
+    right: 1px
+}
+
+.calendar-legend {
+    font-size: 12px
+}
+
+.calendar-legend strong {
+    font-size: 12px
+}
+
+.calendar-legend > span {
+    font-size: 11px
+}
+
+.unscheduled-heading, .unscheduled-task {
+    font-size: 11px
+}
+
+.credential-editor .form-grid > label:has([name=password]) {
+    position: relative
+}
+
+#editor-copy-password {
+    font-size: 10px;
+    position: absolute;
+    right: 4px;
+    top: -5px;
+    color: var(--accent-text)
+}
+
+@media (max-width: 1230px) {
+    .office-calendar {
+        grid-template-columns:248px minmax(0, 1fr)
+    }
+
+    .calendar-sidebar {
+        padding: 13px 9px
+    }
+
+    .calendar-sidebar #mini-calendar > .flatpickr-calendar {
+        width: 228px;
+        transform: none !important
+    }
+
+    .calendar-sidebar .flatpickr-rContainer, .calendar-sidebar .flatpickr-days {
+        width: 228px
+    }
+
+    .calendar-sidebar .dayContainer {
+        width: 228px;
+        min-width: 228px;
+        max-width: 228px;
+        grid-template-columns:repeat(7, 32.57px)
+    }
+
+    .calendar-sidebar .flatpickr-weekdaycontainer {
+        width: 228px;
+        grid-template-columns:repeat(7, 32.57px)
+    }
+
+    .calendar-sidebar .flatpickr-day {
+        width: 29px;
+        height: 30px;
+        line-height: 30px;
+        font-size: 12px
+    }
+}

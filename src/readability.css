@@ -1,0 +1,622 @@
+:root {
+    font-size: 15px
+}
+
+.brand-logo {
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
+    flex-shrink: 0
+}
+
+.brand {
+    gap: 12px
+}
+
+.brand strong span {
+    display: none
+}
+
+.brand small {
+    font-size: 11px;
+    line-height: 1.6
+}
+
+.sidebar-note {
+    display: none
+}
+
+.theme-nav {
+    margin-bottom: 8px;
+    font-size: 13px
+}
+
+.sidebar .nav-item span {
+    font-size: 14px
+}
+
+.sidebar .nav-item b {
+    font-size: 12px
+}
+
+.category-label, .space-label {
+    font-size: 12px
+}
+
+.profile {
+    font-size: 13px
+}
+
+.profile small {
+    font-size: 11px
+}
+
+.breadcrumb {
+    font-size: 13px
+}
+
+.config-bar {
+    font-size: 12px
+}
+
+.config-bar .quiet {
+    font-size: 12px
+}
+
+.page-heading {
+    margin-bottom: 24px
+}
+
+h1 {
+    margin-top: 0
+}
+
+.heading-copy p, .page-description {
+    font-size: 14px
+}
+
+.primary, .subtle, button.quiet {
+    font-size: 13px
+}
+
+.card-name {
+    font-size: 16px !important
+}
+
+.card-note {
+    font-size: 14px !important;
+    line-height: 1.7
+}
+
+.card-address {
+    font-size: 12px !important
+}
+
+.card-open {
+    font-size: 13px
+}
+
+.resource-type-tag {
+    font-size: 11px
+}
+
+.tag {
+    font-size: 11px
+}
+
+.category-summary .summary-name {
+    font-size: 15px
+}
+
+.category-summary small {
+    font-size: 12px
+}
+
+.section-heading h2 {
+    font-size: 15px
+}
+
+.section-heading > span {
+    font-size: 12px
+}
+
+.section-add {
+    font-size: 12px
+}
+
+.toolbar-right > span {
+    font-size: 12px
+}
+
+.search-wrap input {
+    font-size: 14px
+}
+
+.popup-menu button {
+    font-size: 13px
+}
+
+.dialog-intro {
+    font-size: 13px
+}
+
+label {
+    font-size: 13px
+}
+
+label input, label select, label textarea {
+    font-size: 14px
+}
+
+.checkbox-label {
+    font-size: 12px
+}
+
+.form-help {
+    font-size: 12px
+}
+
+.form-error {
+    font-size: 13px
+}
+
+.ts-wrapper.single .ts-control, .ts-wrapper.single .ts-control .item, .ts-dropdown .option {
+    font-size: 13px
+}
+
+.task-title {
+    font-size: 15px;
+    line-height: 1.65
+}
+
+.task-excerpt {
+    font-size: 13px;
+    line-height: 1.7
+}
+
+.task-date {
+    font-size: 12px
+}
+
+.task-reminder-time, .reminded-label {
+    font-size: 12px
+}
+
+.reminded-label {
+    background: #fff3df;
+    color: #a56c1e;
+    padding: 3px 7px;
+    border-radius: 4px
+}
+
+.priority-label {
+    font-size: 11px
+}
+
+.task-column-heading h2 {
+    font-size: 14px
+}
+
+.task-column-heading b {
+    font-size: 12px
+}
+
+.task-column {
+    min-height: 240px
+}
+
+.task-card {
+    padding: 16px;
+    margin-bottom: 12px
+}
+
+.task-card-actions .ts-control .item, .task-card-actions .ts-control {
+    font-size: 12px !important
+}
+
+.task-card-actions .ts-wrapper {
+    max-width: 120px;
+    min-width: 100px
+}
+
+.task-card-actions .icon-button {
+    width: 29px;
+    height: 29px
+}
+
+.task-card-actions > button {
+    font-size: 12px
+}
+
+.task-files button, .task-link {
+    font-size: 12px
+}
+
+.checklist-title {
+    font-size: 15px
+}
+
+.checklist-meta {
+    font-size: 12px;
+    line-height: 1.7
+}
+
+.checklist-note {
+    max-width: 650px
+}
+
+.checklist-tags > span {
+    font-size: 12px;
+    padding: 4px 8px
+}
+
+.task-status.inbox {
+    background: #edf0f5;
+    color: #68758d
+}
+
+.task-status.todo {
+    background: #edf2ff;
+    color: #416ccd
+}
+
+.task-status.doing {
+    background: #fff5df;
+    color: #a56c1e
+}
+
+.task-status.done {
+    background: #eaf8ef;
+    color: #338453
+}
+
+.flag-important {
+    background: #ffedeb;
+    color: #be5952
+}
+
+.flag-urgent {
+    background: #fff3df;
+    color: #a56c1e
+}
+
+.checklist-row {
+    padding: 14px 4px;
+    gap: 13px
+}
+
+.checklist-heading h2 {
+    font-size: 14px
+}
+
+.checklist-heading > span:last-child {
+    font-size: 12px
+}
+
+.quick-task input {
+    font-size: 14px
+}
+
+.task-list-empty {
+    font-size: 14px
+}
+
+.quadrant .checklist-title {
+    font-size: 14px
+}
+
+.quadrant .checklist-meta {
+    font-size: 12px
+}
+
+.quadrant-heading h2 {
+    font-size: 15px
+}
+
+.quadrant-heading p {
+    font-size: 12px
+}
+
+.task-stat {
+    border-left: 3px solid transparent;
+    padding: 17px 20px;
+    --stat-bg: var(--surface)
+}
+
+.task-stat > span {
+    font-size: 14px !important
+}
+
+.task-stat strong {
+    font-size: 28px !important
+}
+
+.task-stat.blue {
+    background: color-mix(in srgb, #537ce8 6%, var(--surface));
+    border-color: color-mix(in srgb, #537ce8 22%, var(--line));
+    border-left-color: #537ce8
+}
+
+.task-stat.blue strong {
+    color: #416ccd
+}
+
+.task-stat.sage {
+    background: color-mix(in srgb, #c99a3b 6%, var(--surface));
+    border-color: color-mix(in srgb, #c99a3b 22%, var(--line));
+    border-left-color: #c99a3b
+}
+
+.task-stat.sage strong {
+    color: #b2832b
+}
+
+.task-stat.rose {
+    background: color-mix(in srgb, #d36a65 6%, var(--surface));
+    border-color: color-mix(in srgb, #d36a65 22%, var(--line));
+    border-left-color: #d36a65
+}
+
+.task-stat.rose strong {
+    color: #c05d57
+}
+
+.task-stat.purple {
+    background: color-mix(in srgb, #55a67a 6%, var(--surface));
+    border-color: color-mix(in srgb, #55a67a 22%, var(--line));
+    border-left-color: #55a67a
+}
+
+.task-stat.purple strong {
+    color: #409366
+}
+
+.task-toolbar .date-query-label {
+    font-size: 12px
+}
+
+.task-toolbar input#task-search {
+    font-size: 13px
+}
+
+.task-view-tabs .subtle {
+    font-size: 13px
+}
+
+.task-toolbar .flatpickr-input.input {
+    font-size: 12px
+}
+
+.reminder-settings .checkbox-label, .reminder-settings > span {
+    font-size: 12px
+}
+
+.notes-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin: 0 0 20px
+}
+
+.notes-toolbar input {
+    width: min(420px, 70%);
+    font-size: 14px;
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 11px 13px
+}
+
+.notes-toolbar > span {
+    font-size: 13px;
+    color: var(--muted)
+}
+
+.notes-grid {
+    display: grid;
+    grid-template-columns:repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    align-items: start
+}
+
+.sticky-note {
+    min-height: 0;
+    max-width: 460px;
+    display: flex;
+    flex-direction: column;
+    padding: 22px 24px;
+    border-radius: 12px;
+    box-shadow: 0 3px 10px #1f232904;
+    cursor: pointer;
+    transition: box-shadow 160ms, border-color 160ms
+}
+
+.sticky-note:hover {
+    box-shadow: 0 6px 18px #1f23290c
+}
+
+.sticky-note h2 {
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.6;
+    margin-bottom: 11px;
+    color: #474936
+}
+
+.sticky-note > p {
+    font-size: 15px;
+    line-height: 1.9;
+    margin: 0 0 23px;
+    color: #6c6c56;
+    max-height: 380px;
+    min-height: 32px
+}
+
+.sticky-note > small {
+    font-size: 12px;
+    color: #9c967e;
+    margin-top: 0
+}
+
+.sticky-note.blue h2 {
+    color: #3d536e
+}
+
+.sticky-note.blue > p {
+    color: #667c95
+}
+
+.sticky-note.pink h2 {
+    color: #774f5c
+}
+
+.sticky-note.pink > p {
+    color: #97717e
+}
+
+.sticky-note.green h2 {
+    color: #46624a
+}
+
+.sticky-note.green > p {
+    color: #6f8971
+}
+
+.sticky-actions {
+    padding-top: 12px;
+    margin-top: 14px;
+    gap: 14px
+}
+
+.sticky-actions button {
+    font-size: 12px
+}
+
+.sticky-actions button svg {
+    width: 14px;
+    height: 14px
+}
+
+.sticky-actions .icon-button {
+    height: 28px;
+    width: 28px
+}
+
+.sticky-note .sticky-actions .icon-button {
+    color: #a99a84
+}
+
+.settings-section {
+    padding: 18px 0;
+    border-top: 1px solid var(--line)
+}
+
+.settings-section h3 {
+    font-size: 16px;
+    margin: 0 0 11px
+}
+
+.settings-section p {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.8
+}
+
+.settings-section code {
+    display: block;
+    font-size: 13px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 12px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    user-select: text
+}
+
+.settings-section small {
+    display: block;
+    font-size: 11px;
+    color: var(--subtle);
+    margin: 9px 0 13px
+}
+
+.mcp-controls {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px
+}
+
+.mcp-controls label {
+    width: 110px;
+    margin: 0
+}
+
+.mcp-controls input {
+    margin-top: 6px;
+    min-width: 0
+}
+
+.mcp-controls button {
+    margin-bottom: 0;
+    min-height: 39px
+}
+
+#mcp-status {
+    color: var(--subtle)
+}
+
+#mcp-status.enabled {
+    color: #399167
+}
+
+#settings-dialog {
+    width: 620px
+}
+
+footer {
+    font-size: 11px
+}
+
+.no-notes {
+    font-size: 14px
+}
+
+@media (min-width: 1600px) {
+    .notes-grid {
+        grid-template-columns:repeat(auto-fill, minmax(330px, 1fr))
+    }
+
+    .task-title {
+        font-size: 16px
+    }
+
+    .checklist-title {
+        font-size: 16px
+    }
+
+    .checklist-meta {
+        font-size: 13px
+    }
+
+    .checklist-tags > span {
+        font-size: 12px
+    }
+}
+
+@media (max-width: 1230px) {
+    .notes-grid {
+        grid-template-columns:repeat(2, minmax(0, 1fr))
+    }
+
+    .task-board {
+        overflow-x: auto;
+        grid-template-columns:repeat(4, minmax(220px, 1fr));
+        padding-bottom: 10px
+    }
+
+    .checklist-note {
+        max-width: 250px
+    }
+}

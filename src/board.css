@@ -1,0 +1,369 @@
+/* 看板复用任务模型；列滚动和卡片信息层级属于视图，不进入数据结构。 */
+.brand strong {
+    font-size: 22px;
+    letter-spacing: -.7px
+}
+
+.brand {
+    gap: 10px
+}
+
+.brand small {
+    font-size: 10px
+}
+
+#tasks-page:has(#task-board:not([hidden])) .page-heading {
+    margin-bottom: 18px
+}
+
+#tasks-page:has(#task-board:not([hidden])) .task-stats {
+    gap: 12px;
+    margin-bottom: 18px
+}
+
+#tasks-page:has(#task-board:not([hidden])) .task-stat {
+    padding: 10px 16px
+}
+
+#tasks-page:has(#task-board:not([hidden])) .task-stat strong {
+    font-size: 24px !important
+}
+
+#tasks-page:has(#task-board:not([hidden])) .task-toolbar {
+    margin-bottom: 18px;
+    flex-wrap: wrap
+}
+
+.task-board {
+    height: var(--board-height, calc(100dvh - 420px));
+    min-height: 280px;
+    display: grid;
+    grid-template-columns:repeat(4, minmax(250px, 1fr));
+    gap: 16px;
+    align-items: stretch;
+    overflow-x: auto;
+    padding: 0 0 4px;
+    scrollbar-gutter: stable
+}
+
+.task-column {
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    border: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--ink) 3%, var(--paper));
+    overflow: hidden
+}
+
+[data-theme=office] .task-column {
+    background: #f0f2f5;
+    border-color: #e6e8ed;
+    border-radius: 12px
+}
+
+.task-column-heading {
+    margin: 0;
+    min-height: 49px;
+    padding: 10px 14px;
+    gap: 8px;
+    flex-shrink: 0
+}
+
+.task-column-heading h2 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0;
+    flex: 1;
+    color: var(--paper-ink, var(--ink))
+}
+
+.task-column-heading > b {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--paper-muted, var(--muted));
+    padding: 1px 6px;
+    border-radius: 5px;
+    background: color-mix(in srgb, var(--ink) 5%, transparent)
+}
+
+.task-column-heading .icon-button {
+    width: 25px;
+    height: 25px
+}
+
+.task-column .status-dot {
+    width: 7px;
+    height: 7px;
+    flex-shrink: 0;
+    background: #8b95a5
+}
+
+.task-column.todo .status-dot {
+    background: #5e86ec
+}
+
+.task-column.doing .status-dot {
+    background: #e2aa45
+}
+
+.task-column.done .status-dot {
+    background: #54a986
+}
+
+.task-column-body {
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+    min-height: 0;
+    padding: 0 10px 12px;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--muted) 35%, transparent) transparent;
+    scrollbar-gutter: stable
+}
+
+.task-column-body::-webkit-scrollbar {
+    width: 5px
+}
+
+.task-column-body::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--muted) 35%, transparent);
+    border-radius: 8px
+}
+
+.task-board .board-card {
+    position: relative;
+    padding: 14px 14px 10px;
+    margin: 0 0 10px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    box-shadow: 0 1px 2px #18253c0b, 0 2px 5px #18253c04;
+    cursor: pointer;
+    transition: border-color var(--motion), box-shadow var(--motion), background var(--motion);
+    overflow: visible
+}
+
+.task-board .board-card:hover, .task-board .board-card:focus-within {
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+    box-shadow: 0 3px 9px #18253c12;
+    transform: none
+}
+
+.task-board .board-card.priority-high:before {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    border-top: 10px solid #ed6663;
+    border-left: 10px solid transparent;
+    border-radius: 0 9px 0 0
+}
+
+.task-board .board-card.overdue {
+    border-left: 2px solid #e46d67
+}
+
+.task-board .task-card-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    min-height: 20px
+}
+
+.task-board .priority-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    background: none;
+    padding: 0;
+    color: var(--muted);
+    font-weight: 500
+}
+
+.task-board .priority-label:before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #9aa5b5
+}
+
+.task-board .priority-label.high {
+    color: #d35b55
+}
+
+.task-board .priority-label.high:before {
+    background: #e56b65
+}
+
+.task-board .priority-label.low {
+    color: #658174
+}
+
+.task-board .priority-label.low:before {
+    background: #80aa96
+}
+
+.board-important, .board-urgent {
+    font-size: 11px;
+    line-height: 1.7;
+    padding: 0 5px;
+    border-radius: 4px;
+    background: #fff1ef;
+    color: #bd5a51
+}
+
+.board-urgent {
+    background: #fff4df;
+    color: #a57725
+}
+
+.task-board .reminded-label {
+    font-size: 12px;
+    margin-left: auto;
+    padding: 1px 5px
+}
+
+.task-board .task-title {
+    display: block;
+    width: 100%;
+    text-align: left;
+    font-size: 15px;
+    font-weight: 550;
+    line-height: 1.6;
+    padding: 0;
+    margin: 0 0 6px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    color: var(--ink)
+}
+
+.task-board .task-title:hover {
+    background: transparent;
+    color: var(--accent-text)
+}
+
+.task-board .task-excerpt {
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--muted);
+    margin: 0 0 9px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden
+}
+
+.task-board .task-date, .task-board .task-reminder-time {
+    display: block;
+    font-size: 12px;
+    line-height: 1.7;
+    margin: 4px 0;
+    color: var(--muted)
+}
+
+.task-board .task-date.overdue {
+    color: #cb625a
+}
+
+.task-board .task-date:before {
+    content: '◷';
+    margin-right: 5px
+}
+
+.task-board .task-link {
+    max-width: 100%;
+    font-size: 12px;
+    padding: 3px 7px;
+    border-radius: 5px;
+    background: var(--soft);
+    margin: 4px 0;
+    overflow-wrap: anywhere
+}
+
+.task-board .task-files {
+    max-height: 80px;
+    overflow: auto;
+    margin-top: 5px
+}
+
+.task-board .task-card-actions {
+    border-top: 0;
+    margin-top: 8px;
+    padding-top: 4px;
+    gap: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-height: 29px
+}
+
+.task-board .task-card-actions .ts-wrapper {
+    min-width: 86px;
+    max-width: 100px;
+    margin-right: auto;
+    flex-shrink: 0
+}
+
+.task-board .task-card-actions .ts-control {
+    background: color-mix(in srgb, var(--ink) 4%, var(--surface));
+    border-color: transparent;
+    min-height: 27px !important;
+    padding: 4px 23px 4px 8px !important;
+    border-radius: 5px !important
+}
+
+.task-board .task-card-actions .icon-button {
+    width: 27px;
+    height: 27px;
+    opacity: .25
+}
+
+.task-board .board-card:hover .icon-button, .task-board .board-card:focus-within .icon-button {
+    opacity: 1
+}
+
+.task-board .board-add-task {
+    justify-content: flex-start;
+    gap: 7px;
+    width: 100%;
+    font-size: 13px;
+    padding: 9px 10px;
+    color: var(--muted);
+    border-radius: 7px
+}
+
+.task-board .task-column-empty {
+    padding: 30px 12px 15px;
+    text-align: center;
+    font-size: 13px;
+    line-height: 1.8;
+    color: var(--muted)
+}
+
+.task-board .drop-target {
+    background: color-mix(in srgb, var(--accent) 8%, var(--paper));
+    border-color: var(--accent)
+}
+
+@media (max-width: 1230px) {
+    .task-board {
+        grid-template-columns:repeat(4, minmax(255px, 1fr));
+        gap: 12px;
+        padding-bottom: 8px
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .task-board .board-card {
+        transition: none
+    }
+}

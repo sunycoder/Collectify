@@ -1,0 +1,43 @@
+{
+  "version": 2,
+  "categories": [
+    {
+      "id": "gm",
+      "name": "GM",
+      "color": "blue",
+      "icon": "game",
+      "description": "不同环境的 GM 后台"
+    },
+    {
+      "id": "jenkins",
+      "name": "Jenkins",
+      "color": "orange",
+      "icon": "build",
+      "description": "各服务器的构建平台"
+    }
+  ],
+  "entries": [
+    {
+      "name": "三国 GM · trunk",
+      "url": "https://example.com/gm/trunk/",
+      "categoryId": "gm",
+      "environment": "trunk",
+      "note": "主干开发环境",
+      "username": "",
+      "password": "",
+      "authMode": "manual",
+      "mode": "internal",
+      "favorite": true
+    },
+    {
+      "name": "三国 GM · tu2.0",
+      "url": "https://example.com/gm/test/",
+      "categoryId": "gm",
+      "environment": "tu2.0",
+      "note": "分支环境",
+      "username": "",
+      "password": "",
+      "mode": "internal"
+    }
+  ]
+}
