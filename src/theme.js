@@ -130,6 +130,7 @@
         target.dataset.theme = theme.preset;
         target.dataset.widgetMaterial=theme.widgetMaterial;
         target.style.setProperty('--glass-opacity',`${theme.glassOpacity}%`);
+        target.style.setProperty('--glass-wash',`${Math.round(theme.glassOpacity*.4)}%`);
         return theme;
     }
 

@@ -2,7 +2,7 @@ const {BrowserWindow, ipcMain, screen, nativeTheme} = require('electron');
 const path = require('node:path');
 const {pathToFileURL} = require('node:url');
 const {loadAuxiliary} = require('./auxiliary-window');
-const {applyWidgetMaterial}=require('./widget-material');
+const {applyWidgetMaterial,roundedWindowShape}=require('./widget-material');
 
 class DesktopWidget {
     constructor(store, onChange, openMain, smoke = false) {
@@ -63,6 +63,10 @@ class DesktopWidget {
         const theme=this.store.data.settings.theme,reducedTransparency=nativeTheme.prefersReducedTransparency;
         const key=JSON.stringify([theme.widgetMaterial,theme.surface,reducedTransparency]);
         if(this.materialKey!==key){this.material=applyWidgetMaterial(this.win,theme,{smoke:this.smoke&&!process.argv.includes('--smoke-native-glass'),reducedTransparency});this.materialKey=key;}
+        if(process.platform==='win32'){
+            const {width,height}=this.win.getBounds(),shapeKey=`${theme.widgetMaterial}:${this.material}:${width}:${height}`;
+            if(shapeKey!==this.shapeKey){this.win.setShape(theme.widgetMaterial==='glass'?roundedWindowShape(width,height):[]);this.shapeKey=shapeKey;}
+        }
     }
 
     persist(patch) {
@@ -110,10 +114,12 @@ class DesktopWidget {
             };
             this.win.on('move', saveBounds);
             this.win.on('resize', saveBounds);
+            this.win.on('resize',()=>this.updateMaterial());
             this.win.on('closed', () => {
                 clearTimeout(boundsTimer);
                 this.win = null;
                 this.materialKey=null;
+                this.shapeKey=null;
             });
             // 首次 state 请求发出前就设置材质，避免旧的实色状态覆盖后来的玻璃更新。
             this.updateMaterial();

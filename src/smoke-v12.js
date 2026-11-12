@@ -41,6 +41,14 @@ exports.run=async({win,store,desktopWidget})=>{
     console.log('V12 透明绘制检查:',await wjs("({material:document.documentElement.dataset.nativeMaterial,background:getComputedStyle(document.body).backgroundImage,windowBackground:getComputedStyle(document.documentElement).backgroundColor})"));
     assert.ok(surfacePixels[surfaceOffset+3]<245,`玻璃绘制不能是完全不透明，alpha=${surfacePixels[surfaceOffset+3]}`);
     await js("openSettings().then(()=>document.querySelector('#theme-button').click())");await wait(()=>js("document.querySelector('#theme-dialog').open"));await delay(220);await click('#preview-widget');
+    // 同一个彩色背景做对照截图：验证画出来的背景确实被模糊，而不只检查 CSS 属性。
+    const region=await js("(()=>{const scene=document.querySelector('.widget-glass-scene');scene.style.background='repeating-linear-gradient(90deg,#ff7045 0px 12px,#3258ed 12px 24px)';const r=document.querySelector('.widget-glass-preview').getBoundingClientRect();return{x:Math.round(r.x),y:Math.round(r.y),width:Math.floor(r.width),height:Math.floor(r.height)}})()");
+    await delay(400);const blurred=await win.webContents.capturePage(region);
+    await js("document.querySelector('.widget-glass-preview').style.backdropFilter='none'");await delay(350);const sharp=await win.webContents.capturePage(region);
+    const pixelsBlur=blurred.toBitmap(),pixelsSharp=sharp.toBitmap(),sampleWidth=blurred.getSize().width;let delta=0,samples=0;
+    for(let x=20;x<sampleWidth-20;x++){const i=(10*sampleWidth+x)*4;for(let c=0;c<3;c++){delta+=Math.abs(pixelsBlur[i+c]-pixelsSharp[i+c]);samples++;}}
+    assert.ok(delta/samples>5,`彩色背景模糊对照的像素差不足：${delta/samples}`);
+    await js("document.querySelector('.widget-glass-preview').style.backdropFilter='';document.querySelector('.widget-glass-scene').style.background=''");await delay(350);
     fs.writeFileSync(path.join(directory,'appearance-preview-v12.png'),(await win.webContents.capturePage()).toPNG());
     await js("document.querySelector('#theme-dialog').close()");await delay(150);await js("document.querySelector('#settings-dialog').close()");
     if(process.argv.includes('--smoke-native-glass')){
