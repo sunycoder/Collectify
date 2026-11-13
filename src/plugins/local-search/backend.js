@@ -48,6 +48,7 @@ exports.create = async (context, adapters = {}) => {
                 )
                 .run(JSON.stringify(settings))
         );
+        context.changed?.();
         return settings;
     };
     const selected = (id) => {
@@ -56,6 +57,27 @@ exports.create = async (context, adapters = {}) => {
         return file;
     };
     return {
+        navigation: () =>
+            settings.filters
+                .filter((item) => item.enabled)
+                .map((item) => ({
+                    id: item.id,
+                    label: item.label,
+                    icon:
+                        {
+                            all: 'grid',
+                            folder: 'folder',
+                            sheet: 'table',
+                            word: 'file-text',
+                            presentation: 'presentation',
+                            pdf: 'file-pdf',
+                            image: 'image',
+                            video: 'video',
+                            audio: 'music',
+                            archive: 'archive',
+                            text: 'code'
+                        }[item.id] || 'filter'
+                })),
         async call(action, input = {}) {
             switch (action) {
                 case 'state':

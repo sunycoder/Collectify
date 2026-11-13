@@ -121,6 +121,8 @@ test('后台只允许访问已展示的搜索结果，偏好重启保持，停�
         { electron }
     );
     const state = await backend.call('state');
+    assert.equal(backend.navigation().length, 11);
+    assert.ok(backend.navigation().every((item) => item.icon));
     await backend.call('settings', { ...state.settings, preview: false });
     await backend.call('choose-folder');
     const result = await backend.call('search', { query: 'readme', filter: 'all' });
@@ -136,4 +138,18 @@ test('后台只允许访问已展示的搜索结果，偏好重启保持，停�
     await backend.deactivate();
     await assert.rejects(backend.call('preview', { id: result.items[0].id }), /结果已更新/);
     await reopened.dispose();
+});
+test('源码目录安装识别真实默认目录，拒绝冒充 ID 的外部原生目录并给出清晰原因', (t) => {
+    const { builtinSource, assertPageSource } = require('../src/plugin-system/source-install');
+    const directory = path.resolve(__dirname, '../src/plugins/local-search');
+    const registry = { defaults: () => [{ id: 'collectify.local-search', directory }] };
+    assert.equal(builtinSource(directory, registry).id, 'collectify.local-search');
+    const copy = temporary(t);
+    fs.writeFileSync(
+        path.join(copy, 'manifest.json'),
+        JSON.stringify({ id: 'collectify.local-search', name: '本地搜索', backend: 'backend.js' })
+    );
+    assert.equal(builtinSource(copy, registry), null);
+    assert.throws(() => assertPageSource(copy), /原生后台.*不能通过页面插件入口安装/);
+    assert.throws(() => require('../src/plugin-system/package').collectFiles(directory), /原生后台/);
 });

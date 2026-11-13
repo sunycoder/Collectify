@@ -3,12 +3,13 @@
   "name": "本地搜索",
   "description": "Everything 文件搜索、分类筛选与本地文件预览",
   "glyph": "搜",
+  "iconAsset": "本地搜索.svg",
   "order": 60,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "apiVersion": 1,
   "entry": "index.html",
   "backend": "backend.js",
   "permissions": ["clipboard.write"],
   "commands": [{ "id": "open", "title": "搜索本地文件" }],
-  "navigation": [{ "id": "search", "label": "文件搜索" }]
+  "navigation": [{ "id": "all", "label": "全部", "icon": "grid" }]
 }

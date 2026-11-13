@@ -47,6 +47,7 @@ function sha256(buffer) {
     return createHash('sha256').update(buffer).digest('hex');
 }
 function collectFiles(root) {
+    if (fs.existsSync(path.join(root, 'manifest.json'))) require('./source-install').assertPageSource(root);
     const files = [],
         names = new Set();
     let total = 0,

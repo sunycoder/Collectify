@@ -10,14 +10,14 @@
     <body>
         <header class="search-header">
             <div class="search-heading">
-                <span class="app-glyph">⌕</span>
+                <span class="app-glyph" data-icon="search"></span>
                 <div>
                     <h1>本地搜索</h1>
                     <p>找到文件，先看一眼，再打开。</p>
                 </div>
             </div>
             <div class="search-input">
-                <span>⌕</span
+                <span data-icon="search"></span
                 ><input
                     id="query"
                     placeholder="搜索文件名或路径…"
@@ -25,7 +25,13 @@
                     aria-label="搜索文件名或路径"
                 /><kbd>Ctrl K</kbd><button id="clear-query" title="清除搜索">×</button>
             </div>
-            <button id="settings-open" class="icon-action" aria-label="搜索设置" title="搜索设置">⚙</button>
+            <button
+                id="settings-open"
+                class="icon-action"
+                aria-label="搜索设置"
+                title="搜索设置"
+                data-icon="settings"
+            ></button>
         </header>
         <section class="engine-bar">
             <span id="engine-status" class="status-dot">尚未连接搜索引擎</span
@@ -33,20 +39,19 @@
             ><button id="choose-folder">选择文件夹搜索</button><span id="scope" title="当前搜索范围"></span>
         </section>
         <main class="search-layout">
-            <nav id="filters" aria-label="文件分类"></nav>
             <section class="result-panel">
                 <div class="result-heading"><span>搜索结果</span><span id="result-count"></span></div>
                 <div id="results" role="listbox" tabindex="0" aria-label="搜索结果"></div>
                 <button id="load-more" hidden>加载更多</button>
                 <div id="empty" class="empty-state">
-                    <span>⌕</span>
+                    <span data-icon="search"></span>
                     <h2>从一个关键词开始</h2>
                     <p>连接 Everything 搜索全盘文件，或选择文件夹进行搜索。</p>
                 </div>
             </section>
             <section id="preview" class="preview-panel" aria-label="文件预览">
                 <div class="preview-empty">
-                    <span>▤</span>
+                    <span data-icon="file-text"></span>
                     <h2>在这里预览文件</h2>
                     <p>单击选择 · 双击打开<br />↑ ↓ 切换 · Enter 打开 · 右键更多操作</p>
                 </div>
@@ -66,8 +71,9 @@
             <span id="footer-count"></span>
         </footer>
         <div id="result-menu" popover="auto" class="result-menu">
-            <button data-action="open">↗ 打开</button><button data-action="reveal">▣ 在文件夹中显示</button
-            ><button data-action="copy">⧉ 复制完整路径</button>
+            <button data-action="open"><span data-icon="external"></span>打开</button
+            ><button data-action="reveal"><span data-icon="folder"></span>在文件夹中显示</button
+            ><button data-action="copy"><span data-icon="copy"></span>复制完整路径</button>
         </div>
         <dialog id="settings">
             <form method="dialog">
@@ -91,6 +97,7 @@
         </dialog>
         <script src="collectify-plugin://collectify.sdk/toolkit.js"></script>
         <script src="vendor/pdf.js"></script>
+        <script src="icons.js"></script>
         <script src="app.js"></script>
     </body>
 </html>

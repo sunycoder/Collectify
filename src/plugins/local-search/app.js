@@ -11,19 +11,6 @@ let settings,
     dragIndex = -1,
     draft = null,
     pdfTask = null;
-const GLYPHS = {
-    all: '▦',
-    folder: '▣',
-    sheet: '▤',
-    word: '▧',
-    presentation: '▥',
-    pdf: '▰',
-    image: '▧',
-    video: '▷',
-    audio: '♪',
-    archive: '▣',
-    text: '≡'
-};
 const make = (tag, cls, text) => {
     const node = document.createElement(tag);
     if (cls) node.className = cls;
@@ -73,23 +60,36 @@ function highlight(text) {
     fragment.append(text.slice(last));
     return fragment;
 }
-function filters() {
-    $('#filters').replaceChildren();
-    for (const entry of settings.filters.filter((entry) => entry.enabled)) {
-        const node = button(
-            '',
-            () => {
-                filter = entry.id;
-                filters();
-                return search();
-            },
-            entry.id === filter ? 'active' : ''
-        );
-        node.append(make('span', 'type-mark', GLYPHS[entry.id] || '▦'), make('span', '', entry.label));
-        node.title = entry.extensions.join(', ');
-        node.dataset.filter = entry.id;
-        $('#filters').append(node);
-    }
+function fileIcon(item) {
+    if (item.directory) return 'folder';
+    const extension = item.name.split('.').at(-1).toLowerCase();
+    return (
+        {
+            png: 'image',
+            jpg: 'image',
+            jpeg: 'image',
+            webp: 'image',
+            svg: 'image',
+            gif: 'image',
+            psd: 'image',
+            xls: 'table',
+            xlsx: 'table',
+            csv: 'table',
+            mp4: 'video',
+            webm: 'video',
+            mp3: 'music',
+            wav: 'music',
+            flac: 'music',
+            zip: 'archive',
+            gz: 'archive',
+            rar: 'archive',
+            '7z': 'archive',
+            js: 'code',
+            ts: 'code',
+            go: 'code',
+            java: 'code'
+        }[extension] || 'file-text'
+    );
 }
 function renderResults(append = false) {
     const list = $('#results');
@@ -102,8 +102,8 @@ function renderResults(append = false) {
         row.setAttribute('role', 'option');
         row.setAttribute('aria-selected', String(item.id === selected));
         row.title = item.path;
-        const ext = item.name.split('.').at(-1).toUpperCase().slice(0, 4),
-            glyph = make('span', 'file-glyph' + (item.directory ? ' folder' : ''), item.directory ? '▣' : ext);
+        const glyph = make('span', 'file-glyph' + (item.directory ? ' folder' : ''));
+        glyph.append(searchIcon(fileIcon(item)));
         const content = make('div', 'result-copy'),
             name = make('div', 'result-name');
         name.append(highlight(item.name));
@@ -378,7 +378,6 @@ function updateState(state) {
     $('#scope').title = state.roots.join('\n');
     $('#connect').hidden = state.platform !== 'win32';
     $('#engine-window').hidden = state.platform !== 'win32';
-    filters();
 }
 $('#connect').onclick = run(async () => {
     const node = $('#connect');
@@ -545,7 +544,8 @@ $('#reset-filters').onclick = run(async () => {
 $('#settings-save').onclick = run(async () => {
     settings = await call('settings', draft);
     if (!settings.filters.some((entry) => entry.id === filter && entry.enabled)) filter = 'all';
-    filters();
+    await api.selectNavigation(filter);
+    if (items.length) await search();
     $('#settings').close();
     message('搜索分类已保存');
 });
@@ -561,7 +561,16 @@ $('#settings').addEventListener('pointerup', (event) => {
     }
     outside = false;
 });
-api.onNavigate(() => $('#query').focus());
+api.onNavigate(
+    run(async ({ route }) => {
+        if (!settings) updateState(await call('state'));
+        const next = settings.filters.find((item) => item.enabled && item.id === route)?.id || 'all';
+        const changed = filter !== next;
+        filter = next;
+        if (changed || !items.length) await search();
+        $('#query').focus();
+    })
+);
 run(async () => {
     updateState(await call('state'));
     message('搜索文件需要先连接 Everything 或选择文件夹。');

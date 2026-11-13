@@ -20,6 +20,16 @@ const paths = {
     plus: '<path d="M12 5v14M5 12h14"/>',
     bookmark: '<path d="M6 4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17l-6-4-6 4V4Z"/>',
     search: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>',
+    table: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M3 15h18M9 9v12M15 9v12"/>',
+    'file-text': '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"/><path d="M14 3v6h6M8 13h8M8 17h6"/>',
+    'file-pdf': '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"/><path d="M14 3v6h6M7 17h3m-3 0v-5h2a1.5 1.5 0 0 1 0 3H7m7-3v5m0-5h3m-3 2h2"/>',
+    presentation: '<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M12 17v5m-5 0 5-3 5 3M8 12l3-3 3 2 3-3"/>',
+    image: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.5"/><path d="m4 17 5-5 4 4 3-3 5 5"/>',
+    video: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="m10 8 6 4-6 4Z"/>',
+    music: '<path d="M9 17V5l11-2v12M9 9l11-2"/><ellipse cx="6" cy="18" rx="3" ry="2"/><ellipse cx="17" cy="16" rx="3" ry="2"/>',
+    archive: '<rect x="4" y="3" width="16" height="18" rx="3"/><path d="M10 3v3h4V3m-4 6h4m-4 3h4m-4 4h4v3h-4Z"/>',
+    code: '<path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 18"/>',
+    filter: '<path d="M3 4h18l-7 8v7l-4 2v-9Z"/>',
     more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
     close: '<path d="m6 6 12 12M6 18 18 6"/>',
     list: '<path d="M9 5h12M9 12h12M9 19h12M3 5h1M3 12h1M3 19h1"/>',
@@ -168,11 +178,16 @@ function renderShell(next) {
         }
         const node = button(
             item.label,
-            null,
+            item.icon || null,
             () => call('plugin-open', { id: active.id, route: item.id }),
             'plugin-subnav'
         );
         node.dataset.route = item.id;
+        if (item.icon) {
+            node.classList.add('has-icon');
+            const label = el('span', 'subnav-label', item.label);
+            node.replaceChildren(icon(item.icon), label);
+        }
         node.classList.toggle('selected', state.active.route === item.id);
         if (item.count !== undefined) node.append(el('small', '', item.count));
         $('#plugin-navigation').append(node);

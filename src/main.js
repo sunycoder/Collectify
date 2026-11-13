@@ -173,6 +173,14 @@ async function pluginManagement(action, payload) {
             case 'plugin-install': {
                 const source = await pick('folder');
                 if (!source) return null;
+                const builtin = require('./plugin-system/source-install').builtinSource(source, registry);
+                if (builtin) {
+                    if (!registry.plugins.has(builtin.id)) registry.restore(builtin.id);
+                    await services.load({ activate: false });
+                    await pluginEnabled(builtin.id, true);
+                    await revealInstalledPlugin(builtin.id);
+                    return { id: builtin.id, builtin: true, enabled: true };
+                }
                 const { collectFiles, encodeZip } = require('./plugin-system/package'),
                     prepared = packages.prepare(encodeZip(collectFiles(source)));
                 try {

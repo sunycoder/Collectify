@@ -62,7 +62,11 @@ app.whenReady().then(async () => {
             }
             throw Error('Local search UI timeout');
         };
-        await until(() => js("!!document.querySelector('#filters button')"));
+        await until(() => js('!!settings'));
+        assert.equal(await js("document.querySelector('#filters')"), null);
+        const navigation = services.navigation('collectify.local-search');
+        assert.equal(navigation.length, 11);
+        assert.ok(navigation.every((item) => item.icon));
         const original = dialog.showOpenDialog;
         dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [fixtures] });
         try {
@@ -99,6 +103,10 @@ app.whenReady().then(async () => {
         await pick('readme.txt');
         await until(() => js("document.querySelector('#preview pre')?.textContent.includes('<script>')"));
         assert.deepEqual(runtime.views.get('collectify.local-search').errors, []);
+        await runtime.open('collectify.local-search', 'open', 'image');
+        await until(() => js("filter==='image' && document.querySelectorAll('.result-row').length===4"));
+        await runtime.open('collectify.local-search', 'open', 'all');
+        await until(() => js("filter==='all' && document.querySelectorAll('.result-row').length>=10"));
         await js(
             "document.querySelector('#query').value='sample';document.querySelector('#query').dispatchEvent(new Event('input',{bubbles:true}))"
         );

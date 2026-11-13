@@ -339,6 +339,18 @@ body.navigation-collapsed {
     font-size: 11px;
     color: var(--subtle);
 }
+.plugin-subnav.has-icon {
+    justify-content: flex-start;
+    gap: 10px;
+}
+.plugin-subnav.has-icon .subnav-label {
+    flex: 1;
+    min-width: 0;
+}
+.plugin-subnav.has-icon > i {
+    display: inline-flex;
+    flex-shrink: 0;
+}
 .plugin-subnav:hover {
     background: var(--paper);
 }
