@@ -1,0 +1,76 @@
+name: 发布主程序
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: collectify-app-release
+  cancel-in-progress: false
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            build: npm run dist:win -- --x64 --publish never
+          - os: macos-latest
+            platform: macos
+            build: npm run dist:mac -- --publish never
+          - os: ubuntu-latest
+            platform: linux
+            build: npm run dist:linux -- --publish never
+    runs-on: ${{ matrix.os }}
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: 核对标签与版本
+        run: node scripts/release-files.cjs check-version
+      - run: npm ci
+      - run: npm test
+      - run: ${{ matrix.build }}
+      - name: 核对安装包内文件
+        run: node scripts/release-files.cjs verify
+      - name: Windows 打包版启动验证
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath dist/win-unpacked/Collectify.exe -ArgumentList '--smoke-test','--smoke-startup' -WindowStyle Hidden -PassThru -Wait
+          if ($process.ExitCode -ne 0) { exit 1 }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: collectify-${{ matrix.platform }}
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            dist/Collectify-*.exe
+            dist/Collectify-*.dmg
+            dist/Collectify-*.AppImage
+            dist/Collectify-*.deb
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: collectify-*
+          path: dist
+          merge-multiple: true
+      - name: 生成校验文件
+        run: node scripts/release-files.cjs checksums
+      - name: 发布下载包
+        run: node scripts/publish-app.cjs
+        env:
+          GH_TOKEN: ${{ github.token }}

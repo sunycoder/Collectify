@@ -1,5 +1,6 @@
 const { pluginId } = require('./manifest');
 const { ARCHIVE_LIMIT } = require('./package');
+const { compatibility, validateCompatibility } = require('./compatibility');
 const DEFAULT_CATALOG_URL = 'https://raw.githubusercontent.com/sunycoder/Collectify/main/plugins/catalog.json';
 
 function compareVersion(a, b) {
@@ -44,6 +45,7 @@ function validateCatalog(input) {
             throw Error('插件目录信息无效、重复或不兼容');
         ids.add(item.id);
         return {
+            ...validateCompatibility(item),
             id: item.id,
             name: item.name,
             description: item.description,
@@ -121,6 +123,7 @@ class PluginCatalog {
             plugins: this.items.map((item) => {
                 const installed = this.registry.plugins.get(item.id);
                 return {
+                    ...compatibility(item),
                     ...item,
                     installedVersion: installed?.version || null,
                     updateAvailable: !!installed && compareVersion(item.version, installed.version) > 0,
@@ -154,6 +157,8 @@ class PluginCatalog {
     async package(id, signal) {
         const item = this.items.find((p) => p.id === id);
         if (!item || !this.loaded) throw Error('请刷新插件目录后再安装');
+        const support = compatibility(item);
+        if (!support.compatible) throw Error(support.compatibilityReason);
         const data = await download(item.url, Math.min(ARCHIVE_LIMIT, item.size), { ...this.options, signal });
         if (data.length !== item.size) throw Error('下载的插件包大小与目录不一致');
         return { data, item };

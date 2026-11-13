@@ -44,7 +44,7 @@ const largest = images[0],
 assert.ok(executable.includes(ico.subarray(largest.offset, largest.offset + largest.size)), 'EXE 未嵌入统一图标');
 assert.deepEqual(
     fs.readdirSync(path.join(root, 'dist')).filter((file) => file.endsWith('.exe')),
-    ['Collectify-Setup.exe']
+    [`Collectify-${pkg.version}-windows-x64-setup.exe`]
 );
 console.log(
     `Release verified: Collectify ${pkg.version}, source/archive consistency, canonical icon, one latest installer.`

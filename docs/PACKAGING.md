@@ -1,70 +1,39 @@
-# Collectify 打包与安装
+# 构建与发布
 
-项目根目录为 `D:\study\Collectify`。产品名 Collectify，包名 collectify，应用 ID `com.collectify.desktop`。本地项目直接使用新 SQLite 库，不兼容原项目身份和旧数据。
+主程序和插件在同一仓库维护，分别发布。日常提交只运行检查，确认版本后通过标签发布，不把每次 UI 调试变成一次公开更新。
 
-文中绝对路径为本机示例，其他电脑替换为自己的克隆目录。源码库不分发 build-tools 中的离线插件缓存，常规构建由 electron-builder 下载所需资源。
+## 主程序
 
-## Windows
+1. 修改 `package.json`、锁文件的版本，并补充 `CHANGELOG.md` 与 `docs/releases/<版本>.md`。
+2. 检查 README 的下载链接版本。
+3. 执行 `npm run format:check`、`npm test`、`npm run smoke`。
+4. 提交并推送，再创建并推送对应标签，如 `v5.6.0`。
+5. “发布主程序”工作流在 Windows、macOS、Linux 分别构建，全部产物核对通过后公开 Release。
 
-```powershell
-cd D:\study\Collectify
-npm.cmd ci
-npm.cmd test
-npm.cmd run smoke
-npm.cmd run dist:win
-node scripts/verify-release.cjs
-```
+安装包文件名包含版本、系统和架构。Windows 提供 x64 NSIS 安装器，macOS 提供 arm64 / x64 DMG，Linux 提供 x64 AppImage / deb。Windows 打包版还执行启动验证；macOS/Linux 尚未手工桌面实测，下载页标记为试用。本轮不配置商业签名或 macOS 公证。
 
-唯一安装包为 `dist/Collectify-Setup.exe`。双击后选择安装目录。同一 Collectify 身份的后续版本可以退出程序后直接安装更新。卸载默认保留 Collectify 用户目录；旧项目的安装和数据不参与此版本的初始化。
+工作流先上传完整安装包和 SHA256SUMS.txt，再公开草稿，插件 Release 不作为主程序最新版。已正式发布的附件不覆盖，修改程序后发布新版本。
 
-本机离线资源构建：
-
-```powershell
-$env:ELECTRON_BUILDER_COMPRESSION_LEVEL = '3'
-$env:ELECTRON_BUILDER_NSIS_RESOURCES_DIR = 'D:\study\Collectify\build-tools\nsis-resources'
-npm.cmd run dist:win -- --config.electronDist=node_modules/electron/dist
-```
-
-打包前自动生成 UI 与 MCP 供应文件。安装电脑无需安装 Node.js 或 SQLite；使用 Electron 自带的 Node SQLite 模块，不额外打包第三方 SQLite 原生扩展。
-
-打包成功后清理 dist 顶层历史安装包与 blockmap，只保留一个最新安装包；失败不主动清理。`win-unpacked` 用于验证，不能代替安装器。验证脚本检查包内源码、产品名称、版本、图标及唯一安装包。
-
-## 数据位置
-
-Windows：`%APPDATA%\Collectify\collectify.sqlite`。
-macOS：`~/Library/Application Support/Collectify/collectify.sqlite`。
-Linux：一般为 `~/.config/Collectify/collectify.sqlite`。
-
-实际路径在“设置”查看。备份使用该页面“备份数据库”，不要在运行期间只复制主文件。完整表结构和恢复步骤见 [数据模型](DATA-MODEL.md)。
-
-## 图标
-
-唯一源为 `assets/icon.png`。使用 Pillow 运行 `scripts/derive-icons.py` 派生 ICO / ICNS，不重绘原图。UI、托盘和窗口使用原 PNG；Windows exe 和安装器使用 ICO，macOS 使用 ICNS。
-
-Windows 配置 `signExecutable: false` 仅跳过签名，仍编辑图标资源；不能设置 `signAndEditExecutable: false`。
-
-## macOS
-
-在 Mac 上复制源码并重新安装依赖：
+## 本机构建
 
 ```sh
 npm ci
-npm test
-npm run smoke
-npm run dist:mac
+npm run dist:win
+node scripts/release-files.cjs verify
 ```
 
-输出 Collectify 的 x64 / arm64 DMG，选择对应架构并拖入 Applications。正式外部分发需配置签名与公证。Windows 本机不生成或验证 macOS 包。
+macOS 上运行 `npm run dist:mac`，Linux 上运行 `npm run dist:linux`。本机 `dist` 保留本次构建的安装包并清理旧包；构建失败不清理。`win-unpacked` 等目录用于验证，不是给普通用户安装的文件。GitHub 保留历史 Release。
 
-## Linux
+离线 Windows 构建可复用已忽略的 `build-tools` 缓存，或通过 `--config.electronDist=node_modules/electron/dist` 使用本机 Electron；常规发布由 CI 下载依赖。
 
-在 Linux x64 上：
+## 插件
 
-```sh
-npm ci
-npm test
-npm run smoke
-npm run dist:linux
-```
+修改插件源码及自身版本，运行 `npm run plugins:build` 和 `npm run plugins:check`，提交源码与目录。推送 `plugin-<插件ID>-v<版本>` 标签后，“发布官方插件”工作流只发布对应插件。详细操作见 [官方插件目录](../plugins/README.md)。
 
-输出 Collectify AppImage / deb，分别赋予执行权限或使用系统包管理器安装。Windows 本机不生成或验证 Linux 包。
+插件的 `minHostVersion` 和可选 `platforms` 用于安装前检查。后台采集和悬浮窗口等新能力需要 Collectify 5.6.0；发现页面会明确提示先升级。
+
+## 数据与资源
+
+数据位置、备份及升级步骤以 [用户指南](USER-GUIDE.md) 为准，插件各自拥有数据库。发布安装包不包含真实用户数据、个人默认配置、浏览器会话或 MCP 令牌。设置中没有“备份单个总数据库”的入口。
+
+图标源为 `assets/icon.png`，ICO / ICNS 由 `scripts/derive-icons.py` 派生。Windows 保留图标资源编辑；`signExecutable: false` 仅跳过签名。Windows 粘贴助手从 `app.asar.unpacked` 执行，外部进程不读取虚拟 ASAR 路径。

@@ -18,7 +18,7 @@ test('Collectify 应用身份、SQLite 数据目录与 Windows 图标资源一�
     assert.equal(p.build.win.signExecutable, false);
     assert.notEqual(p.build.win.signAndEditExecutable, false);
     assert.equal(p.build.win.icon, 'assets/icon.ico');
-    assert.equal(p.build.nsis.artifactName, 'Collectify-Setup.exe');
+    assert.equal(p.build.nsis.artifactName, 'Collectify-${version}-windows-${arch}-setup.${ext}');
     assert.deepEqual(p.build.win.target, ['nsis']);
 });
 test('新包未完成不清理，完成后仅清理 dist 顶层旧包', async (t) => {

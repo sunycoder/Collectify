@@ -1,0 +1,30 @@
+{
+  "id": "collectify.clipboard-history",
+  "name": "剪贴板历史",
+  "glyph": "剪",
+  "iconAsset": "剪切板.svg",
+  "description": "后台记录文本、图片和文件，支持搜索、收藏、预览与一键复制。",
+  "version": "2.1.1",
+  "apiVersion": 1,
+  "minHostVersion": "5.6.0",
+  "platforms": ["win32", "darwin", "linux"],
+  "entry": "index.html",
+  "background": "background.html",
+  "permissions": [
+    "storage",
+    "clipboard.read",
+    "clipboard.write",
+    "background",
+    "clipboard.background",
+    "window",
+    "desktop.paste"
+  ],
+  "commands": [{ "id": "open", "title": "打开剪贴板历史" }],
+  "navigation": [
+    { "id": "all", "label": "全部记录" },
+    { "id": "text", "label": "文本" },
+    { "id": "image", "label": "图片" },
+    { "id": "files", "label": "文件" },
+    { "id": "favorites", "label": "收藏" }
+  ]
+}

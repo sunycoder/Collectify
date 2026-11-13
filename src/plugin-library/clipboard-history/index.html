@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>剪贴板历史</title>
+        <link rel="stylesheet" href="collectify-plugin://collectify.sdk/tool.css" />
+        <link rel="stylesheet" href="style.css" />
+    </head>
+    <body>
+        <header class="clipboard-heading">
+            <h1>剪贴板</h1>
+            <label class="search"
+                ><span class="sr-only">搜索历史内容</span
+                ><input id="search" type="search" placeholder="搜索文本或文件名…" autocomplete="off" /></label
+            ><button id="capture" class="primary" aria-pressed="false">开启后台采集</button
+            ><button id="read-once">读取一次</button
+            ><button id="float-window" title="打开悬浮中转窗口">悬浮中转</button>
+        </header>
+        <nav class="clipboard-tabs" aria-label="内容分类">
+            <button data-tab="all" aria-pressed="true">全部 <small></small></button
+            ><button data-tab="text" aria-pressed="false">文本 <small></small></button
+            ><button data-tab="image" aria-pressed="false">图片 <small></small></button
+            ><button data-tab="files" aria-pressed="false">文件 <small></small></button
+            ><button data-tab="favorites" aria-pressed="false">★ 收藏 <small></small></button>
+        </nav>
+        <div class="clipboard-status">
+            <span id="capture-status">正在加载…</span><button id="clear" class="quiet">清空未收藏记录</button>
+        </div>
+        <main id="history" aria-label="剪贴板历史" tabindex="0"></main>
+        <div id="context-menu" class="clipboard-menu" popover="manual" role="menu" aria-label="记录操作"></div>
+        <p id="message" role="status"></p>
+        <footer>单击选中 · 双击复制 · 右键更多操作 · 仅保存在本机 · 收藏不会自动清理</footer>
+        <script src="collectify-plugin://collectify.sdk/toolkit.js"></script>
+        <script src="history-model.js"></script>
+        <script src="app.js"></script>
+    </body>
+</html>

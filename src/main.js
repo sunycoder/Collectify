@@ -130,6 +130,7 @@ async function installPrepared(prepared, sourceLabel) {
         throw Error('确认期间插件程序已改变，请重新安装');
     runtime.close(manifest.id);
     const id = registry.install(prepared.directory, manifest);
+    if (registry.get(id).enabled) await runtime.startBackground(id);
     updateTray();
     publish();
     return id;
@@ -318,8 +319,10 @@ async function pick(kind) {
 async function pluginEnabled(id, enabled) {
     registry.setEnabled(id, enabled);
     try {
-        if (enabled) await services.enable(id);
-        else {
+        if (enabled) {
+            await services.enable(id);
+            await runtime.startBackground(id);
+        } else {
             runtime.close(id);
             await services.disable(id);
         }
@@ -385,6 +388,9 @@ async function hostAction(action, payload) {
             if (error) throw Error(error);
             return;
         }
+        case 'app-download':
+            await shell.openExternal('https://github.com/sunycoder/Collectify/releases/latest');
+            return;
         case 'settings':
             return setSettings(payload);
         case 'theme-save':
@@ -451,6 +457,7 @@ async function hostAction(action, payload) {
             runtime.destroy();
             layout();
             backup.import(importDraft.raw, payload);
+            await runtime.startBackgrounds();
             importDraft = null;
             runtime.themeChanged();
             publish();
@@ -503,7 +510,10 @@ async function createWindow() {
         if (
             !quitting &&
             tray &&
-            (settings().keepInTray || [...services.providers.values()].some((p) => p.keepAlive?.()))
+            (settings().keepInTray ||
+                runtime.popouts.size > 0 ||
+                runtime.backgroundActivity.size > 0 ||
+                [...services.providers.values()].some((p) => p.keepAlive?.()))
         ) {
             event.preventDefault();
             win.hide();
@@ -528,6 +538,7 @@ app.on('activate', () => {
 });
 app.on('before-quit', () => {
     quitting = true;
+    runtime?.destroy();
     void services?.dispose();
     void mcp?.stop(false);
 });
@@ -609,6 +620,7 @@ app.whenReady()
             runtimeStatus: pluginRuntimeStatus,
             installed: async (id, { open }) => {
                 runtime.close(id);
+                if (registry.get(id).enabled) await runtime.startBackground(id);
                 updateTray();
                 publish();
                 if (open) await revealInstalledPlugin(id);
@@ -634,6 +646,7 @@ app.whenReady()
         ]);
         await createWindow();
         await services.activateEnabled();
+        await runtime.startBackgrounds();
         if (!smoke) {
             tray = new Tray(path.join(__dirname, '..', 'assets', 'icon.png'));
             tray.setToolTip('Collectify');
@@ -660,7 +673,8 @@ app.whenReady()
                         pluginCatalog,
                         hostAction
                     };
-                if (process.argv.includes('--smoke-official')) await require('./smoke-official').run(context);
+                if (process.argv.includes('--smoke-clipboard')) await require('./smoke-clipboard').run(context);
+                else if (process.argv.includes('--smoke-official')) await require('./smoke-official').run(context);
                 else if (process.argv.includes('--smoke-tools')) await require('./smoke-tools').run(context);
                 else if (process.argv.includes('--smoke-navigation')) await require('./smoke-navigation').run(context);
                 else if (process.argv.includes('--smoke-startup')) {
@@ -668,12 +682,14 @@ app.whenReady()
                     await require('./smoke-packages').run(context);
                     await require('./smoke-navigation').run(context);
                     await require('./smoke-tools').run(context);
+                    await require('./smoke-clipboard').run(context);
                 } else {
                     await verification.run(context);
                     await require('./smoke-development').run(context);
                     await require('./smoke-packages').run(context);
                     await require('./smoke-navigation').run(context);
                     await require('./smoke-tools').run(context);
+                    await require('./smoke-clipboard').run(context);
                 }
                 await services.dispose();
                 app.exit(0);

@@ -1,0 +1,9 @@
+name: 功能建议
+description: 描述希望改善的使用体验
+body:
+  - type: textarea
+    attributes:
+      label: 你想解决什么问题？
+      placeholder: 描述使用场景，以及你希望的操作方式
+    validations:
+      required: true

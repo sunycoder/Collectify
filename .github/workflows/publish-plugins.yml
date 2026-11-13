@@ -3,13 +3,7 @@ name: 发布官方插件
 on:
   workflow_dispatch:
   push:
-    branches: [main]
-    paths:
-      - 'plugins/**'
-      - 'src/plugin-templates/clipboard-history/**'
-      - 'scripts/build-plugin-catalog.cjs'
-      - 'scripts/publish-plugins.cjs'
-      - '.github/workflows/publish-plugins.yml'
+    tags: ['plugin-*']
 
 permissions:
   contents: write
@@ -33,3 +27,4 @@ jobs:
         run: node scripts/publish-plugins.cjs
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}

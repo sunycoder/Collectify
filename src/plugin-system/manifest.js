@@ -1,7 +1,16 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const { compatibility, validateCompatibility } = require('./compatibility');
 const API_VERSION = 1;
-const PERMISSIONS = ['storage', 'clipboard.read', 'clipboard.write'];
+const PERMISSIONS = [
+    'storage',
+    'clipboard.read',
+    'clipboard.write',
+    'background',
+    'clipboard.background',
+    'window',
+    'desktop.paste'
+];
 const ID = /^[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)+$/;
 
 function pluginId(value) {
@@ -40,6 +49,9 @@ function readManifest(root, { builtin = false } = {}) {
     const file = assetPath(root, 'manifest.json');
     if (fs.statSync(file).size > 32000) throw Error('插件清单过大');
     const input = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''));
+    const requirements = validateCompatibility(input),
+        support = compatibility(requirements);
+    if (!support.compatible) throw Error(support.compatibilityReason);
     pluginId(input.id);
     if (input.id === 'collectify.sdk') throw Error('该插件 ID 为宿主保留');
     for (const field of ['name', 'description', 'version'])
@@ -75,6 +87,15 @@ function readManifest(root, { builtin = false } = {}) {
     });
     if (input.backend && !builtin) throw Error('本地页面插件不能声明原生后台入口');
     if (input.backend) assetPath(root, input.backend);
+    if (input.background) {
+        if (
+            typeof input.background !== 'string' ||
+            !input.background.endsWith('.html') ||
+            !input.permissions.includes('background')
+        )
+            throw Error('后台页面需声明 background 权限并使用 HTML 入口');
+        assetPath(root, input.background);
+    }
     if (
         input.iconAsset !== undefined &&
         (typeof input.iconAsset !== 'string' ||
@@ -97,6 +118,8 @@ function readManifest(root, { builtin = false } = {}) {
     )
         throw Error('插件导航不正确');
     return {
+        ...requirements,
+        ...(input.background ? { background: input.background } : {}),
         ...(input.iconAsset ? { iconAsset: input.iconAsset } : {}),
         id: input.id,
         name: input.name.trim(),

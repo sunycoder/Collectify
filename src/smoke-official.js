@@ -16,7 +16,7 @@ exports.run = async ({ registry, runtime, hostAction }) => {
         assert.deepEqual(record.errors, []);
         assert.equal(
             await record.view.webContents.executeJavaScript("document.querySelector('h1').textContent"),
-            '剪贴板历史'
+            '剪贴板'
         );
         await record.view.webContents.executeJavaScript("collectify.storage.set('publish-check',true)");
         assert.equal(registry.storage.get(plugin.id, 'publish-check'), true);

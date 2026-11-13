@@ -1,12 +1,11 @@
 {
   "repository": "sunycoder/Collectify",
-  "releaseTag": "plugins-v1",
   "plugins": [
     {
-      "source": "src/plugin-templates/clipboard-history",
+      "source": "src/plugin-library/clipboard-history",
       "id": "collectify.clipboard-history",
       "name": "剪贴板历史",
-      "version": "1.0.0",
+      "version": "2.1.1",
       "iconAsset": "剪切板.svg"
     }
   ]

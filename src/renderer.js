@@ -352,6 +352,12 @@ function renderPluginCatalog() {
                   : '已安装';
             action.disabled = installed.builtin || !upgradable;
         }
+        if (plugin.compatible === false) {
+            action.disabled = true;
+            action.textContent = '需要升级';
+            action.title = plugin.compatibilityReason;
+            copy.append(el('p', 'form-error', plugin.compatibilityReason));
+        }
         action.disabled = action.disabled || pluginBusy;
         row.append(copy, action);
         target.append(row);
@@ -438,6 +444,7 @@ document.querySelectorAll('[data-plugin-tab]').forEach(
         }))
 );
 $('#open-data-directory').onclick = task(() => call('open-data-directory'));
+$('#download-app').onclick = task(() => call('app-download'));
 $('#keep-in-tray').onchange = task(() =>
     call('settings', { ...state.settings, keepInTray: $('#keep-in-tray').checked })
 );

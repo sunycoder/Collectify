@@ -17,9 +17,31 @@ contextBridge.exposeInMainWorld('collectify', {
     storage: {
         get: (key) => call('storage.get', { key }),
         set: (key, value) => call('storage.set', { key, value }),
-        delete: (key) => call('storage.delete', { key })
+        delete: (key) => call('storage.delete', { key }),
+        batch: (changes) => call('storage.batch', changes)
     },
-    clipboard: { readText: () => call('clipboard.read'), writeText: (text) => call('clipboard.write', text) },
+    clipboard: {
+        readText: () => call('clipboard.read'),
+        writeText: (text) => call('clipboard.write', text),
+        snapshot: () => call('clipboard.snapshot'),
+        writeSnapshot: (value) => call('clipboard.writeSnapshot', value)
+    },
+    background: {
+        request: (data) => call('background.request', data),
+        setActive: (value) => call('background.active', value)
+    },
+    notify: (data) => call('plugin.notify', data),
+    windows: { open: (options) => call('window.open', options) },
+    desktop: { paste: () => call('desktop.paste') },
+    onBackgroundRequest: (callback) =>
+        subscribe('plugin-background-request', async (request) => {
+            try {
+                const data = await callback(request.data);
+                await call('background.response', { id: request.id, data });
+            } catch (error) {
+                await call('background.response', { id: request.id, error: error.message }).catch(() => {});
+            }
+        }),
     onContextChanged: (callback) => subscribe('plugin-context', callback),
     onCommand: (callback) => subscribe('plugin-command', callback),
     onNavigate: (callback) => subscribe('plugin-navigate', callback),

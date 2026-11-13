@@ -73,6 +73,35 @@ class PluginStorage {
     delete(id, key) {
         this.withDatabase(id, (db) => db.prepare('DELETE FROM plugin_values WHERE key=?').run(keyOf(key)));
     }
+    batch(id, { set = {}, delete: removed = [] } = {}) {
+        if (!Array.isArray(removed) || removed.length > 200) throw Error('存储删除批次不正确');
+        const rows = validateValues(set);
+        removed.forEach(keyOf);
+        this.withDatabase(id, (db) => {
+            db.exec('BEGIN IMMEDIATE');
+            try {
+                const values = Object.fromEntries(
+                    db
+                        .prepare('SELECT key,value_json FROM plugin_values')
+                        .all()
+                        .map((row) => [row.key, JSON.parse(row.value_json)])
+                );
+                for (const key of removed) delete values[key];
+                for (const [key, text] of rows) values[key] = JSON.parse(text);
+                validateValues(values);
+                const erase = db.prepare('DELETE FROM plugin_values WHERE key=?');
+                for (const key of removed) erase.run(key);
+                const save = db.prepare(
+                    'INSERT INTO plugin_values VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json,updated_at=excluded.updated_at'
+                );
+                for (const [key, text] of rows) save.run(key, text, new Date().toISOString());
+                db.exec('COMMIT');
+            } catch (error) {
+                db.exec('ROLLBACK');
+                throw error;
+            }
+        });
+    }
     export(id) {
         return this.withDatabase(id, (db) =>
             Object.fromEntries(

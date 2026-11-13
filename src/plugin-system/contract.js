@@ -38,16 +38,35 @@ function reference(templates) {
             id: '反向域名格式，例如 personal.clipboard',
             version: 'x.y.z',
             apiVersion: API_VERSION,
+            minHostVersion: '可选最低主程序版本，例如 5.6.0；新 SDK 能力应声明要求',
+            platforms: '可选系统列表：win32、darwin、linux；省略表示不限制',
             entry: '包内 .html 文件',
             commands: [{ id: 'open', title: '打开插件' }],
             navigation: [{ id: 'home', label: '主页' }],
-            backend: '页面插件不能声明 Node.js 后台入口'
+            backend: '页面插件不能声明 Node.js 后台入口',
+            background: '可选包内 HTML 后台页面，需声明 background；在隔离渲染进程运行，不提供 Node.js'
         },
         sdk: {
             'collectify.context()': 'Promise<{apiVersion,plugin:{id,name,version},theme,tokens}>',
             'collectify.storage.get(key)': '需要 storage；只读取本插件的 JSON 值，不存在时为 null',
             'collectify.storage.set(key,value)': '需要 storage；单值 256 KB，最多 200 项、8 MB',
             'collectify.storage.delete(key)': '需要 storage；删除本插件键',
+            'collectify.storage.batch({set,delete})':
+                '需要 storage；原子写入和删除多项，失败全部回滚；仍遵守单值和总配额',
+            'collectify.background.request(data)':
+                '向本插件 background 页面发起请求，等待 onBackgroundRequest 的响应；不跨插件',
+            'collectify.onBackgroundRequest(handler)': '后台处理请求，可返回 Promise；15 秒超时，停用时取消等待',
+            'collectify.background.setActive(boolean)':
+                '只允许后台调用；表示用户已开启后台工作，关闭主窗口后可驻留托盘',
+            'collectify.clipboard.snapshot()':
+                '需要 clipboard.read；返回文本、图片或文件列表快照。后台还需 clipboard.background 和用户开启的 active 状态；图片最多 4 MB，不读取文件原文',
+            'collectify.clipboard.writeSnapshot(snapshot)':
+                '需要 clipboard.write；恢复文本、PNG/JPEG 或文件列表到系统剪贴板',
+            'collectify.notify(data)': '向本插件前台发送 plugin-notify 事件，不跨插件',
+            'collectify.windows.open({focusItem})':
+                '需要 window；打开本插件的隔离置顶窗口，同一插件复用一个窗口，停用时关闭',
+            'collectify.desktop.paste()':
+                '需要 desktop.paste；仅前台插件主动调用，Windows 隐藏本应用后向恢复焦点的外部应用发送 Ctrl+V；其他平台明确报错',
             'collectify.clipboard.readText()':
                 '需要 clipboard.read；仅当前插件显示、主窗口可见且未最小化时允许；最多 64 KB 文本。采集应由用户在插件中主动开启，离开页面时暂停；不要把文本写入日志。',
             'collectify.clipboard.writeText(text)': '需要 clipboard.write；复制文本',
@@ -67,7 +86,7 @@ function reference(templates) {
         constraints: [
             '使用独立经典脚本文件，不写内联 script、事件属性或 eval；当前草稿校验不支持 ESM 模块脚本',
             'DOM 使用 textContent，不把用户输入拼进 innerHTML',
-            '网络、任意文件系统、跨插件存储、任意 Node.js 和后台进程不可用',
+            '网络、任意文件系统、跨插件存储和任意 Node.js 不可用；可声明受限后台页面，后台读取剪贴板需额外权限与用户主动开启',
             '输入文本只按用户要求保存；剪贴板采集默认关闭，历史保存在插件自己的 storage',
             '写入必须带 expectedRevision；并发修改会拒绝过期写入',
             '校验只编译脚本并检查资源，不执行插件。安装后可以查看受限诊断，不能据此宣称业务行为已完整验证'

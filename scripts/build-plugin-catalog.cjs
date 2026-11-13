@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
+const { spawnSync } = require('node:child_process');
 const { readManifest, pluginId } = require('../src/plugin-system/manifest');
 const { collectFiles, encodeZip, sha256, PluginPackages } = require('../src/plugin-system/package');
 const { validateCatalog } = require('../src/plugin-system/catalog');
@@ -14,7 +15,6 @@ function buildCatalog({
     const definition = JSON.parse(fs.readFileSync(path.join(root, 'plugins', 'definitions.json'), 'utf8'));
     if (
         !/^[\w.-]+\/[\w.-]+$/.test(definition.repository) ||
-        !/^plugins-[\w.-]+$/.test(definition.releaseTag) ||
         !Array.isArray(definition.plugins) ||
         !definition.plugins.length
     )
@@ -23,9 +23,13 @@ function buildCatalog({
         entries = [],
         packages = [];
     const catalogFile = path.join(root, 'plugins', 'catalog.json');
-    const previous = fs.existsSync(catalogFile)
-        ? validateCatalog(JSON.parse(fs.readFileSync(catalogFile, 'utf8')))
-        : [];
+    // 只锁定已提交版本，允许反复构建尚未提交的新版本。
+    const committed = spawnSync('git', ['show', 'HEAD:plugins/catalog.json'], {
+        cwd: root,
+        encoding: 'utf8',
+        windowsHide: true
+    });
+    const previous = committed.status === 0 ? validateCatalog(JSON.parse(committed.stdout)) : [];
     try {
         const validator = new PluginPackages(null, path.join(temp, 'validate'));
         for (const item of definition.plugins) {
@@ -59,6 +63,8 @@ function buildCatalog({
                 throw Error(`插件 ${published.id} 的程序改变，请提高版本号后发布`);
             packages.push({ filename, data });
             entries.push({
+                ...(published.minHostVersion ? { minHostVersion: published.minHostVersion } : {}),
+                ...(published.platforms ? { platforms: published.platforms } : {}),
                 id: published.id,
                 name: published.name,
                 description: published.description,
@@ -66,19 +72,28 @@ function buildCatalog({
                 apiVersion: published.apiVersion,
                 size: data.length,
                 sha256: digest,
-                url: `https://github.com/${definition.repository}/releases/download/${definition.releaseTag}/${filename}`
+                url: `https://github.com/${definition.repository}/releases/download/plugin-${published.id}-v${published.version}/${filename}`
             });
         }
         const catalog = { format: 'collectify-plugin-catalog', version: 1, plugins: entries };
         validateCatalog(catalog);
         const text = JSON.stringify(catalog, null, 2) + '\n';
-        if (check && (!fs.existsSync(catalogFile) || fs.readFileSync(catalogFile, 'utf8') !== text))
+        if (
+            check &&
+            (!fs.existsSync(catalogFile) ||
+                JSON.stringify(JSON.parse(fs.readFileSync(catalogFile, 'utf8'))) !== JSON.stringify(catalog))
+        )
             throw Error('plugins/catalog.json 与源码不一致，请运行 npm run plugins:build 并提交目录');
         fs.mkdirSync(output, { recursive: true });
         for (const { filename, data } of packages) fs.writeFileSync(path.join(output, filename), data);
         fs.writeFileSync(path.join(output, 'catalog.json'), text, 'utf8');
         if (!check) fs.writeFileSync(catalogFile, text, 'utf8');
-        return { tag: definition.releaseTag, repository: definition.repository, plugins: entries, output };
+        return {
+            tag: entries.length === 1 ? new URL(entries[0].url).pathname.split('/')[5] : null,
+            repository: definition.repository,
+            plugins: entries,
+            output
+        };
     } finally {
         fs.rmSync(temp, { recursive: true, force: true });
     }
