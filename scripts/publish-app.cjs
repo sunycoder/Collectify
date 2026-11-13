@@ -10,6 +10,12 @@ function publishApp() {
         out = path.resolve(__dirname, '../dist'),
         notes = path.resolve(__dirname, '../docs/releases', version + '.md');
     if (!fs.existsSync(notes)) throw Error('缺少当前版本发布说明');
+    // 下载入口必须对应本次真实产物，避免平台打包器转换架构名称后留下失效链接。
+    const readme = fs.readFileSync(path.resolve(__dirname, '../README.md'), 'utf8');
+    for (const match of readme.matchAll(/releases\/download\/([^/]+)\/(Collectify-[^\s)]+)/g)) {
+        if (match[1] === tag && !fs.existsSync(path.join(out, match[2])))
+            throw Error('README 下载链接没有对应安装包：' + match[2]);
+    }
     function gh(args) {
         const result = spawnSync('gh', args, { encoding: 'utf8', windowsHide: true });
         if (result.error) throw result.error;
