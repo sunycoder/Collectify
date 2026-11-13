@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, protocol, safeStorage, net } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, protocol, safeStorage } = require('electron');
 const fs = require('node:fs'),
     path = require('node:path'),
     os = require('node:os');
@@ -798,7 +798,7 @@ app.whenReady()
         await sourceCredentials.initialize();
         distribution = new Distribution({
             registry,
-            fetcher: (url, options) => net.fetch(url, options),
+            fetcher: require('./distribution/electron-fetch').electronFetch,
             backup,
             getSettings: settings,
             version: app.getVersion(),
