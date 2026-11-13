@@ -1,0 +1,16 @@
+{
+  "format": "collectify-plugin-catalog",
+  "version": 1,
+  "plugins": [
+    {
+      "id": "collectify.clipboard-history",
+      "name": "剪贴板历史",
+      "description": "在插件显示且手动开启后，记录本机剪贴板文本并快速复制。",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "size": 6526,
+      "sha256": "ab356dcfb22f8bb031ceeb237b176ebcd887318a6d1997bc0437c8b3a603d640",
+      "url": "https://github.com/sunycoder/Collectify/releases/download/plugins-v1/collectify.clipboard-history-1.0.0.collectify-plugin"
+    }
+  ]
+}

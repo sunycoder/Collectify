@@ -1,5 +1,9 @@
 const $ = (selector) => document.querySelector(selector);
 const api = window.workbench;
+let resolveShellReady;
+const shellReady = new Promise((resolve) => {
+    resolveShellReady = resolve;
+});
 let state = { plugins: [], settings: {} },
     toastTimer,
     selectedPlugin = null,
@@ -102,6 +106,24 @@ function closeDialogsForPlugin() {
     appearanceParent = null;
     document.querySelectorAll('dialog[open]').forEach((dialog) => dialog.close());
 }
+let dialogTransitions = 0;
+function syncOverlayState() {
+    // theme 的 close 事件可能晚于其他已关闭窗口的 close；返回设置的意图仍需保留遮罩。
+    return call(
+        'overlay',
+        dialogTransitions > 0 || appearanceParent !== null || !!document.querySelector('dialog[open]')
+    );
+}
+async function withDialogTransition(action) {
+    dialogTransitions++;
+    try {
+        await syncOverlayState();
+        return await action();
+    } finally {
+        dialogTransitions--;
+        await syncOverlayState();
+    }
+}
 function renderShell(next) {
     state = next;
     const collapsed = state.settings.navigationCollapsed === true;
@@ -109,6 +131,7 @@ function renderShell(next) {
     $('#toggle-navigation').setAttribute('aria-expanded', String(!collapsed));
     $('#toggle-navigation').setAttribute('aria-label', collapsed ? '展开导航' : '收起导航');
     $('#toggle-navigation').title = collapsed ? '展开导航' : '收起导航';
+    $('#expand-navigation').setAttribute('aria-expanded', String(!collapsed));
     $('.plugin-context').inert = collapsed;
     if (!$('#theme-dialog').open) ShiyueTheme.apply(state.settings.theme);
     const enabled = state.plugins.filter((p) => p.enabled),
@@ -297,7 +320,7 @@ function renderPluginCatalog() {
     $('#plugin-catalog-status').textContent = catalogState.loaded
         ? `目录提供 ${catalogState.plugins.length} 个插件 · ${new Date(catalogState.updatedAt).toLocaleString()}`
         : catalogState.source
-          ? '点击刷新读取目录；打开此页不会自动联网。'
+          ? '首次进入时读取目录，也可点击刷新重新加载。'
           : '尚未配置在线目录，可以先使用“安装插件包”。';
     const query = $('#catalog-search').value.trim().toLowerCase(),
         items = catalogState.plugins.filter((p) =>
@@ -369,26 +392,28 @@ function selectSettingsPanel(panel) {
         .forEach((n) => n.classList.toggle('selected', n.dataset.settingsPanel === panel));
 }
 async function openSettings(panel = 'general') {
-    await call('overlay', true);
-    const info = await call('workspace-info');
-    $('#app-version').textContent = info.version;
-    $('#data-file').textContent = info.file;
-    $('#data-directory').textContent = info.directory;
-    $('#keep-in-tray').checked = state.settings.keepInTray;
-    $('#browser-open-mode').value = state.settings.browserOpenMode || 'internal';
-    $('#mcp-port').value = info.mcp.port;
-    renderMcpStatus(info.mcp);
-    catalogState = await call('plugin-catalog-status');
-    renderPluginCatalog();
-    selectSettingsPanel(typeof panel === 'string' ? panel : 'general');
-    $('#settings-error').textContent = '';
-    $('#settings-dialog').showModal();
+    return withDialogTransition(async () => {
+        const info = await call('workspace-info');
+        $('#app-version').textContent = info.version;
+        $('#data-file').textContent = info.file;
+        $('#data-directory').textContent = info.directory;
+        $('#keep-in-tray').checked = state.settings.keepInTray;
+        $('#browser-open-mode').value = state.settings.browserOpenMode || 'internal';
+        $('#mcp-port').value = info.mcp.port;
+        renderMcpStatus(info.mcp);
+        catalogState = await call('plugin-catalog-status');
+        renderPluginCatalog();
+        selectSettingsPanel(typeof panel === 'string' ? panel : 'general');
+        $('#settings-error').textContent = '';
+        $('#settings-dialog').showModal();
+    });
 }
 document
     .querySelectorAll('[data-settings-panel]')
     .forEach((n) => (n.onclick = () => selectSettingsPanel(n.dataset.settingsPanel)));
 $('#settings-button').onclick = task(() => openSettings());
 $('#collapsed-settings-button').onclick = task(() => openSettings());
+$('#expand-navigation').onclick = task(() => call('settings', { navigationCollapsed: false }));
 $('#toggle-navigation').onclick = task(() =>
     call('settings', { navigationCollapsed: !state.settings.navigationCollapsed })
 );
@@ -397,15 +422,20 @@ $('#install-plugin').onclick = () => managePlugin('plugin-install');
 $('#install-plugin-package').onclick = () => managePlugin('plugin-package-install');
 $('#save-plugin-catalog').onclick = () => managePlugin('plugin-catalog-configure', $('#plugin-catalog-url').value);
 $('#refresh-plugin-catalog').onclick = () => managePlugin('plugin-catalog-refresh');
+$('#official-plugin-catalog').onclick = task(async () => {
+    const result = await managePlugin('plugin-catalog-configure', '');
+    if (result) await managePlugin('plugin-catalog-refresh');
+});
 $('#catalog-search').oninput = renderPluginCatalog;
 document.querySelectorAll('[data-plugin-tab]').forEach(
     (node) =>
-        (node.onclick = () => {
+        (node.onclick = task(async () => {
             const installed = node.dataset.pluginTab === 'installed';
             $('#installed-plugins').hidden = !installed;
             $('#catalog-plugins').hidden = installed;
             document.querySelectorAll('[data-plugin-tab]').forEach((n) => n.classList.toggle('selected', n === node));
-        })
+            if (!installed && !catalogState.loaded) await managePlugin('plugin-catalog-refresh');
+        }))
 );
 $('#open-data-directory').onclick = task(() => call('open-data-directory'));
 $('#keep-in-tray').onchange = task(() =>
@@ -429,9 +459,12 @@ document.querySelectorAll('dialog').forEach((dialog) => {
     dialog
         .querySelectorAll('.dialog-close,.cancel-dialog')
         .forEach((button) => (button.onclick = () => dialog.close()));
-    dialog.addEventListener('close', () =>
-        queueMicrotask(() => void call('overlay', !!document.querySelector('dialog[open]')))
-    );
+    dialog.addEventListener('close', () => {
+        // 在一次回调内先完成返回上一级等动作，再计算原生插件视图是否可以恢复。
+        // 浏览器可在原生事件的两个监听器之间执行微任务，不能依赖监听器注册顺序。
+        dialog.dispatchEvent(new Event('workspace-dialog-closed'));
+        queueMicrotask(() => void syncOverlayState().catch((error) => toast(error.message)));
+    });
 });
 async function openTransfer(mode) {
     transferMode = mode;
@@ -440,31 +473,32 @@ async function openTransfer(mode) {
         transferDraft = await call('import-preview');
         if (!transferDraft) return;
     }
-    $('#settings-dialog').close();
-    await call('overlay', true);
-    $('#transfer-error').textContent = '';
-    $('#transfer-options').replaceChildren();
-    const ids = transferDraft?.ids || (state.dataPlugins || state.plugins).map((p) => p.id);
-    for (const id of ids) {
-        const plugin = state.plugins.find((p) => p.id === id),
-            label = el('label'),
-            input = document.createElement('input'),
-            copy = el('span');
-        input.type = 'checkbox';
-        input.value = id;
-        input.checked = true;
-        copy.append(el('strong', '', plugin?.name || id), el('small', '', plugin ? id : '未安装 · 保留的数据'));
-        label.append(input, copy);
-        $('#transfer-options').append(label);
-    }
-    $('#transfer-title').textContent = mode === 'export' ? '导出数据' : '导入数据';
-    $('#transfer-file-summary').textContent = transferDraft?.name || '';
-    $('#transfer-settings').disabled = mode === 'import' && !transferDraft.settings;
-    $('#transfer-settings').checked = !$('#transfer-settings').disabled;
-    $('#transfer-mode-label').hidden = mode !== 'import';
-    $('#transfer-credentials').parentElement.hidden = mode !== 'export';
-    $('#transfer-confirm').textContent = mode === 'export' ? '导出' : '确认导入';
-    $('#transfer-dialog').showModal();
+    return withDialogTransition(async () => {
+        $('#settings-dialog').close();
+        $('#transfer-error').textContent = '';
+        $('#transfer-options').replaceChildren();
+        const ids = transferDraft?.ids || (state.dataPlugins || state.plugins).map((p) => p.id);
+        for (const id of ids) {
+            const plugin = state.plugins.find((p) => p.id === id),
+                label = el('label'),
+                input = document.createElement('input'),
+                copy = el('span');
+            input.type = 'checkbox';
+            input.value = id;
+            input.checked = true;
+            copy.append(el('strong', '', plugin?.name || id), el('small', '', plugin ? id : '未安装 · 保留的数据'));
+            label.append(input, copy);
+            $('#transfer-options').append(label);
+        }
+        $('#transfer-title').textContent = mode === 'export' ? '导出数据' : '导入数据';
+        $('#transfer-file-summary').textContent = transferDraft?.name || '';
+        $('#transfer-settings').disabled = mode === 'import' && !transferDraft.settings;
+        $('#transfer-settings').checked = !$('#transfer-settings').disabled;
+        $('#transfer-mode-label').hidden = mode !== 'import';
+        $('#transfer-credentials').parentElement.hidden = mode !== 'export';
+        $('#transfer-confirm').textContent = mode === 'export' ? '导出' : '确认导入';
+        $('#transfer-dialog').showModal();
+    });
 }
 $('#settings-export').onclick = task(() => openTransfer('export'));
 $('#settings-import').onclick = task(() => openTransfer('import'));
@@ -495,9 +529,15 @@ document.addEventListener(
     'DOMContentLoaded',
     () =>
         void task(async () => {
-            await refresh();
-            const enabled = state.plugins.filter((p) => p.enabled);
-            if (!state.active && enabled.length)
-                await call('plugin-open', { id: enabled.find((p) => p.id === state.lastPlugin)?.id || enabled[0].id });
+            try {
+                await refresh();
+                const enabled = state.plugins.filter((p) => p.enabled);
+                if (!state.active && enabled.length)
+                    await call('plugin-open', {
+                        id: enabled.find((p) => p.id === state.lastPlugin)?.id || enabled[0].id
+                    });
+            } finally {
+                resolveShellReady();
+            }
         })()
 );

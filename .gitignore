@@ -1,6 +1,7 @@
 node_modules/
 dist/
 artifacts/
+.plugin-release/
 *.log
 .idea/
 .DS_Store

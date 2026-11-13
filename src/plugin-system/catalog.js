@@ -1,5 +1,6 @@
 const { pluginId } = require('./manifest');
 const { ARCHIVE_LIMIT } = require('./package');
+const DEFAULT_CATALOG_URL = 'https://raw.githubusercontent.com/sunycoder/Collectify/main/plugins/catalog.json';
 
 function compareVersion(a, b) {
     const left = a.split('.').map(BigInt),
@@ -108,12 +109,13 @@ class PluginCatalog {
         this.options = options;
         this.items = [];
         this.loaded = false;
-        this.source = registry.getSetting('pluginCatalogUrl', '');
+        this.source = registry.getSetting('pluginCatalogUrl', '') || DEFAULT_CATALOG_URL;
         this.updatedAt = null;
     }
     status() {
         return {
             source: this.source,
+            officialSource: DEFAULT_CATALOG_URL,
             loaded: this.loaded,
             updatedAt: this.updatedAt,
             plugins: this.items.map((item) => {
@@ -128,7 +130,7 @@ class PluginCatalog {
         };
     }
     configure(value) {
-        const source = value.trim() ? httpsUrl(value.trim()) : '';
+        const source = value.trim() ? httpsUrl(value.trim()) : DEFAULT_CATALOG_URL;
         this.registry.setSetting('pluginCatalogUrl', source);
         this.source = source;
         this.items = [];
@@ -157,4 +159,4 @@ class PluginCatalog {
         return { data, item };
     }
 }
-module.exports = { PluginCatalog, validateCatalog, httpsUrl, download, compareVersion };
+module.exports = { PluginCatalog, validateCatalog, httpsUrl, download, compareVersion, DEFAULT_CATALOG_URL };

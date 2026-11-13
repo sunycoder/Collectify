@@ -1,0 +1,35 @@
+name: 发布官方插件
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'plugins/**'
+      - 'src/plugin-templates/clipboard-history/**'
+      - 'scripts/build-plugin-catalog.cjs'
+      - 'scripts/publish-plugins.cjs'
+      - '.github/workflows/publish-plugins.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: collectify-plugin-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: 校验目录与构建插件包
+        run: node scripts/build-plugin-catalog.cjs --check
+      - name: 发布插件附件
+        run: node scripts/publish-plugins.cjs
+        env:
+          GH_TOKEN: ${{ github.token }}

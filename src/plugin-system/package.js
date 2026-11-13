@@ -79,20 +79,20 @@ function collectFiles(root) {
 }
 
 // 标准 ZIP，支持 Store/Deflate。严格约束目录与文件头，避免解压路径穿透和资源耗尽。
-function encodeZip(files) {
+function encodeZip(files, { store = false } = {}) {
     const local = [],
         central = [];
     let offset = 0;
     for (const { name, data } of files) {
         safeName(name);
         const filename = Buffer.from(name, 'utf8'),
-            compressed = deflateRawSync(data),
+            compressed = store ? data : deflateRawSync(data),
             crc = crc32(data);
         const head = Buffer.alloc(30);
         head.writeUInt32LE(0x04034b50);
         head.writeUInt16LE(20, 4);
         head.writeUInt16LE(0x800, 6);
-        head.writeUInt16LE(8, 8);
+        head.writeUInt16LE(store ? 0 : 8, 8);
         head.writeUInt32LE(crc, 14);
         head.writeUInt32LE(compressed.length, 18);
         head.writeUInt32LE(data.length, 22);
@@ -103,7 +103,7 @@ function encodeZip(files) {
         record.writeUInt16LE(20, 4);
         record.writeUInt16LE(20, 6);
         record.writeUInt16LE(0x800, 8);
-        record.writeUInt16LE(8, 10);
+        record.writeUInt16LE(store ? 0 : 8, 10);
         record.writeUInt32LE(crc, 16);
         record.writeUInt32LE(compressed.length, 20);
         record.writeUInt32LE(data.length, 24);

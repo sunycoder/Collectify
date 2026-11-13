@@ -65,19 +65,20 @@ function renderAppearance() {
 }
 
 $('#theme-button').onclick = task(async () => {
-    hideMenu();
-    appearanceParent = $('#settings-dialog').open
-        ? $('.settings-navigation .selected')?.dataset.settingsPanel || 'general'
-        : null;
-    $('#settings-dialog').close();
-    await call('overlay', true);
-    savedTheme = Theme.validate(state.settings?.theme);
-    draftTheme = { ...savedTheme };
-    themeSaved = false;
-    appearancePreview = 'main';
-    $('#theme-error').textContent = '';
-    syncThemeControls();
-    $('#theme-dialog').showModal();
+    return withDialogTransition(async () => {
+        hideMenu();
+        appearanceParent = $('#settings-dialog').open
+            ? $('.settings-navigation .selected')?.dataset.settingsPanel || 'general'
+            : null;
+        $('#settings-dialog').close();
+        savedTheme = Theme.validate(state.settings?.theme);
+        draftTheme = { ...savedTheme };
+        themeSaved = false;
+        appearancePreview = 'main';
+        $('#theme-error').textContent = '';
+        syncThemeControls();
+        $('#theme-dialog').showModal();
+    });
 });
 for (const field of [
     'accent',
@@ -101,11 +102,11 @@ for (const field of [
         renderAppearance();
     });
 }
-$('#theme-dialog').addEventListener('close', () => {
+$('#theme-dialog').addEventListener('workspace-dialog-closed', () => {
     if (!themeSaved && savedTheme) Theme.apply(savedTheme);
     const parent = appearanceParent;
     appearanceParent = null;
-    if (parent) queueMicrotask(() => void openSettings(parent));
+    if (parent) void task(() => openSettings(parent))();
 });
 $('#appearance-back').onclick = () => {
     if (!appearanceParent) appearanceParent = 'general';

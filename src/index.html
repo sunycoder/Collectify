@@ -23,6 +23,16 @@
                 <button id="shell-home" class="shell-brand" title="Collectify">
                     <img src="../assets/icon.png" alt="Collectify" />
                 </button>
+                <button
+                    id="expand-navigation"
+                    class="icon-button navigation-toggle"
+                    title="展开导航"
+                    aria-label="展开导航"
+                    aria-expanded="false"
+                    aria-controls="plugin-context"
+                >
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 10h8M4 15h8M17 10l4 3-4 3" /></svg>
+                </button>
                 <nav id="plugin-rail" aria-label="插件"></nav>
                 <button id="collapsed-settings-button" class="icon-button" title="设置" aria-label="设置">
                     <span class="settings-svg"></span>
@@ -30,7 +40,21 @@
             </div>
             <div id="plugin-context" class="plugin-context">
                 <header>
-                    <h1 id="navigation-title">工作台</h1>
+                    <div class="navigation-heading">
+                        <button
+                            id="toggle-navigation"
+                            class="icon-button navigation-toggle"
+                            title="收起导航"
+                            aria-label="收起导航"
+                            aria-expanded="true"
+                            aria-controls="plugin-context"
+                        >
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 5h16M4 10h8M4 15h8M20 10l-4 3 4 3" />
+                            </svg>
+                        </button>
+                        <h1 id="navigation-title">工作台</h1>
+                    </div>
                     <p id="navigation-description">选择一个插件开始</p>
                 </header>
                 <nav id="plugin-navigation" aria-label="当前插件导航"></nav>
@@ -44,18 +68,7 @@
             </div>
         </aside>
         <header class="shell-topbar">
-            <div>
-                <button
-                    id="toggle-navigation"
-                    class="icon-button"
-                    title="收起导航"
-                    aria-label="收起导航"
-                    aria-expanded="true"
-                    aria-controls="plugin-context"
-                >
-                    ☰</button
-                ><strong id="plugin-title">Collectify</strong><span id="route-title"></span>
-            </div>
+            <div><strong id="plugin-title">Collectify</strong><span id="route-title"></span></div>
             <input id="plugin-search" aria-label="搜索插件" placeholder="搜索插件 · Ctrl / ⌘ K" />
         </header>
         <main id="shell-main">
@@ -130,7 +143,8 @@
                             placeholder="https://…/catalog.json"
                             spellcheck="false"
                         /><button id="save-plugin-catalog" class="subtle">保存地址</button
-                        ><button id="refresh-plugin-catalog" class="subtle">刷新</button>
+                        ><button id="refresh-plugin-catalog" class="subtle">刷新</button
+                        ><button id="official-plugin-catalog" class="subtle">使用官方源</button>
                     </div>
                     <p id="plugin-catalog-status" role="status">配置发布者的目录地址，或直接安装下载好的插件包。</p>
                     <input

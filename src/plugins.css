@@ -200,6 +200,47 @@ body.navigation-collapsed {
 #toggle-navigation {
     flex-shrink: 0;
 }
+.navigation-heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.navigation-heading h1 {
+    margin: 0;
+    min-width: 0;
+    font-size: 19px;
+    overflow-wrap: anywhere;
+}
+.navigation-toggle {
+    width: 28px;
+    height: 28px;
+    padding: 4px;
+    border-radius: 6px;
+    color: var(--muted);
+    flex-shrink: 0;
+}
+.navigation-toggle:hover {
+    background: var(--paper);
+    color: var(--ink);
+}
+.navigation-toggle svg {
+    width: 19px;
+    height: 19px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+#expand-navigation {
+    display: none;
+    align-self: center;
+}
+.navigation-collapsed #expand-navigation {
+    display: grid;
+    place-items: center;
+}
 .browser-mode-label {
     display: block;
     margin-top: 24px;

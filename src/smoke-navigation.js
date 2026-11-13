@@ -13,6 +13,7 @@ exports.run = async ({ win, registry, runtime, services, hostAction }) => {
         }
         throw Error('导航界面更新超时');
     };
+    await host('shellReady');
     await hostAction('plugin-open', { id: 'collectify.json' });
     await until(() => host("document.querySelectorAll('.plugin-asset-icon').length===5"));
     const rail = await host(
@@ -22,6 +23,39 @@ exports.run = async ({ win, registry, runtime, services, hostAction }) => {
     assert.ok(rail.scrollHeight <= rail.height);
     assert.equal(rail.select, 'none');
     assert.match(rail.icon, /svg/);
+    // 原生插件视图不能在两个宿主弹窗之间的空档重新显示。
+    const layout = runtime.layout.bind(runtime),
+        visibility = [];
+    let watching = false;
+    runtime.layout = (visible) => {
+        if (watching) visibility.push(visible);
+        return layout(visible);
+    };
+    try {
+        await host("openSettings('general')");
+        watching = true;
+        for (let attempt = 0; attempt < 3; attempt++) {
+            await host("document.querySelector('#theme-button').click()");
+            await until(() => host("document.querySelector('#theme-dialog').open"));
+            await delay(60);
+            assert.equal(runtime.views.get('collectify.json').view.getVisible(), false);
+            await host("document.querySelector('#appearance-back').click()");
+            await until(() => host("document.querySelector('#settings-dialog').open"));
+            await delay(60);
+            assert.equal(runtime.views.get('collectify.json').view.getVisible(), false);
+        }
+        assert.equal(visibility.includes(true), false, '切换弹窗期间插件视图被恢复');
+        await host("openTransfer('export')");
+        await until(() => host("document.querySelector('#transfer-dialog').open"));
+        assert.equal(runtime.views.get('collectify.json').view.getVisible(), false);
+        assert.equal(visibility.includes(true), false);
+        watching = false;
+        await host("document.querySelector('#transfer-dialog').close()");
+        await until(() => runtime.views.get('collectify.json').view.getVisible());
+    } finally {
+        watching = false;
+        runtime.layout = layout;
+    }
     const last = await host(
         "(()=>{const r=document.querySelector('#plugin-rail button:last-child').getBoundingClientRect();return{x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)}})()"
     );
@@ -65,16 +99,17 @@ exports.run = async ({ win, registry, runtime, services, hostAction }) => {
         shell.openExternal = original;
     }
     await host(
-        "document.querySelector('#settings-dialog').close();document.querySelector('#toggle-navigation').click()"
+        "document.querySelector('#settings-dialog').close();document.querySelector('#expand-navigation').click()"
     );
     await until(() => runtime.bounds.x === 300);
     assert.equal(registry.getSetting('navigationCollapsed'), false);
     const output = require('./verification-output').directory;
+    await until(() => runtime.active() && !runtime.active().loading);
     await hostAction('plugin-open', { id: 'collectify.json' });
     await delay(120);
     fs.writeFileSync(path.join(output, 'navigation-expanded.png'), (await win.webContents.capturePage()).toPNG());
     for (const record of runtime.views.values()) assert.deepEqual(record.errors, []);
     console.log(
-        'NAVIGATION PASS：SVG 图标、长按无文本选中、无横向溢出、导航收放与实际插件区域同步、折叠设置入口、浏览器偏好持久化和显式覆盖通过；系统浏览器调用使用测试替身。'
+        'NAVIGATION PASS：弹窗连续切换不恢复插件视图、SVG 图标、长按无文本选中、无横向溢出、导航收放与实际插件区域同步、折叠设置入口、浏览器偏好持久化和显式覆盖通过；系统浏览器调用使用测试替身。'
     );
 };

@@ -660,7 +660,8 @@ app.whenReady()
                         pluginCatalog,
                         hostAction
                     };
-                if (process.argv.includes('--smoke-tools')) await require('./smoke-tools').run(context);
+                if (process.argv.includes('--smoke-official')) await require('./smoke-official').run(context);
+                else if (process.argv.includes('--smoke-tools')) await require('./smoke-tools').run(context);
                 else if (process.argv.includes('--smoke-navigation')) await require('./smoke-navigation').run(context);
                 else if (process.argv.includes('--smoke-startup')) {
                     await verification.startup(context);
