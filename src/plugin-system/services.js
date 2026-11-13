@@ -76,6 +76,10 @@ class PluginServices extends EventEmitter {
             // 已开始的业务写入必须先结束，避免卸载后旧异步任务重新创建已删除的数据库。
             await Promise.allSettled([...(this.pending.get(id) || [])]);
             await this.providers.get(id)?.dispose?.();
+            const directory = this.registry.plugins.get(id)?.directory;
+            if (directory)
+                for (const file of Object.keys(require.cache))
+                    if (file.startsWith(directory + path.sep)) delete require.cache[file];
             this.providers.delete(id);
             this.errors.delete(id);
         } finally {

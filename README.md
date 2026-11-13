@@ -4,14 +4,14 @@
 
 ## 下载
 
-当前主程序版本 **5.6.0**。下载后直接安装，无需 Git、Node.js 或数据库环境。
+当前主程序版本 **5.7.1**。下载后直接安装，无需 Git、Node.js 或数据库环境。
 
 | 系统                | 安装包                                                                                                                                                                                                                         | 状态         |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------ |
-| Windows 10/11 x64   | [下载安装包](https://github.com/sunycoder/Collectify/releases/download/v5.6.0/Collectify-5.6.0-windows-x64-setup.exe)                                                                                                          | 已做桌面验证 |
-| macOS Apple Silicon | [下载 DMG](https://github.com/sunycoder/Collectify/releases/download/v5.6.0/Collectify-5.6.0-macos-arm64.dmg)                                                                                                                  | 试用         |
-| macOS Intel         | [下载 DMG](https://github.com/sunycoder/Collectify/releases/download/v5.6.0/Collectify-5.6.0-macos-x64.dmg)                                                                                                                    | 试用         |
-| Linux x64           | [AppImage](https://github.com/sunycoder/Collectify/releases/download/v5.6.0/Collectify-5.6.0-linux-x86_64.AppImage) / [deb](https://github.com/sunycoder/Collectify/releases/download/v5.6.0/Collectify-5.6.0-linux-amd64.deb) | 试用         |
+| Windows 10/11 x64   | [下载安装包](https://github.com/sunycoder/Collectify/releases/download/v5.7.1/Collectify-5.7.1-windows-x64-setup.exe)                                                                                                          | 已做桌面验证 |
+| macOS Apple Silicon | [下载 DMG](https://github.com/sunycoder/Collectify/releases/download/v5.7.1/Collectify-5.7.1-macos-arm64.dmg)                                                                                                                  | 试用         |
+| macOS Intel         | [下载 DMG](https://github.com/sunycoder/Collectify/releases/download/v5.7.1/Collectify-5.7.1-macos-x64.dmg)                                                                                                                    | 试用         |
+| Linux x64           | [AppImage](https://github.com/sunycoder/Collectify/releases/download/v5.7.1/Collectify-5.7.1-linux-x86_64.AppImage) / [deb](https://github.com/sunycoder/Collectify/releases/download/v5.7.1/Collectify-5.7.1-linux-amd64.deb) | 试用         |
 
 [全部版本与发布说明](https://github.com/sunycoder/Collectify/releases) · [安装、更新与备份](docs/USER-GUIDE.md) · [更新记录](CHANGELOG.md) · [反馈问题](https://github.com/sunycoder/Collectify/issues/new/choose)
 

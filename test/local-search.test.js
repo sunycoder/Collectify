@@ -3,9 +3,9 @@ const { test } = require('node:test'),
     fs = require('node:fs'),
     os = require('node:os'),
     path = require('node:path');
-const { FILTERS, preferences, matches, csv, queryText } = require('../src/plugins/local-search/model');
-const { SearchEngine, folderSearch } = require('../src/plugins/local-search/engine');
-const { PreviewService } = require('../src/plugins/local-search/preview');
+const { FILTERS, preferences, matches, csv, queryText } = require('../src/plugin-library/local-search/model');
+const { SearchEngine, folderSearch } = require('../src/plugin-library/local-search/engine');
+const { PreviewService } = require('../src/plugin-library/local-search/preview');
 const fixtures = path.join(__dirname, 'fixtures', 'local-search');
 function temporary(t) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'collectify-search-test-'));
@@ -116,7 +116,7 @@ test('后台只允许访问已展示的搜索结果，偏好重启保持，停�
         },
         nativeImage: {}
     };
-    const backend = await require('../src/plugins/local-search/backend').create(
+    const backend = await require('../src/plugin-library/local-search/backend').create(
         { file: path.join(root, 'data.sqlite') },
         { electron }
     );
@@ -130,7 +130,7 @@ test('后台只允许访问已展示的搜索结果，偏好重启保持，停�
     await assert.rejects(backend.call('preview', { id: 'C:\\private.txt' }), /结果已更新/);
     await backend.call('open', { id: result.items[0].id });
     assert.ok(opened[0].startsWith(fixtures));
-    const reopened = await require('../src/plugins/local-search/backend').create(
+    const reopened = await require('../src/plugin-library/local-search/backend').create(
         { file: path.join(root, 'data.sqlite') },
         { electron }
     );
@@ -141,9 +141,9 @@ test('后台只允许访问已展示的搜索结果，偏好重启保持，停�
 });
 test('源码目录安装识别真实默认目录，拒绝冒充 ID 的外部原生目录并给出清晰原因', (t) => {
     const { builtinSource, assertPageSource } = require('../src/plugin-system/source-install');
-    const directory = path.resolve(__dirname, '../src/plugins/local-search');
-    const registry = { defaults: () => [{ id: 'collectify.local-search', directory }] };
-    assert.equal(builtinSource(directory, registry).id, 'collectify.local-search');
+    const directory = path.resolve(__dirname, '../src/plugins/notes');
+    const registry = { defaults: () => [{ id: 'collectify.notes', directory }] };
+    assert.equal(builtinSource(directory, registry).id, 'collectify.notes');
     const copy = temporary(t);
     fs.writeFileSync(
         path.join(copy, 'manifest.json'),

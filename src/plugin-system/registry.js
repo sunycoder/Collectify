@@ -111,7 +111,7 @@ class PluginRegistry {
             .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
             .map(({ directory, entry, backend, ...publicInfo }) => ({
                 ...publicInfo,
-                distributable: !backend && !publicInfo.builtin
+                distributable: !publicInfo.builtin
             }));
     }
     setEnabled(id, enabled) {
@@ -140,7 +140,8 @@ class PluginRegistry {
             if (comparison < 0) throw Error('不能安装低于当前版本的插件');
             if (
                 comparison === 0 &&
-                sha256(encodeZip(collectFiles(source))) !== sha256(encodeZip(collectFiles(previous.directory)))
+                sha256(encodeZip(collectFiles(source), { native: manifest.runtime === 'native' })) !==
+                    sha256(encodeZip(collectFiles(previous.directory), { native: previous.runtime === 'native' }))
             )
                 throw Error('程序内容改变时必须提高插件版本号');
         }
@@ -161,14 +162,13 @@ class PluginRegistry {
                         throw Error('插件包不应包含依赖目录或隐藏目录');
                     inspect(file, depth + 1);
                 } else if (item.isFile()) {
-                    if (
-                        !/\.(html|js|mjs|css|json|svg|png|jpe?g|webp|woff2|txt|md)$/i.test(item.name) &&
-                        item.name !== 'LICENSE'
-                    )
-                        throw Error('插件包包含不支持的文件类型');
+                    require('./package').safeName(path.relative(origin, file).split(path.sep).join('/'), {
+                        native: manifest.runtime === 'native'
+                    });
                     total += fs.statSync(file).size;
                     files++;
-                    if (total > 10 * 1024 * 1024 || files > 300) throw Error('插件包超过 10 MB 或 300 个文件');
+                    if (total > (manifest.runtime === 'native' ? 96 : 10) * 1024 * 1024 || files > 300)
+                        throw Error('插件包超过大小或文件数量限制');
                 } else throw Error('插件包包含特殊文件');
             }
         };

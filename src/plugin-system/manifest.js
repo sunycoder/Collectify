@@ -9,7 +9,8 @@ const PERMISSIONS = [
     'background',
     'clipboard.background',
     'window',
-    'desktop.paste'
+    'desktop.paste',
+    'native'
 ];
 const ID = /^[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)+$/;
 
@@ -85,7 +86,16 @@ function readManifest(root, { builtin = false } = {}) {
         // API v1 命令均打开插件页面；暂不执行任意后台 Node.js 入口。
         return { id: c.id, title: c.title };
     });
-    if (input.backend && !builtin) throw Error('本地页面插件不能声明原生后台入口');
+    let publisher;
+    if (input.backend && !builtin) {
+        if (input.runtime !== 'native' || !input.permissions.includes('native'))
+            throw Error('本地页面插件不能声明原生后台入口');
+        publisher = require('./native-signature').verifyDirectory(root);
+    }
+    if (input.runtime === 'native' && (!input.backend || !input.permissions.includes('native')))
+        throw Error('原生插件必须声明后台入口和 native 权限');
+    if (input.permissions.includes('native') && input.runtime !== 'native')
+        throw Error('native 权限必须配合原生运行方式');
     if (input.backend) assetPath(root, input.backend);
     if (input.background) {
         if (
@@ -119,6 +129,7 @@ function readManifest(root, { builtin = false } = {}) {
         throw Error('插件导航不正确');
     return {
         ...requirements,
+        ...(input.runtime === 'native' ? { runtime: 'native', publisher } : {}),
         ...(input.background ? { background: input.background } : {}),
         ...(input.iconAsset ? { iconAsset: input.iconAsset } : {}),
         id: input.id,
@@ -132,7 +143,7 @@ function readManifest(root, { builtin = false } = {}) {
         navigation,
         order: Number.isFinite(input.order) ? input.order : 100,
         glyph: typeof input.glyph === 'string' ? input.glyph.slice(0, 4) : input.name.slice(0, 1),
-        ...(builtin && input.backend ? { backend: input.backend } : {})
+        ...(input.backend && (builtin || publisher) ? { backend: input.backend } : {})
     };
 }
 

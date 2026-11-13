@@ -116,7 +116,7 @@ pdf +=
     `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
 fs.writeFileSync(path.join(output, 'sample.pdf'), pdf);
 fs.writeFileSync(path.join(output, 'sample.ai'), pdf);
-const seven = path.resolve(__dirname, '../src/plugins/local-search/vendor/native/7z.exe');
+const seven = path.resolve(__dirname, '../src/plugin-library/local-search/vendor/native/7z.exe');
 if (process.platform === 'win32')
     execFileSync(seven, ['a', path.join(output, 'sample.7z'), path.join(output, 'readme.txt')], {
         windowsHide: true,

@@ -15,7 +15,7 @@ function assertPageSource(source) {
     const manifest = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''));
     if (manifest.backend)
         throw Error(
-            `“${String(manifest.name || manifest.id || '此插件').slice(0, 100)}”包含原生后台，不能通过页面插件入口安装。请选择当前 Collectify 自带的插件目录以启用/恢复，或升级包含该插件的 Collectify 主程序。`
+            `“${String(manifest.name || manifest.id || '此插件').slice(0, 100)}”包含原生后台，不能通过页面插件入口安装。请使用发布者签名的原生插件包，或选择默认插件原目录以启用/恢复。`
         );
     return manifest;
 }

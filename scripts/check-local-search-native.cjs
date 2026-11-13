@@ -2,11 +2,11 @@ const fs = require('node:fs'),
     path = require('node:path'),
     os = require('node:os'),
     cp = require('node:child_process');
-const { run, SearchEngine } = require('../src/plugins/local-search/engine');
+const { run, SearchEngine } = require('../src/plugin-library/local-search/engine');
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'collectify-native-search-')),
     instance = 'CollectifyTest' + Date.now();
 async function main() {
-    const vendor = path.resolve(__dirname, '../src/plugins/local-search/vendor/native');
+    const vendor = path.resolve(__dirname, '../src/plugin-library/local-search/vendor/native');
     const file = path.join(root, 'files.efu');
     fs.writeFileSync(
         file,

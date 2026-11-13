@@ -127,7 +127,7 @@ class PluginCatalog {
                     ...item,
                     installedVersion: installed?.version || null,
                     updateAvailable: !!installed && compareVersion(item.version, installed.version) > 0,
-                    native: !!installed?.backend
+                    native: !!installed?.builtin
                 };
             })
         };

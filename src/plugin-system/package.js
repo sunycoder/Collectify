@@ -5,11 +5,12 @@ const { deflateRawSync, inflateRawSync } = require('node:zlib');
 const { readManifest } = require('./manifest');
 
 const LIMIT = 10 * 1024 * 1024;
-const ARCHIVE_LIMIT = 12 * 1024 * 1024;
+const ARCHIVE_LIMIT = 64 * 1024 * 1024;
+const NATIVE_LIMIT = 96 * 1024 * 1024;
 const TYPES = /\.(html|js|mjs|css|json|svg|png|jpe?g|webp|woff2|txt|md)$/i;
 
 // 安装包只装程序资源。数据目录、凭据、宿主配置均不属于这个格式。
-function safeName(name) {
+function safeName(name, { native = false } = {}) {
     if (
         typeof name !== 'string' ||
         !name ||
@@ -32,7 +33,13 @@ function safeName(name) {
         name.split('/').length > 21
     )
         throw Error('插件包资源路径不合法');
-    if (!TYPES.test(name) && path.posix.basename(name) !== 'LICENSE') throw Error('插件包包含不支持的文件类型');
+    if (
+        !TYPES.test(name) &&
+        !(native && /\.(cjs|exe|dll|lng|bcmap|pfb|ttf|woff|otf|icc|map|xz|LICENSE|markdown)$/i.test(name)) &&
+        !(native && /(?:^|[-_.])(LICENSE|NOTICE)$/i.test(path.posix.basename(name))) &&
+        !/^(LICENSE|NOTICE)(?:[._-][\w.-]+)?$/i.test(path.posix.basename(name))
+    )
+        throw Error('插件包包含不支持的文件类型');
     return name;
 }
 function crc32(buffer) {
@@ -46,8 +53,14 @@ function crc32(buffer) {
 function sha256(buffer) {
     return createHash('sha256').update(buffer).digest('hex');
 }
-function collectFiles(root) {
-    if (fs.existsSync(path.join(root, 'manifest.json'))) require('./source-install').assertPageSource(root);
+function collectFiles(root, { signing = false } = {}) {
+    const input = fs.existsSync(path.join(root, 'manifest.json'))
+        ? JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'))
+        : {};
+    const native = input.runtime === 'native';
+    if (native && !signing) readManifest(root);
+    else if (!native && fs.existsSync(path.join(root, 'manifest.json')))
+        require('./source-install').assertPageSource(root);
     const files = [],
         names = new Set();
     let total = 0,
@@ -55,21 +68,23 @@ function collectFiles(root) {
     function walk(folder, prefix = '', depth = 0) {
         if (depth > 20) throw Error('插件目录嵌套过深');
         for (const entry of fs.readdirSync(folder, { withFileTypes: true })) {
+            if (['.gitignore', '.gitattributes', '.gitkeep'].includes(entry.name)) continue;
             if (++entries > 500) throw Error('插件目录项过多');
             const name = prefix + entry.name,
                 file = path.join(folder, entry.name);
             if (entry.isSymbolicLink()) throw Error('插件包不允许符号链接');
             if (entry.isDirectory()) {
-                safeName(name + '/placeholder.txt');
+                safeName(name + '/placeholder.txt', { native });
                 walk(file, name + '/', depth + 1);
                 continue;
             }
             if (!entry.isFile()) throw Error('插件包包含特殊文件');
-            safeName(name);
+            safeName(name, { native });
             if (names.has(name.toLowerCase())) throw Error('插件资源名称重复');
             names.add(name.toLowerCase());
             const size = fs.statSync(file).size;
-            if ((total += size) > LIMIT || files.length >= 300) throw Error('插件包超过 10 MB 或 300 个文件');
+            if ((total += size) > (native ? NATIVE_LIMIT : LIMIT) || files.length >= 300)
+                throw Error('插件包超过大小或 300 个文件限制');
             const data = fs.readFileSync(file);
             if (data.length !== size) throw Error('打包期间文件发生变化');
             files.push({ name, data });
@@ -80,12 +95,12 @@ function collectFiles(root) {
 }
 
 // 标准 ZIP，支持 Store/Deflate。严格约束目录与文件头，避免解压路径穿透和资源耗尽。
-function encodeZip(files, { store = false } = {}) {
+function encodeZip(files, { store = false, native = false } = {}) {
     const local = [],
         central = [];
     let offset = 0;
     for (const { name, data } of files) {
-        safeName(name);
+        safeName(name, { native });
         const filename = Buffer.from(name, 'utf8'),
             compressed = store ? data : deflateRawSync(data),
             crc = crc32(data);
@@ -173,11 +188,11 @@ function decodeZip(buffer) {
         const rawName = buffer.subarray(at + 46, at + 46 + n);
         const name = new TextDecoder('utf-8', { fatal: true }).decode(rawName),
             directory = name.endsWith('/');
-        safeName(directory ? name + 'placeholder.txt' : name);
+        safeName(directory ? name + 'placeholder.txt' : name, { native: true });
         const normalized = (directory ? name.slice(0, -1) : name).toLowerCase();
         if (names.has(normalized)) throw Error('插件包文件路径重复');
         names.add(normalized);
-        if ((total += length) > LIMIT || (!directory && files.length >= 300) || (directory && length))
+        if ((total += length) > NATIVE_LIMIT || (!directory && files.length >= 300) || (directory && length))
             throw Error('插件包展开后超过限制');
         if (position + 30 > start || buffer.readUInt32LE(position) !== 0x04034b50) throw Error('插件文件头损坏');
         const localName = buffer.readUInt16LE(position + 26),
@@ -216,6 +231,18 @@ function decodeZip(buffer) {
             if (files.some((f) => f.name.toLowerCase() === prefix.toLowerCase())) throw Error('插件包文件与目录冲突');
         }
     }
+    const manifestFile = files.find((f) => f.name === 'manifest.json');
+    let native = false;
+    try {
+        native = JSON.parse(manifestFile?.data).runtime === 'native';
+    } catch {
+        /* readManifest 提供清单错误。 */
+    }
+    if (native) require('./native-signature').verifyFiles(files);
+    else {
+        if (total > LIMIT) throw Error('页面插件包展开后超过限制');
+        for (const file of files) safeName(file.name);
+    }
     return files;
 }
 
@@ -227,9 +254,9 @@ class PluginPackages {
     }
     export(id) {
         const plugin = this.registry.get(id);
-        if (plugin.builtin || plugin.backend) throw Error('默认插件请通过 Collectify 安装包分发或在插件管理中恢复');
+        if (plugin.builtin) throw Error('默认插件请通过 Collectify 安装包分发或在插件管理中恢复');
         readManifest(plugin.directory);
-        return encodeZip(collectFiles(plugin.directory));
+        return encodeZip(collectFiles(plugin.directory), { native: plugin.runtime === 'native' });
     }
     prepare(buffer, expected) {
         if (expected?.sha256 && sha256(buffer) !== expected.sha256) throw Error('下载的插件包 SHA-256 校验失败');

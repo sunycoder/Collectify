@@ -7,15 +7,18 @@ const { buildCatalog } = require('../scripts/build-plugin-catalog.cjs');
 const { publish } = require('../scripts/publish-plugins.cjs');
 const { PluginPackages, sha256 } = require('../src/plugin-system/package');
 const { PluginCatalog, DEFAULT_CATALOG_URL } = require('../src/plugin-system/catalog');
-function fixture(t) {
+function fixture(t, all = false) {
     const output = fs.mkdtempSync(path.join(os.tmpdir(), 'collectify-release-test-'));
     t.after(() => fs.rmSync(output, { recursive: true, force: true }));
-    return buildCatalog({ output, check: true });
+    const result = buildCatalog({ output, check: true });
+    return all
+        ? result
+        : { ...result, plugins: result.plugins.slice(0, 1), tag: 'plugin-collectify.clipboard-history-v2.1.1' };
 }
 test('官方目录可重现构建，程序包身份、大小和校验值完全匹配', (t) => {
-    const built = fixture(t),
+    const built = fixture(t, true),
         checker = new PluginPackages(null, path.join(built.output, 'check'));
-    assert.equal(built.plugins.length, 1);
+    assert.equal(built.plugins.length, 2);
     assert.equal(built.plugins[0].id, 'collectify.clipboard-history');
     for (const item of built.plugins) {
         const filename = path.basename(new URL(item.url).pathname),
@@ -23,7 +26,7 @@ test('官方目录可重现构建，程序包身份、大小和校验值完全�
         assert.equal(data.length, item.size);
         assert.equal(sha256(data), item.sha256);
         const prepared = checker.prepare(data, item);
-        assert.equal(prepared.manifest.iconAsset, '剪切板.svg');
+        assert.ok(prepared.manifest.iconAsset.endsWith('.svg'));
         checker.cleanup(prepared);
     }
     const before = fs.readFileSync(path.join(built.output, 'catalog.json'), 'utf8');

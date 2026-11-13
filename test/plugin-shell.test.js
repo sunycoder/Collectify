@@ -27,7 +27,7 @@ test('宿主不包含默认业务操作和固定业务导航；默认业务均�
         dataRoot: path.join(dir, 'data'),
         hostFile: path.join(dir, 'host.sqlite')
     });
-    assert.equal(registry.list().length, 6);
+    assert.equal(registry.list().length, 5);
     assert.deepEqual(registry.diagnostics, []);
     for (const id of ['collectify.bookmarks', 'collectify.tasks', 'collectify.notes'])
         assert.ok(registry.get(id).backend);

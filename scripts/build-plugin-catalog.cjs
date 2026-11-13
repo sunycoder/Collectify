@@ -49,16 +49,27 @@ function buildCatalog({
             const source = path.resolve(root, item.source),
                 manifest = readManifest(source),
                 files = collectFiles(source);
-            const published = {
-                ...manifest,
-                id: item.id,
-                name: item.name,
-                version: item.version,
-                ...(item.iconAsset ? { iconAsset: item.iconAsset } : {})
-            };
-            files.find((f) => f.name === 'manifest.json').data = Buffer.from(JSON.stringify(published, null, 2) + '\n');
+            const native = manifest.runtime === 'native';
+            const published = native
+                ? JSON.parse(fs.readFileSync(path.join(source, 'manifest.json'), 'utf8'))
+                : {
+                      ...manifest,
+                      id: item.id,
+                      name: item.name,
+                      version: item.version,
+                      ...(item.iconAsset ? { iconAsset: item.iconAsset } : {})
+                  };
+            if (
+                native &&
+                (published.id !== item.id || published.name !== item.name || published.version !== item.version)
+            )
+                throw Error('原生插件清单与发布定义不一致，请改清单并重新签名');
+            if (!native)
+                files.find((f) => f.name === 'manifest.json').data = Buffer.from(
+                    JSON.stringify(published, null, 2) + '\n'
+                );
             // 官方包使用 ZIP Store，确保不同 Node/zlib 版本生成的字节与校验值相同。
-            const data = encodeZip(files, { store: true }),
+            const data = encodeZip(files, { store: true, native }),
                 prepared = validator.prepare(data);
             validator.cleanup(prepared);
             const filename = `${published.id}-${published.version}.collectify-plugin`,

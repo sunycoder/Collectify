@@ -13,6 +13,17 @@
       "size": 46223,
       "sha256": "4dd4ac714f3585c1320b8d69679c34e3fd17429324ee8602b117998ac8e5c75f",
       "url": "https://github.com/sunycoder/Collectify/releases/download/plugin-collectify.clipboard-history-v2.1.1/collectify.clipboard-history-2.1.1.collectify-plugin"
+    },
+    {
+      "minHostVersion": "5.7.1",
+      "id": "collectify.local-search",
+      "name": "本地搜索",
+      "description": "Everything 文件搜索、分类筛选与本地文件预览",
+      "version": "1.2.0",
+      "apiVersion": 1,
+      "size": 14461978,
+      "sha256": "99da404f9d7f1cd436f8b89cf0fbb5313ee89472dc7cc734bff762fd191677e3",
+      "url": "https://github.com/sunycoder/Collectify/releases/download/plugin-collectify.local-search-v1.2.0/collectify.local-search-1.2.0.collectify-plugin"
     }
   ]
 }

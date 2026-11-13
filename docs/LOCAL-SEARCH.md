@@ -1,10 +1,10 @@
 # 本地搜索插件
 
-插件 ID：`collectify.local-search`，版本 1.1.0。属于随宿主提供的可信原生插件，页面、搜索引擎适配、文档解析、设置和生命周期位于 `src/plugins/local-search/`。不增加收藏、待办等宿主业务分支。
+插件 ID：`collectify.local-search`，版本 1.2.0。属于插件市场按需安装的签名原生插件，页面、搜索引擎适配、文档解析、设置和生命周期位于 `src/plugin-library/local-search/`。不增加收藏、待办等宿主业务分支。
 
 ## 使用
 
-1. 重启开发程序，点击一级入口“本地搜索”。分类位于宿主左侧二级导航，内容区只保留结果与预览两栏。若曾卸载，在设置的默认插件列表恢复。
+1. 更新 Collectify 至 5.7.1，在“设置 → 插件 → 发现插件”安装本地搜索，确认发布者签名及本机访问能力后，左侧才出现入口。分类位于宿主左侧二级导航。
 2. Windows 点击“连接 Everything”。优先连接已运行实例，其次启动标准安装目录或注册表记录中的 Everything，最后使用随包绿色版。已安装的 Everything 不会被插件停用操作关闭。
 3. 首次使用绿色版可能需要在“打开引擎”中配置索引。没有 Everything 服务时，读取 NTFS 全盘索引可能需要系统权限；插件不会自动申请管理员权限或替用户安装服务。此时也可直接选择文件夹搜索。
 4. 输入文件名或路径关键词，按左侧类别过滤。结果每批 150 项，底部可加载更多，支持按修改时间、名称或大小排序。
@@ -42,9 +42,9 @@ macOS/Linux 不包含 Everything 实现，使用文件夹搜索；本次实测�
 
 ## 依赖与分发
 
-原生组件在 `vendor/native`，复制到插件数据目录后执行，兼容 ASAR 打包，无需修改宿主的 asarUnpack 配置。随包依赖及 SHA-256 见 [依赖说明](../src/plugins/local-search/vendor/README.md)。二进制为 Windows x64；Windows ARM64 需系统具备 x64 仿真能力。
+原生组件在 `vendor/native`，复制到插件数据目录后执行，兼容 ASAR 打包，无需修改宿主的 asarUnpack 配置。随包依赖及 SHA-256 见 [依赖说明](../src/plugin-library/local-search/vendor/README.md)。二进制为 Windows x64；Windows ARM64 需系统具备 x64 仿真能力。
 
-这是可信原生默认插件，不能通过目前只接受沙箱静态资源的 `.collectify-plugin` 安装器单独导入；随下一个主程序包交付。开发程序重启即可加载。不能为方便安装而绕过插件包的原生后台限制。
+本插件使用独立 `.collectify-plugin` 包，市场与离线安装均验证 Ed25519 发布者签名。主程序不包含插件及依赖；原数据保留，安装市场版后继续使用。
 
 ## 验证与维护
 
@@ -66,4 +66,4 @@ npm install --prefix build-tools/local-search-deps --no-save --ignore-scripts ma
 
 ## 源码目录安装
 
-开发者选项选择当前 Collectify 自带的 `src/plugins/local-search` 时，会启用或恢复已信任的默认插件并直接打开，不将它当作页面包重新打包。只有与运行程序的内置目录真实路径一致时才采用此方式；复制到其他目录的同 ID 程序仍属于外部原生代码，会提示需要通过包含该插件的主程序分发。
+源码安装同样验证签名。改变源码、清单或二进制后需提高版本并重新签名。维护者使用 node scripts/sign-native-plugin.cjs 生成签名，私钥仅保存在本机，公钥随宿主信任配置发布。

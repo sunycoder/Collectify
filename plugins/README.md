@@ -10,7 +10,7 @@ https://raw.githubusercontent.com/sunycoder/Collectify/main/plugins/catalog.json
 
 `definitions.json` 是发布配置，`catalog.json` 是构建生成的公开目录。插件源码引用仓库内的静态模板，不包含任何本机数据。
 
-当前独立插件为 `collectify.clipboard-history`（剪贴板历史）：需要 Collectify 5.6.0，可后台记录文本、图片和文件，支持搜索、收藏、复制与悬浮中转。收藏、待办、便签、JSON、时间戳仍随主程序提供。
+当前独立插件为剪贴板历史和本地搜索。本地搜索 1.2.0 需要 Collectify 5.7.1，含发布者签名的原生后台、Everything 和预览依赖；安装前说明本机访问能力。两者均按需安装、独立更新和卸载。收藏、待办、便签、JSON、时间戳仍随主程序提供。
 
 ## 发布或更新
 

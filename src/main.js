@@ -120,7 +120,9 @@ async function installPrepared(prepared, sourceLabel) {
         previous = registry.plugins.get(manifest.id),
         previousVersion = previous?.version;
     const { sha256, encodeZip, collectFiles } = require('./plugin-system/package'),
-        previousDigest = previous ? sha256(encodeZip(collectFiles(previous.directory))) : null;
+        previousDigest = previous
+            ? sha256(encodeZip(collectFiles(previous.directory), { native: previous.runtime === 'native' }))
+            : null;
     if (previous?.builtin || registry.defaults().some((p) => p.id === manifest.id))
         throw Error('默认插件请通过恢复或更新 Collectify 安装');
     if (previous && compareVersion(manifest.version, previous.version) < 0) throw Error('不能安装低于当前版本的插件');
@@ -128,7 +130,7 @@ async function installPrepared(prepared, sourceLabel) {
     const answer = await dialog.showMessageBox(win, {
         type: 'question',
         message: `${previous ? '更新' : '安装'} ${manifest.name} ${manifest.version}？`,
-        detail: `来源：${sourceLabel}\n插件 ID：${manifest.id}${previous ? '\n当前版本：' + previous.version : ''}\n权限：${manifest.permissions.join('、') || '无'}${previous && added.length ? '\n新增权限：' + added.join('、') : ''}\n插件数据保存在独立目录中，更新会保留数据。`,
+        detail: `来源：${sourceLabel}\n插件 ID：${manifest.id}${previous ? '\n当前版本：' + previous.version : ''}\n权限：${manifest.permissions.join('、') || '无'}${previous && added.length ? '\n新增权限：' + added.join('、') : ''}${manifest.runtime === 'native' ? '\n已校验发布者签名：' + manifest.publisher + '\n该插件含本机程序，可读取本机文件并运行原生后台；仅在信任发布者时安装。' : ''}\n插件数据保存在独立目录中，更新会保留数据。`,
         buttons: ['取消', previous ? '更新' : '安装'],
         defaultId: 0,
         cancelId: 0
@@ -136,10 +138,22 @@ async function installPrepared(prepared, sourceLabel) {
     if (answer.response !== 1) return null;
     if (registry.plugins.get(manifest.id)?.version !== previousVersion)
         throw Error('确认期间插件状态已改变，请重新安装');
-    if (previous && sha256(encodeZip(collectFiles(registry.get(manifest.id).directory))) !== previousDigest)
+    if (
+        previous &&
+        sha256(
+            encodeZip(collectFiles(registry.get(manifest.id).directory), { native: previous.runtime === 'native' })
+        ) !== previousDigest
+    )
         throw Error('确认期间插件程序已改变，请重新安装');
     runtime.close(manifest.id);
-    const id = registry.install(prepared.directory, manifest);
+    if (previous?.backend) await services.unload(manifest.id);
+    let id;
+    try {
+        id = registry.install(prepared.directory, manifest);
+    } finally {
+        await services.load({ activate: false });
+        if (registry.plugins.get(manifest.id)?.enabled) await services.enable(manifest.id);
+    }
     if (registry.get(id).enabled) await runtime.startBackground(id);
     updateTray();
     publish();
@@ -172,7 +186,7 @@ async function pluginManagement(action, payload) {
                 });
                 if (result.canceled) return null;
                 const file = result.filePaths[0];
-                if (fs.statSync(file).size > ARCHIVE_LIMIT) throw Error('插件安装包不能超过 12 MB');
+                if (fs.statSync(file).size > ARCHIVE_LIMIT) throw Error('插件安装包不能超过 64 MB');
                 const prepared = packages.prepare(fs.readFileSync(file));
                 try {
                     return await installPrepared(prepared, path.basename(file));
@@ -192,7 +206,9 @@ async function pluginManagement(action, payload) {
                     return { id: builtin.id, builtin: true, enabled: true };
                 }
                 const { collectFiles, encodeZip } = require('./plugin-system/package'),
-                    prepared = packages.prepare(encodeZip(collectFiles(source)));
+                    prepared = packages.prepare(
+                        encodeZip(collectFiles(source), { native: readManifest(source).runtime === 'native' })
+                    );
                 try {
                     return await installPrepared(prepared, '本地目录');
                 } finally {
@@ -815,7 +831,8 @@ app.whenReady()
                         distribution,
                         hostAction
                     };
-                if (process.argv.includes('--smoke-deployment'))
+                if (process.argv.includes('--smoke-market')) await require('./smoke-market').run(context);
+                else if (process.argv.includes('--smoke-deployment'))
                     await require('./smoke-distribution').deployment(context);
                 else if (process.argv.includes('--smoke-distribution'))
                     await require('./smoke-distribution').run(context);
@@ -828,7 +845,6 @@ app.whenReady()
                     await require('./smoke-packages').run(context);
                     await require('./smoke-navigation').run(context);
                     await require('./smoke-tools').run(context);
-                    await require('./smoke-clipboard').run(context);
                     await require('./smoke-distribution').run(context);
                 } else {
                     await verification.run(context);

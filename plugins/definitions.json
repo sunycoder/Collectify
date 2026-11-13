@@ -7,6 +7,13 @@
       "name": "剪贴板历史",
       "version": "2.1.1",
       "iconAsset": "剪切板.svg"
+    },
+    {
+      "source": "src/plugin-library/local-search",
+      "id": "collectify.local-search",
+      "name": "本地搜索",
+      "version": "1.2.0",
+      "iconAsset": "本地搜索.svg"
     }
   ]
 }

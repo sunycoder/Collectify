@@ -1,6 +1,6 @@
 {
   "name": "collectify",
-  "version": "5.7.0",
+  "version": "5.7.1",
   "description": "Collectify · 可扩展的个人插件工作台",
   "main": "src/main.js",
   "author": "Collectify",
@@ -51,6 +51,7 @@
     "files": [
       "src/**/*",
       "src/plugins/.shared/**/*",
+      "!src/plugin-library/**/*",
       "assets/**/*",
       "package.json",
       "config/**/*"
