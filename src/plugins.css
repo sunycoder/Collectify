@@ -1,0 +1,458 @@
+/* 一级导航选择插件，二级导航完全由当前插件贡献；宿主没有业务分类。 */
+#settings-dialog:has(.settings-panel[data-panel='plugins']:not([hidden])) {
+    width: min(860px, calc(100vw - 48px));
+}
+#plugin-catalog-url,
+#catalog-search {
+    padding: 10px 12px;
+    min-height: 40px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--paper);
+    color: var(--ink);
+    font: inherit;
+    font-size: 13px;
+}
+#catalog-search {
+    width: 100%;
+    margin-top: 6px;
+}
+.plugin-tabs {
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid var(--line);
+    padding: 14px 0;
+    margin-bottom: 8px;
+}
+.plugin-tabs button {
+    border: 0;
+    background: transparent;
+    padding: 8px 14px;
+    color: var(--muted);
+    border-radius: 8px;
+}
+.plugin-tabs .selected {
+    color: var(--accent-text);
+    background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+}
+.plugin-manager-row .plugin-row-actions {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 3px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: 210px;
+}
+.plugin-row-actions button {
+    font-size: 12px;
+    padding: 6px 8px;
+}
+.plugin-advanced {
+    margin-top: 20px;
+    color: var(--muted);
+    font-size: 12px;
+}
+.plugin-advanced p {
+    margin: 12px 0;
+}
+.catalog-source {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin: 8px 0;
+}
+.catalog-source input {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+}
+.catalog-source button {
+    white-space: nowrap;
+}
+.catalog-plugin {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 0;
+    border-bottom: 1px solid var(--line);
+}
+.catalog-plugin > div {
+    min-width: 0;
+}
+.catalog-plugin p {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.7;
+    margin: 6px 0;
+    overflow-wrap: anywhere;
+}
+.catalog-plugin small {
+    font-size: 11px;
+    color: var(--subtle);
+    overflow-wrap: anywhere;
+}
+.catalog-plugin button {
+    flex-shrink: 0;
+}
+.plugin-empty,
+#plugin-catalog-status,
+#plugin-operation-status {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.8;
+}
+#restore-plugins h4 {
+    margin: 22px 0 0;
+    font-size: 13px;
+}
+#restore-plugins small {
+    display: block;
+    margin-top: 6px;
+}
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+}
+.shell-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: var(--shell-sidebar-width, 300px);
+    user-select: none;
+    display: flex;
+    z-index: 3;
+    background: var(--surface);
+    border-right: 1px solid var(--line);
+}
+.plugin-rail {
+    width: 76px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    background: color-mix(in srgb, var(--paper) 80%, var(--surface));
+    border-right: 1px solid var(--line);
+    padding: 18px 6px;
+    gap: 20px;
+}
+.shell-brand {
+    padding: 0;
+    display: grid;
+    place-items: center;
+    border: 0;
+    background: none;
+}
+.shell-brand img {
+    width: 37px;
+    height: 37px;
+    border-radius: 11px;
+}
+#plugin-rail {
+    flex: 1;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    scrollbar-width: auto;
+    overscroll-behavior: contain;
+}
+#plugin-rail::-webkit-scrollbar {
+    width: 3px;
+}
+#plugin-rail::-webkit-scrollbar-track {
+    background: transparent;
+}
+#plugin-rail::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--muted) 25%, transparent);
+    border-radius: 4px;
+}
+#plugin-rail::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+}
+.plugin-rail {
+    min-height: 0;
+    overflow: hidden;
+}
+.plugin-asset-icon {
+    width: 26px;
+    height: 26px;
+    object-fit: contain;
+    pointer-events: none;
+}
+#collapsed-settings-button {
+    display: none;
+    flex-shrink: 0;
+    align-self: center;
+}
+body.navigation-collapsed {
+    --shell-sidebar-width: 76px;
+}
+.navigation-collapsed .plugin-context {
+    display: none;
+}
+.navigation-collapsed #collapsed-settings-button {
+    display: grid;
+    place-items: center;
+}
+#toggle-navigation {
+    flex-shrink: 0;
+}
+.browser-mode-label {
+    display: block;
+    margin-top: 24px;
+    font-size: 13px;
+}
+.browser-mode-label select {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+}
+.plugin-entry {
+    flex-shrink: 0;
+    -webkit-user-drag: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 10px 2px;
+    border-radius: 11px;
+    background: none;
+    border: 1px solid transparent;
+    color: var(--muted);
+    min-height: 68px;
+    width: 100%;
+}
+.plugin-entry:hover {
+    background: var(--paper);
+}
+.plugin-entry.selected {
+    color: var(--accent-text);
+    background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+    border-color: color-mix(in srgb, var(--accent) 14%, var(--line));
+}
+.plugin-glyph {
+    display: grid;
+    place-items: center;
+    width: 29px;
+    height: 29px;
+    font-size: 17px;
+    font-weight: 650;
+}
+.plugin-name {
+    font-size: 11px;
+    line-height: 1.3;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+}
+.plugin-context {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 26px 13px 0;
+}
+.plugin-context header {
+    padding: 0 9px 20px;
+}
+.plugin-context h1 {
+    font-size: 21px;
+    margin: 0 0 8px;
+    font-weight: 650;
+    letter-spacing: -0.5px;
+}
+.plugin-context header p {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.7;
+    margin: 0;
+}
+#plugin-navigation {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+}
+.plugin-subnav {
+    display: flex;
+    gap: 7px;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 12px 13px;
+    text-align: left;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+.plugin-subnav small {
+    font-size: 11px;
+    color: var(--subtle);
+}
+.plugin-subnav:hover {
+    background: var(--paper);
+}
+.plugin-subnav.selected {
+    background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+    color: var(--accent-text);
+    font-weight: 550;
+}
+.navigation-group {
+    font-size: 11px;
+    color: var(--subtle);
+    margin: 20px 13px 10px;
+}
+.plugin-context .profile {
+    margin: 0;
+    padding: 20px 5px;
+    border-color: var(--line);
+    font-size: 11px;
+}
+.profile .avatar {
+    width: 27px;
+    height: 27px;
+}
+.profile .profile-settings {
+    width: 27px;
+    padding: 3px;
+}
+.profile small {
+    font-size: 10px;
+}
+.shell-topbar {
+    position: fixed;
+    inset: 0 0 auto var(--shell-sidebar-width, 300px);
+    height: 64px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 26px;
+    z-index: 2;
+}
+.shell-topbar > div {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-size: 13px;
+}
+.shell-topbar strong {
+    font-weight: 550;
+}
+.shell-topbar span {
+    color: var(--muted);
+}
+.shell-topbar input {
+    width: 200px;
+    padding: 7px 10px;
+    font-size: 11px;
+    border: 0;
+    background: var(--paper);
+    border-radius: 7px;
+    margin: 0;
+}
+#shell-main {
+    position: fixed;
+    inset: 64px 0 0 var(--shell-sidebar-width, 300px);
+    margin: 0 !important;
+    padding: 0;
+    min-height: 0;
+    background: var(--paper);
+}
+#plugin-stage {
+    position: absolute;
+    inset: 0;
+}
+#plugin-state {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    padding: 30px;
+    text-align: center;
+}
+#plugin-state[hidden] {
+    display: none;
+}
+#plugin-state h2 {
+    font-size: 23px;
+}
+#plugin-state p {
+    color: var(--muted);
+    max-width: 600px;
+    overflow-wrap: anywhere;
+}
+.plugin-manager-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    align-items: center;
+}
+.plugin-manager-heading button {
+    white-space: nowrap;
+}
+.plugin-manager-row {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    padding: 17px 0;
+    border-bottom: 1px solid var(--line);
+}
+.plugin-manager-row > div {
+    flex: 1;
+    min-width: 0;
+}
+.plugin-manager-row strong {
+    font-size: 14px;
+}
+.plugin-manager-row p {
+    font-size: 12px;
+    margin: 5px 0;
+    color: var(--muted);
+}
+.plugin-manager-row small {
+    font-size: 11px;
+    color: var(--subtle);
+}
+.plugin-manager-row .plugin-switch {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    white-space: nowrap;
+    margin: 0;
+}
+.plugin-manager-row input {
+    width: auto;
+}
+.plugin-manager-heading p {
+    font-size: 12px;
+    color: var(--muted);
+}
+.settings-panel > p {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.8;
+}
+.settings-panel > h3 {
+    margin: 8px 0 16px;
+}
+.settings-panel code,
+.settings-panel > small {
+    display: block;
+    overflow-wrap: anywhere;
+    font-size: 12px;
+    margin: 12px 0;
+}

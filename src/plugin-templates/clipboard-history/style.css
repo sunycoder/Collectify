@@ -1,0 +1,29 @@
+.search-label {
+    margin-top: 18px;
+}
+.history-item {
+    border-top: 1px solid var(--line);
+    padding: 15px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+}
+.history-item > div {
+    min-width: 0;
+    flex: 1;
+}
+.history-item pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font: inherit;
+    margin: 0 0 7px;
+    max-height: 180px;
+    overflow: auto;
+}
+.history-item small {
+    color: var(--muted);
+    font-size: 11px;
+}
+.history-item button {
+    flex-shrink: 0;
+}

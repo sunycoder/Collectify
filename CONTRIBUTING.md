@@ -12,7 +12,9 @@ npm start
 
 修改桌面交互时执行 `npm run smoke`。修改 UI/MCP 依赖后执行 `npm run build:assets`，同时提交供应文件及许可证。打包命令和平台限制见 [打包说明](docs/PACKAGING.md)。
 
-业务数据读写经过 Store 和 SQLite 仓储。新增表或字段必须提供结构版本升级与回归测试；禁止静默重置数据库。源码和文档使用 UTF-8。
+使用 `npm run format` 统一格式化项目，使用 `npm run format:check` 只检查格式。规则集中在 `.prettierrc.json`，JavaScript 使用四空格、单引号和分号，JSON / Markdown 使用两空格，换行统一为 LF。依赖、供应文件、安装产物及本机配置通过 `.prettierignore` 排除。需要仅格式化某个文件时执行 `npx prettier --write src/main.js`。
+
+业务数据读写由所属插件的领域模型与 SQLite 仓储处理，宿主只协调公共能力。新增表或字段必须提供结构版本升级与回归测试；禁止静默重置数据库。源码和文档使用 UTF-8。
 
 ## 提交规范
 

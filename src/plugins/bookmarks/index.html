@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>收藏</title>
+        <link rel="stylesheet" href="collectify-plugin://collectify.sdk/vendor/tom-select.css" />
+        <link rel="stylesheet" href="collectify-plugin://collectify.sdk/vendor/flatpickr.css" />
+        <link rel="stylesheet" href="collectify-plugin://collectify.sdk/styles.css" />
+        <link rel="stylesheet" href="collectify-plugin://collectify.sdk/office-ui.css" />
+        <link rel="stylesheet" href="collectify-plugin://collectify.sdk/interaction-fixes.css" />
+        <link rel="stylesheet" href="collectify-plugin://collectify.sdk/readability.css" />
+        <link rel="stylesheet" href="collectify-plugin://collectify.sdk/board.css" />
+        <link rel="stylesheet" href="collectify-plugin://collectify.sdk/plugin-page.css" />
+    </head>
+    <body>
+        <main>
+            <div class="bookmark-top-actions">
+                <button id="return-tabs" class="quiet" hidden>返回网页</button><span id="tab-count" hidden></span>
+            </div>
+            <section id="dashboard" class="dashboard">
+                <div class="config-bar"><span id="config-source">本机数据 · 已自动保存</span></div>
+                <div class="page-heading">
+                    <div class="heading-copy">
+                        <h1 id="heading">全部收藏</h1>
+                        <p id="description">常用的工作地址，按你的习惯整理。</p>
+                    </div>
+                    <div class="heading-actions">
+                        <button id="new-category" class="subtle">新建分类</button>
+                        <button id="category-menu-button" class="subtle" hidden>
+                            <i data-icon="sliders"></i>管理分类
+                        </button>
+                        <button id="add-button" class="primary"><i data-icon="plus"></i>添加收藏</button>
+                    </div>
+                </div>
+                <div id="category-overview" class="category-overview"></div>
+                <div class="collection-toolbar">
+                    <div class="search-wrap">
+                        <i data-icon="search"></i
+                        ><input id="search" placeholder="搜索名称、网址或备注" aria-label="搜索收藏" /><kbd
+                            id="search-shortcut"
+                            >Ctrl K</kbd
+                        >
+                        <button
+                            id="clear-search"
+                            class="icon-button"
+                            title="清空搜索"
+                            aria-label="清空搜索"
+                            hidden
+                            data-icon="close"
+                        ></button>
+                    </div>
+                    <div class="toolbar-right">
+                        <span id="result-count"></span>
+                        <div class="sort-wrap">
+                            <i data-icon="sort"></i
+                            ><select id="sort" aria-label="收藏排序">
+                                <option value="manual">手动排序</option>
+                                <option value="name">名称 A–Z</option>
+                                <option value="recent">最近打开</option>
+                            </select>
+                        </div>
+                        <div class="view-switch" role="group" aria-label="显示方式">
+                            <button
+                                id="grid-view"
+                                class="icon-button active"
+                                title="卡片视图"
+                                aria-label="卡片视图"
+                                data-icon="grid"
+                            ></button>
+                            <button
+                                id="list-view"
+                                class="icon-button"
+                                title="列表视图"
+                                aria-label="列表视图"
+                                data-icon="list"
+                            ></button>
+                        </div>
+                    </div>
+                </div>
+                <div id="entries" class="collections"></div>
+                <div id="empty" class="empty" hidden>
+                    <div class="empty-illustration"><i data-icon="folder"></i><span>＋</span></div>
+                    <h2 id="empty-title">给这个分类收下第一个地址</h2>
+                    <p id="empty-description">填上名称和网址，下次就能一键打开。</p>
+                    <button id="empty-add" class="primary"><i data-icon="plus"></i>添加收藏</button>
+                </div>
+                <footer>
+                    <span><i data-icon="lock"></i>你的收藏，仅保存在本机</span
+                    ><span>拖动卡片调整顺序 · 拖到左侧分类即可移动</span>
+                </footer>
+            </section>
+            <section id="workspace" hidden>
+                <div id="tabs" class="tabs" role="tablist"></div>
+                <div class="browser-toolbar">
+                    <button id="back-to-library" class="library-return"><i data-icon="left"></i>返回收藏夹</button>
+                    <span class="toolbar-divider"></span>
+                    <button id="back" class="icon-button" title="后退" aria-label="后退" data-icon="left"></button>
+                    <button id="forward" class="icon-button" title="前进" aria-label="前进" data-icon="right"></button>
+                    <button id="reload" class="icon-button" title="刷新" aria-label="刷新" data-icon="reload"></button>
+                    <span id="environment-badge" class="badge"></span><span id="current-url" class="current-url"></span>
+                    <button id="login-card-button" class="quiet" hidden><i data-icon="copy"></i>登录资料卡</button>
+                    <button id="external" class="quiet"><i data-icon="external"></i>浏览器打开</button>
+                </div>
+                <div id="page-state" class="page-state">
+                    <i data-icon="globe"></i>
+                    <h3 id="page-state-title">正在打开网页</h3>
+                    <p id="page-state-message"></p>
+                    <button id="retry" class="primary">重新加载</button>
+                </div>
+            </section>
+        </main>
+        <dialog id="entry-dialog">
+            <form id="entry-form">
+                <div class="dialog-head">
+                    <div class="dialog-symbol" data-icon="bookmark"></div>
+                    <button
+                        type="button"
+                        class="icon-button dialog-close"
+                        title="关闭"
+                        aria-label="关闭"
+                        data-icon="close"
+                    ></button>
+                </div>
+                <h2 id="dialog-title">添加收藏</h2>
+                <p class="dialog-intro">给地址取个好记的名字，放进合适的分类。</p>
+                <label
+                    >资源类型<select name="type" id="resource-type">
+                        <option value="web">网页</option>
+                        <option value="file">本地文件</option>
+                        <option value="folder">文件夹</option>
+                        <option value="text">文本片段</option>
+                        <option value="credential">账号资料</option>
+                    </select></label
+                ><label id="resource-url-label"
+                    >网址 <em>*</em
+                    ><input
+                        name="url"
+                        type="url"
+                        required
+                        maxlength="2048"
+                        placeholder="https:// 或 http://"
+                        autofocus /></label
+                ><label id="resource-path-label" hidden
+                    >本地路径
+                    <div class="path-picker">
+                        <input name="localPath" maxlength="2048" placeholder="选择或填写完整路径" />
+                        <button id="choose-resource" class="subtle" type="button">选择…</button>
+                    </div> </label
+                ><label id="resource-content-label" hidden
+                    >文本内容<textarea
+                        name="content"
+                        rows="5"
+                        maxlength="30000"
+                        placeholder="代码片段、常用命令、资料…"
+                    ></textarea></label
+                ><label
+                    >名称 <em>*</em
+                    ><input name="name" required maxlength="80" placeholder="例如：三国 GM · trunk" /></label
+                ><label>所属分类<select name="categoryId" required></select></label>
+                <details id="entry-details">
+                    <summary>更多设置 <span>账号密码、备注、环境</span></summary>
+                    <label
+                        >备注<textarea
+                            name="note"
+                            rows="2"
+                            maxlength="5000"
+                            placeholder="例如：版本验证用的测试后台"
+                        ></textarea>
+                    </label>
+                    <div class="form-grid">
+                        <label
+                            >环境标签 <span class="optional">可选</span
+                            ><input name="environment" maxlength="60" placeholder="trunk / 测试 / 生产"
+                        /></label>
+                    </div>
+                    <div class="credential-editor">
+                        <div class="form-grid">
+                            <label
+                                >登录账号<input
+                                    name="username"
+                                    maxlength="200"
+                                    autocomplete="off"
+                                    placeholder="可选" /></label
+                            ><label
+                                >登录密码<input
+                                    name="password"
+                                    type="text"
+                                    maxlength="2000"
+                                    autocomplete="new-password"
+                                    placeholder="可直接查看和复制"
+                                />
+                                <button type="button" id="editor-copy-password" class="quiet">复制密码</button>
+                            </label>
+                        </div>
+                        <label
+                            >认证方式<select name="authMode">
+                                <option value="manual">普通登录表单（手动复制粘贴）</option>
+                                <option value="basic">HTTP Basic（浏览器认证弹框，不填网页表单）</option>
+                            </select></label
+                        ><label class="checkbox-label"
+                            ><input name="clearPassword" type="checkbox" />清除已保存的密码</label
+                        >
+                        <p class="form-help">也支持粘贴含账号密码的网址，保存时自动拆分为登录资料。</p>
+                    </div>
+                    <label class="checkbox-label"
+                        ><input name="favorite" type="checkbox" />置顶，在“已置顶”中快速访问</label
+                    >
+                </details>
+                <p class="form-error" role="alert"></p>
+                <div class="dialog-actions">
+                    <button type="button" class="cancel-dialog subtle">取消</button>
+                    <button type="submit" class="primary">保存收藏</button>
+                </div>
+            </form>
+        </dialog>
+        <dialog id="category-dialog">
+            <form id="category-form">
+                <div class="dialog-head">
+                    <div class="dialog-symbol" data-icon="folder"></div>
+                    <button
+                        type="button"
+                        class="icon-button dialog-close"
+                        title="关闭"
+                        aria-label="关闭"
+                        data-icon="close"
+                    ></button>
+                </div>
+                <h2 id="category-dialog-title">新建分类</h2>
+                <p class="dialog-intro">按工具或用途划分，让地址更容易找到。</p>
+                <label
+                    >分类名称 <em>*</em
+                    ><input name="name" required maxlength="60" placeholder="例如：GM、Jenkins、监控" /></label
+                ><label
+                    >一句描述 <span class="optional">可选</span
+                    ><input name="description" maxlength="160" placeholder="这个分类里放哪些地址？"
+                /></label>
+                <fieldset>
+                    <legend>分类图标</legend>
+                    <div id="icon-picker" class="icon-picker"></div>
+                </fieldset>
+                <fieldset>
+                    <legend>标识颜色</legend>
+                    <div id="color-picker" class="color-picker"></div>
+                </fieldset>
+                <p class="form-error" role="alert"></p>
+                <div class="dialog-actions">
+                    <button type="button" class="cancel-dialog subtle">取消</button>
+                    <button type="submit" class="primary">保存分类</button>
+                </div>
+            </form>
+        </dialog>
+        <dialog id="resource-dialog">
+            <div class="dialog-head">
+                <div class="dialog-symbol" data-icon="book"></div>
+                <button class="icon-button dialog-close" data-icon="close" aria-label="关闭"></button>
+            </div>
+            <h2 id="resource-title"></h2>
+            <p id="resource-note" class="dialog-intro"></p>
+            <pre id="resource-body"></pre>
+            <div class="dialog-actions">
+                <button id="copy-resource" class="primary">复制内容</button>
+            </div>
+        </dialog>
+        <dialog id="credential-dialog">
+            <div class="dialog-head">
+                <div class="dialog-symbol" data-icon="lock"></div>
+                <button class="icon-button dialog-close" data-icon="close" aria-label="关闭"></button>
+            </div>
+            <h2>登录资料</h2>
+            <p id="credential-name" class="dialog-intro"></p>
+            <label>账号<input id="credential-username" readonly /></label
+            ><label>密码<input id="credential-password" type="password" readonly placeholder="未保存密码" /></label>
+            <div class="credential-actions">
+                <button id="copy-username" class="subtle">复制账号</button>
+                <button id="copy-password" class="subtle">复制密码</button>
+                <button id="reveal-password" class="subtle">显示密码</button>
+            </div>
+            <p class="form-help">密码按你的设置直接保存在本机，可随时查看和复制。网页登录表单请使用登录资料卡粘贴。</p>
+        </dialog>
+        <div id="popup-menu" class="popup-menu" role="menu" hidden></div>
+        <dialog id="action-dialog">
+            <div class="dialog-head">
+                <div class="dialog-symbol" data-icon="folder"></div>
+                <button
+                    type="button"
+                    class="icon-button dialog-close"
+                    title="关闭"
+                    aria-label="关闭"
+                    data-icon="close"
+                ></button>
+            </div>
+            <h2 id="action-title"></h2>
+            <p id="action-description" class="dialog-intro"></p>
+            <label id="target-label">接收分类<select id="target-category"></select></label>
+            <p class="form-error" role="alert"></p>
+            <div class="dialog-actions">
+                <button class="cancel-dialog subtle">取消</button>
+                <button id="action-confirm" class="primary">确认</button>
+            </div>
+        </dialog>
+        <div id="toast" class="toast" role="status" hidden></div>
+        <script src="collectify-plugin://collectify.sdk/vendor/tom-select.js"></script>
+        <script src="collectify-plugin://collectify.sdk/vendor/flatpickr.js"></script>
+        <script src="collectify-plugin://collectify.sdk/vendor/flatpickr-zh.js"></script>
+        <script src="collectify-plugin://collectify.sdk/vendor/fullcalendar.js"></script>
+        <script src="collectify-plugin://collectify.sdk/vendor/floating-ui.js"></script>
+        <script src="collectify-plugin://collectify.sdk/overlay.js"></script>
+        <script src="collectify-plugin://collectify.sdk/theme.js"></script>
+        <script src="collectify-plugin://collectify.sdk/workspace-ui.js"></script>
+        <script src="app.js"></script>
+        <script src="collectify-plugin://collectify.sdk/ui-components.js"></script>
+    </body>
+</html>

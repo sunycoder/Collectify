@@ -1,84 +1,26 @@
-const {
-    app,
-    BrowserWindow,
-    WebContentsView,
-    ipcMain,
-    dialog,
-    shell,
-    session,
-    clipboard,
-    Notification,
-    Tray,
-    Menu
-} = require('electron');
-const fs = require('node:fs');
-const path = require('node:path');
-const {pathToFileURL} = require('node:url');
-const {Store} = require('./store');
-const credentials = require('./credentials');
-const {copyText} = require('./clipboard-service');
-const {deliverReminders} = require('./reminders');
-const {DesktopWidget} = require('./desktop-widget');
-const {LoginHelper} = require('./login-helper');
-const {LocalMcpService} = require('./vendor/mcp-service.cjs');
-const {validate: validateTheme} = require('./theme');
-const {exportWorkspace,parseWorkspace,describeWorkspace,importWorkspace}=require('./workspace-transfer');
-const {randomUUID}=require('node:crypto');
-let desktopWidget, createMainWindow, loginHelper, localMcp;
-let importDraft;
-
-function dataChanged() {
-    desktopWidget?.update();
-    if (win && !win.isDestroyed()) win.webContents.send('data-changed');
-}
-
-let tray, quitting = false, reminderBusy = false;
-
-function publicState() {
-    const data = store.snapshot();
-    data.entries = data.entries.map(credentials.publicEntry);
-    return data;
-}
-
-async function showMain(section) {
-    if (!win && createMainWindow) await createMainWindow();
-    if (!win) return;
-    win.show();
-    if (win.isMinimized()) win.restore();
-    win.focus();
-    if (section) {
-        dashboard = true;
-        layout();
-        publish();
-        win.webContents.send('open-section', section);
+const { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, protocol } = require('electron');
+const fs = require('node:fs'),
+    path = require('node:path'),
+    os = require('node:os');
+const { DatabaseSync } = require('node:sqlite');
+const { pathToFileURL } = require('node:url');
+const { PluginRegistry } = require('./plugin-system/registry');
+const { PluginRuntime } = require('./plugin-system/runtime');
+const { PluginServices } = require('./plugin-system/services');
+const { WorkspaceBackup } = require('./plugin-system/backup');
+const { PluginDevelopment } = require('./plugin-system/development');
+const { PluginPackages, ARCHIVE_LIMIT } = require('./plugin-system/package');
+const { PluginCatalog, compareVersion } = require('./plugin-system/catalog');
+const { readManifest } = require('./plugin-system/manifest');
+const Theme = require('./theme');
+const { LocalMcpService, z } = require('./vendor/mcp-service.cjs');
+const { copyText } = require('./clipboard-service');
+protocol.registerSchemesAsPrivileged([
+    {
+        scheme: 'collectify-plugin',
+        privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true }
     }
-}
-
-async function checkReminders() {
-    if (reminderBusy || !store || smoke) return;
-    reminderBusy = true;
-    try {
-        const count = await deliverReminders(store, async task => {
-            if (Notification.isSupported()) {
-                const notification = new Notification({
-                    title: `待办提醒 · ${task.title}`,
-                    body: task.note.slice(0, 120) || '点击查看待办，可完成或稍后提醒。',
-                    icon: path.join(__dirname, '..', 'assets', 'icon.png')
-                });
-                notification.on('click', () => showMain('tasks'));
-                notification.show();
-            }
-            if (win && !win.isDestroyed()) win.webContents.send('reminder', {title: task.title, id: task.id});
-        });
-        if (count) dataChanged();
-    } catch (error) {
-        if (win) win.webContents.send('reminder-error', '提醒发送失败，请检查系统通知设置');
-    } finally {
-        reminderBusy = false;
-    }
-}
-
-// 业务数据库与网页登录分区统一放在 Collectify 的本机数据目录。
+]);
 app.setPath('userData', path.join(app.getPath('appData'), 'Collectify'));
 app.setPath('sessionData', app.getPath('userData'));
 app.setName('Collectify');
@@ -86,652 +28,662 @@ const smoke = process.argv.includes('--smoke-test');
 if (smoke) {
     app.disableHardwareAcceleration();
     app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
-    app.setPath('userData', fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'collectify-smoke-')));
+    app.setPath('userData', fs.mkdtempSync(path.join(os.tmpdir(), 'collectify-shell-')));
     app.setPath('sessionData', app.getPath('userData'));
 }
 if (!app.requestSingleInstanceLock()) {
     app.quit();
     process.exit(0);
 }
-let win, store, active = null, dashboard = true, overlay = false;
-app.on('second-instance', () => {
-    if (win) {
-        if (win.isMinimized()) win.restore();
-        win.show();
-        win.focus();
-    }
-});
-const tabs = new Map();
-const prepared = new Set();
+let win,
+    tray,
+    registry,
+    runtime,
+    services,
+    backup,
+    mcp,
+    development,
+    packages,
+    pluginCatalog,
+    pluginOperation = false,
+    overlay = false,
+    quitting = false,
+    importDraft;
 const rendererUrl = pathToFileURL(path.join(__dirname, 'index.html')).href;
-const validUrl = value => {
-    try {
-        const url = new URL(value);
-        return ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password;
-    } catch {
-        return false;
+function settings() {
+    return {
+        theme: Theme.validate(registry.getSetting('theme') || {}),
+        keepInTray: registry.getSetting('keepInTray', false) === true,
+        navigationCollapsed: registry.getSetting('navigationCollapsed', false) === true,
+        browserOpenMode: registry.getSetting('browserOpenMode', 'internal') === 'external' ? 'external' : 'internal'
+    };
+}
+function setSettings(input, validateOnly = false) {
+    if (!input || typeof input !== 'object') throw Error('工作台设置不正确');
+    const clean = {
+        theme: Theme.validate(input.theme || settings().theme),
+        keepInTray: input.keepInTray === undefined ? settings().keepInTray : input.keepInTray === true,
+        navigationCollapsed:
+            input.navigationCollapsed === undefined
+                ? settings().navigationCollapsed
+                : input.navigationCollapsed === true,
+        browserOpenMode:
+            input.browserOpenMode === undefined
+                ? settings().browserOpenMode
+                : input.browserOpenMode === 'external'
+                  ? 'external'
+                  : 'internal'
+    };
+    if (!validateOnly) {
+        registry.setSetting('theme', clean.theme);
+        registry.setSetting('keepInTray', clean.keepInTray);
+        registry.setSetting('navigationCollapsed', clean.navigationCollapsed);
+        registry.setSetting('browserOpenMode', clean.browserOpenMode);
+        for (const id of services?.providers.keys() || []) runtime?.emit(id, 'data-changed');
+        runtime?.themeChanged();
+        publish();
     }
-};
-
-function getEntry(id) {
-    const entry = store.entries.find(e => e.id === id);
-    if (!entry) throw new Error('入口不存在');
-    return entry;
+    return clean;
 }
-
+function catalog() {
+    return {
+        plugins: registry.list().map((p) => ({
+            ...p,
+            navigation: services.navigation(p.id),
+            summary: services.providers.get(p.id)?.summary?.() || {}
+        })),
+        dataPlugins: registry
+            .database((db) => db.prepare('SELECT id FROM installed_plugins ORDER BY id').all())
+            .map((row) => ({ id: row.id, name: registry.plugins.get(row.id)?.name || row.id })),
+        restorableDefaults: registry.availableDefaults(),
+        diagnostics: registry.diagnostics,
+        active: runtime.active(),
+        lastPlugin: registry.getSetting('lastPlugin'),
+        settings: settings()
+    };
+}
 function publish() {
-    if (!win || win.isDestroyed()) return;
-    win.webContents.send('tabs', {
-        active, dashboard,
-        tabs: [...tabs.values()].map(t => ({
-            id: t.id,
-            entryId: t.entry.id,
-            name: t.entry.name,
-            environment: t.entry.environment,
-            color: store.categories.find(c => c.id === t.entry.categoryId)?.color || 'sage',
-            title: t.title,
-            url: t.url,
-            loading: t.loading,
-            error: t.error,
-            hasCredentials: !!(t.entry.username || t.entry.password),
-            back: t.view.webContents.navigationHistory.canGoBack(),
-            forward: t.view.webContents.navigationHistory.canGoForward()
-        }))
-    });
+    if (win && !win.isDestroyed()) win.webContents.send('shell-state', catalog());
 }
-
+async function installPrepared(prepared, sourceLabel) {
+    const { manifest } = prepared,
+        previous = registry.plugins.get(manifest.id),
+        previousVersion = previous?.version;
+    const { sha256, encodeZip, collectFiles } = require('./plugin-system/package'),
+        previousDigest = previous ? sha256(encodeZip(collectFiles(previous.directory))) : null;
+    if (previous?.builtin || registry.defaults().some((p) => p.id === manifest.id))
+        throw Error('默认插件请通过恢复或更新 Collectify 安装');
+    if (previous && compareVersion(manifest.version, previous.version) < 0) throw Error('不能安装低于当前版本的插件');
+    const added = manifest.permissions.filter((p) => !previous?.permissions.includes(p));
+    const answer = await dialog.showMessageBox(win, {
+        type: 'question',
+        message: `${previous ? '更新' : '安装'} ${manifest.name} ${manifest.version}？`,
+        detail: `来源：${sourceLabel}\n插件 ID：${manifest.id}${previous ? '\n当前版本：' + previous.version : ''}\n权限：${manifest.permissions.join('、') || '无'}${previous && added.length ? '\n新增权限：' + added.join('、') : ''}\n插件数据保存在独立目录中，更新会保留数据。`,
+        buttons: ['取消', previous ? '更新' : '安装'],
+        defaultId: 0,
+        cancelId: 0
+    });
+    if (answer.response !== 1) return null;
+    if (registry.plugins.get(manifest.id)?.version !== previousVersion)
+        throw Error('确认期间插件状态已改变，请重新安装');
+    if (previous && sha256(encodeZip(collectFiles(registry.get(manifest.id).directory))) !== previousDigest)
+        throw Error('确认期间插件程序已改变，请重新安装');
+    runtime.close(manifest.id);
+    const id = registry.install(prepared.directory, manifest);
+    updateTray();
+    publish();
+    return id;
+}
+async function pluginManagement(action, payload) {
+    if (action === 'plugin-catalog-status') return pluginCatalog.status();
+    if (pluginOperation) throw Error('插件操作正在进行，请稍候');
+    pluginOperation = true;
+    try {
+        switch (action) {
+            case 'plugin-catalog-configure':
+                return pluginCatalog.configure(payload);
+            case 'plugin-catalog-refresh':
+                return await pluginCatalog.refresh();
+            case 'plugin-catalog-install': {
+                const { data, item } = await pluginCatalog.package(payload),
+                    prepared = packages.prepare(data, item);
+                try {
+                    return await installPrepared(prepared, new URL(pluginCatalog.source).host);
+                } finally {
+                    packages.cleanup(prepared);
+                }
+            }
+            case 'plugin-package-install': {
+                const result = await dialog.showOpenDialog(win, {
+                    title: '安装插件包',
+                    properties: ['openFile'],
+                    filters: [{ name: 'Collectify 插件', extensions: ['collectify-plugin'] }]
+                });
+                if (result.canceled) return null;
+                const file = result.filePaths[0];
+                if (fs.statSync(file).size > ARCHIVE_LIMIT) throw Error('插件安装包不能超过 12 MB');
+                const prepared = packages.prepare(fs.readFileSync(file));
+                try {
+                    return await installPrepared(prepared, path.basename(file));
+                } finally {
+                    packages.cleanup(prepared);
+                }
+            }
+            case 'plugin-install': {
+                const source = await pick('folder');
+                if (!source) return null;
+                const { collectFiles, encodeZip } = require('./plugin-system/package'),
+                    prepared = packages.prepare(encodeZip(collectFiles(source)));
+                try {
+                    return await installPrepared(prepared, '本地目录');
+                } finally {
+                    packages.cleanup(prepared);
+                }
+            }
+            case 'plugin-package-export': {
+                const p = registry.get(payload),
+                    data = packages.export(payload),
+                    result = await dialog.showSaveDialog(win, {
+                        title: '导出插件程序',
+                        defaultPath: `${p.id}-${p.version}.collectify-plugin`,
+                        filters: [{ name: 'Collectify 插件', extensions: ['collectify-plugin'] }]
+                    });
+                if (result.canceled) return null;
+                if (protectedTarget(result.filePath)) throw Error('不能覆盖工作台内部数据');
+                fs.writeFileSync(result.filePath, data);
+                return result.filePath;
+            }
+            case 'plugin-uninstall': {
+                const p = registry.get(payload),
+                    answer = await dialog.showMessageBox(win, {
+                        type: 'question',
+                        message: `卸载 ${p.name}？`,
+                        detail: p.builtin
+                            ? '默认插件可随时恢复。卸载后不会因重启或更新 Collectify 而自动恢复。'
+                            : '移除插件程序，重新安装后可继续使用保留的数据。',
+                        checkboxLabel: '同时删除该插件的全部本机数据（不可恢复）',
+                        checkboxChecked: false,
+                        buttons: ['取消', '卸载'],
+                        defaultId: 0,
+                        cancelId: 0
+                    });
+                if (answer.response !== 1) return false;
+                runtime.close(payload);
+                await services.unload(payload);
+                try {
+                    registry.uninstall(payload, { deleteData: answer.checkboxChecked });
+                } finally {
+                    await services.load({ activate: false });
+                    if (registry.plugins.has(payload) && registry.get(payload).enabled) await services.enable(payload);
+                }
+                updateTray();
+                layout();
+                publish();
+                return true;
+            }
+            case 'plugin-restore': {
+                const id = registry.restore(payload);
+                await services.load({ activate: false });
+                await services.enable(id);
+                updateTray();
+                publish();
+                return id;
+            }
+            default:
+                throw Error('未知的插件管理操作');
+        }
+    } finally {
+        pluginOperation = false;
+    }
+}
 function layout() {
     if (!win) return;
-    if (dashboard) loginHelper?.hide(true); else if (overlay) loginHelper?.hide();
-    const [width, height] = win.getContentSize();
-    for (const tab of tabs.values()) {
-        const visible = !dashboard && !overlay && active === tab.id && !tab.error;
-        tab.view.setVisible(visible);
-        if (visible) tab.view.setBounds({
-            x: 248,
-            y: 168,
-            width: Math.max(0, width - 248),
-            height: Math.max(0, height - 168)
-        });
-    }
+    runtime.layout(!overlay);
+    services.layout(runtime.bounds, runtime.activeId, overlay);
 }
-
-function closeTab(id) {
-    const tab = tabs.get(id);
-    if (!tab) return;
-    win.contentView.removeChildView(tab.view);
-    tab.view.webContents.close();
-    tabs.delete(id);
-    if (active === id) active = [...tabs.keys()].at(-1) || null;
-    if (!active) dashboard = true;
-    if (!tabs.size) loginHelper?.hide(true);
-    layout();
-    publish();
-}
-
-async function openEntry(entry, url = entry.url, extra = false) {
-    if (!validUrl(url)) throw new Error('仅支持 HTTP / HTTPS 网页');
-    if (!extra) {
-        const existing = [...tabs.values()].find(t => t.entry.id === entry.id);
-        if (existing) {
-            active = existing.id;
-            dashboard = false;
-            layout();
-            publish();
-            return;
-        }
-    }
-    const partition = `persist:entry-${entry.id}`;
-    const isolatedSession = session.fromPartition(partition);
-    if (!prepared.has(partition)) {
-        isolatedSession.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
-        isolatedSession.setPermissionCheckHandler(() => false);
-        isolatedSession.on('will-download', (_event, item) => item.setSaveDialogOptions({title: '保存下载文件'}));
-        prepared.add(partition);
-    }
-    // 远程网页不加载 preload，也没有任何工作台 IPC 或本机 Node 能力。
-    const view = new WebContentsView({
-        webPreferences: {
-            partition, nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true,
-            allowRunningInsecureContent: false
-        }
-    });
-    const id = require('node:crypto').randomUUID();
-    const tab = {id, entry, view, title: entry.name, url, loading: true, error: ''};
-    tabs.set(id, tab);
-    win.contentView.addChildView(view);
-    const wc = view.webContents;
-    let authAttempted = false;
-    wc.on('login', (event, request, authInfo, callback) => {
-        event.preventDefault();
-        const current = store.entries.find(e => e.id === entry.id) || entry;
-        const ownOrigin = new URL(current.url).origin;
-        if (authAttempted || authInfo.isProxy || authInfo.scheme.toLowerCase() !== 'basic' || current.authMode !== 'basic' || new URL(request.url).origin !== ownOrigin) {
-            callback();
-            return;
-        }
-        authAttempted = true;
-        credentials.passwordOf(current).then(password => callback(current.username, password)).catch(() => callback());
-    });
-    // 焦点在远程网页内时也能返回全局收藏搜索，不向网页暴露工作台 API。
-    wc.on('before-input-event', (event, input) => {
-        if (input.type === 'keyDown' && (input.control || input.meta) && input.key.toLowerCase() === 'k' && !overlay) {
-            event.preventDefault();
-            dashboard = true;
-            layout();
-            publish();
-            win.webContents.focus();
-            win.webContents.send('focus-search');
-        }
-    });
-    wc.setWindowOpenHandler(details => {
-        if (validUrl(details.url)) openEntry(entry, details.url, true).catch(() => {
-        });
-        return {action: 'deny'};
-    });
-    for (const eventName of ['will-navigate', 'will-redirect', 'will-frame-navigate']) {
-        wc.on(eventName, (event, destination) => {
-            const target = typeof destination === 'string' ? destination : event.url;
-            if (!validUrl(target)) event.preventDefault();
-        });
-    }
-    wc.on('page-title-updated', (_event, title) => {
-        tab.title = title;
-        publish();
-    });
-    wc.on('did-start-loading', () => {
-        tab.loading = true;
-        tab.error = '';
-        layout();
-        publish();
-    });
-    wc.on('did-stop-loading', () => {
-        tab.loading = false;
-        publish();
-    });
-    wc.on('did-navigate', (_event, next) => {
-        tab.url = next;
-        publish();
-    });
-    wc.on('did-navigate-in-page', (_event, next, mainFrame) => {
-        if (mainFrame) {
-            tab.url = next;
-            publish();
-        }
-    });
-    wc.on('did-fail-load', (_event, code, description, _url, mainFrame) => {
-        if (!mainFrame || code === -3) return;
-        tab.error = `网页加载失败：${description} (${code})`;
-        tab.loading = false;
-        layout();
-        publish();
-    });
-    wc.on('render-process-gone', () => {
-        tab.error = '网页进程已退出，请点击刷新重试';
-        layout();
-        publish();
-    });
-    active = id;
-    dashboard = false;
-    layout();
-    publish();
-    await wc.loadURL(url).catch(() => {
-    });
-}
-
-function registerApi() {
-    ipcMain.handle('workbench', async (event, action, payload) => {
-        try {
-            if (event.sender !== win.webContents || event.senderFrame !== win.webContents.mainFrame || event.senderFrame.url !== rendererUrl) throw new Error('无权调用工作台接口');
-            switch (action) {
-                case 'list':
-                    return {ok: true, data: store.entries.map(credentials.publicEntry)};
-                case 'state':
-                    return {ok: true, data: publicState()};
-                case 'workspace-info':
-                    return {
-                        ok: true,
-                        data: {
-                            directory: app.getPath('userData'),
-                            file: store.file,
-                            version: app.getVersion(),
-                            mcp: localMcp.status()
-                        }
-                    };
-                case 'backup-database': {
-                    const result = await dialog.showSaveDialog(win,{title:'备份 Collectify 数据库',defaultPath:'Collectify-backup.sqlite',filters:[{name:'SQLite 数据库',extensions:['sqlite']}]});
-                    if (result.canceled) return {ok:true,data:null};
-                    if (path.resolve(result.filePath)===path.resolve(store.file)) throw Error('备份位置不能是正在使用的数据库');
-                    store.backup(result.filePath);
-                    return {ok:true,data:result.filePath};
-                }
-                case 'open-data-directory': {
-                    const error = await shell.openPath(app.getPath('userData'));
-                    if (error) throw Error(error);
-                    return {ok: true};
-                }
-                case 'mcp-start':
-                    return {ok: true, data: await localMcp.start(payload.port)};
-                case 'mcp-stop':
-                    return {ok: true, data: await localMcp.stop()};
-                case 'mcp-copy':
-                    await copyText(JSON.stringify(localMcp.connection(), null, 2));
-                    return {ok: true};
-                case 'widget-auto-restore': {
-                    const data = store.snapshot();
-                    data.settings.widget.autoRestore = payload === true;
-                    store.commit(data);
-                    return {ok: true};
-                }
-                case 'task-save':
-                    return {ok: true, data: store.saveTask(payload)};
-                case 'task-delete':
-                    store.removeItem('tasks', payload);
-                    return {ok: true};
-                case 'note-save':
-                    return {ok: true, data: store.saveNote(payload)};
-                case 'note-delete':
-                    store.removeItem('notes', payload);
-                    return {ok: true};
-                case 'settings': {
-                    const data = store.snapshot();
-                    data.settings.keepInTray = payload.keepInTray === true;
-                    store.commit(data);
-                    return {ok: true};
-                }
-                case 'theme-save': {
-                    const data = store.snapshot();
-                    data.settings.theme = validateTheme(payload);
-                    store.commit(data);
-                    return {ok: true, data: data.settings.theme};
-                }
-                case 'theme-export': {
-                    const result = await dialog.showSaveDialog(win, {
-                        title: '导出配色方案',
-                        defaultPath: 'collectify-theme.json',
-                        filters: [{name: '主题 JSON', extensions: ['json']}]
-                    });
-                    if (result.canceled) return {ok: true, data: null};
-                    fs.writeFileSync(result.filePath, JSON.stringify({
-                        version: 1,
-                        theme: store.data.settings.theme
-                    }, null, 2), 'utf8');
-                    return {ok: true, data: true};
-                }
-                case 'theme-import': {
-                    const result = await dialog.showOpenDialog(win, {
-                        title: '导入配色方案',
-                        properties: ['openFile'],
-                        filters: [{name: '主题 JSON', extensions: ['json']}]
-                    });
-                    if (result.canceled) return {ok: true, data: null};
-                    if (fs.statSync(result.filePaths[0]).size > 16000) throw Error('主题文件过大');
-                    const raw = JSON.parse(fs.readFileSync(result.filePaths[0], 'utf8'));
-                    if (raw.version !== 1 || !raw.theme) throw Error('主题格式不正确');
-                    return {ok: true, data: validateTheme(raw.theme)};
-                }
-                case 'widget-open':
-                    await desktopWidget.open(payload === 'desktop' ? 'desktop' : 'floating');
-                    return {ok: true};
-                case 'pick-resource': {
-                    const result = await dialog.showOpenDialog(win, {
-                        title: payload === 'folder' ? '选择文件夹' : '选择文件',
-                        properties: [payload === 'folder' ? 'openDirectory' : 'openFile']
-                    });
-                    return {ok: true, data: result.canceled ? '' : result.filePaths[0]};
-                }
-                case 'reveal-resource': {
-                    const entry = getEntry(payload);
-                    if (!['file', 'folder'].includes(entry.type)) throw Error('不是本地资源');
-                    shell.showItemInFolder(entry.localPath);
-                    return {ok: true};
-                }
-                case 'resource-viewed':
-                    store.markOpened(payload);
-                    return {ok: true};
-                case 'pick-files': {
-                    const result = await dialog.showOpenDialog(win, {
-                        title: '关联本地文件',
-                        properties: ['openFile', 'multiSelections']
-                    });
-                    return {ok: true, data: result.canceled ? [] : result.filePaths};
-                }
-                case 'pick-folder': {
-                    const result = await dialog.showOpenDialog(win, {
-                        title: '关联本地文件夹',
-                        properties: ['openDirectory']
-                    });
-                    return {ok: true, data: result.canceled ? [] : result.filePaths};
-                }
-                case 'open-file': {
-                    const task = store.data.tasks.find(t => t.id === payload.id),
-                        file = task?.attachments[payload.index];
-                    if (!file || !path.isAbsolute(file)) throw new Error('附件不存在');
-                    if (payload.reveal) shell.showItemInFolder(file);
-                    else {
-                        const error = await shell.openPath(file);
-                        if (error) throw new Error(error);
-                    }
-                    return {ok: true};
-                }
-                case 'password':
-                    return {ok: true, data: await credentials.passwordOf(getEntry(payload))};
-                case 'copy-credential': {
-                    const entry = getEntry(payload.id),
-                        value = payload.field === 'username' ? entry.username : await credentials.passwordOf(entry);
-                    await copyText(value);
-                    return {ok: true};
-                }
-                case 'category-save':
-                    return {ok: true, data: store.saveCategory(payload)};
-                case 'category-delete':
-                    store.removeCategory(payload.id, payload.targetId);
-                    return {ok: true};
-                case 'reorder':
-                    store.reorder(payload.kind, payload.ids);
-                    return {ok: true};
-                case 'copy': {
-                    const entry = getEntry(payload);
-                    await copyText(entry.type === 'text' ? entry.content : ['file', 'folder'].includes(entry.type) ? entry.localPath : entry.url);
-                    return {ok: true};
-                }
-                case 'copy-text':
-                    if (typeof payload !== 'string' || payload.length > 30000) throw Error('复制内容不正确');
-                    await copyText(payload);
-                    return {ok: true};
-                case 'save': {
-                    const previous = store.entries.find(e => e.id === payload.id);
-                    const saved = store.save(await credentials.prepare(payload, previous));
-                    // 修改地址会创建新会话，避免相同主机不同端口共享 Cookie 导致串号。
-                    if (previous && previous.url !== saved.url) {
-                        for (const tab of [...tabs.values()]) if (tab.entry.id === saved.id) closeTab(tab.id);
-                        await session.fromPartition(`persist:entry-${saved.id}`).clearStorageData();
-                        await session.fromPartition(`persist:entry-${saved.id}`).clearCache();
-                    }
-                    for (const tab of tabs.values()) if (tab.entry.id === saved.id) tab.entry = saved;
-                    publish();
-                    return {ok: true, data: credentials.publicEntry(saved)};
-                }
-                case 'delete': {
-                    store.remove(payload);
-                    for (const tab of [...tabs.values()]) if (tab.entry.id === payload) closeTab(tab.id);
-                    await session.fromPartition(`persist:entry-${payload}`).clearStorageData();
-                    await session.fromPartition(`persist:entry-${payload}`).clearCache();
-                    return {ok: true};
-                }
-                case 'open': {
-                    const entry = getEntry(typeof payload === 'string' ? payload : payload.id);
-                    const mode = typeof payload === 'object' && ['external', 'internal'].includes(payload.mode) ? payload.mode : entry.mode;
-                    if (['file', 'folder'].includes(entry.type)) {
-                        if (!fs.existsSync(entry.localPath)) throw Error('本地资源已移动或不存在，请编辑路径');
-                        const error = await shell.openPath(entry.localPath);
-                        if (error) throw Error(error);
-                    } else if (entry.type !== 'web') throw Error('此资源请在收藏详情中查看');
-                    else if (mode === 'external') await shell.openExternal(entry.url);
-                    else {
-                        void openEntry(entry).catch(() => {
-                        });
-                        if (entry.username || entry.password) {
-                            await loginHelper.show(entry);
-                            if (dashboard || overlay || tabs.get(active)?.entry.id !== entry.id) loginHelper.hide(true);
-                        }
-                    }
-                    store.markOpened(entry.id);
-                    return {ok: true};
-                }
-                case 'external': {
-                    const tab = tabs.get(payload);
-                    const url = tab ? tab.url : getEntry(payload).url;
-                    if (!validUrl(url)) throw new Error('地址不正确');
-                    await shell.openExternal(url);
-                    return {ok: true};
-                }
-                case 'login-card': {
-                    const tab = tabs.get(active);
-                    if (!tab) throw Error('请先打开网页');
-                    await loginHelper.show(getEntry(tab.entry.id));
-                    return {ok: true};
-                }
-                case 'home':
-                    dashboard = true;
-                    layout();
-                    publish();
-                    win.webContents.focus();
-                    return {ok: true};
-                case 'activate':
-                    if (tabs.has(payload)) {
-                        active = payload;
-                        dashboard = false;
-                        layout();
-                        publish();
-                        loginHelper?.hide();
-                        loginHelper?.resume(tabs.get(payload).entry);
-                    }
-                    return {ok: true};
-                case 'close':
-                    closeTab(payload);
-                    return {ok: true};
-                case 'overlay':
-                    overlay = payload === true;
-                    layout();
-                    if (!overlay && !dashboard) loginHelper?.resume(tabs.get(active)?.entry);
-                    return {ok: true};
-                case 'navigation': {
-                    const tab = tabs.get(active);
-                    if (tab) {
-                        const history = tab.view.webContents.navigationHistory;
-                        if (payload === 'back' && history.canGoBack()) history.goBack();
-                        if (payload === 'forward' && history.canGoForward()) history.goForward();
-                        if (payload === 'reload') {
-                            tab.error = '';
-                            layout();
-                            void tab.view.webContents.loadURL(tab.url).catch(() => {
-                            });
-                        }
-                    }
-                    return {ok: true};
-                }
-                case 'export': {
-                    const exported=exportWorkspace(store,payload?.sections,payload?.includeCredentials!==false);
-                    const result = await dialog.showSaveDialog(win, {
-                        title: '导出工作空间数据',
-                        defaultPath: 'Collectify-workspace.json',
-                        filters: [{name: 'JSON', extensions: ['json']}]
-                    });
-                    if (result.canceled) return {ok: true, data: null};
-                    if([store.file,`${store.file}-wal`,`${store.file}-shm`].some(file=>path.resolve(file)===path.resolve(result.filePath)))throw Error('不能用导出文件覆盖正在使用的数据库');
-                    const serialized=JSON.stringify(exported,null,2);
-                    if(Buffer.byteLength(serialized,'utf8')>20*1024*1024)throw Error('所选数据超过 20 MB，请分类型导出或使用数据库备份');
-                    fs.writeFileSync(result.filePath, serialized, 'utf8');
-                    return {ok: true, data: result.filePath};
-                }
-                case 'import-cancel':
-                    if(importDraft?.token===payload)importDraft=null;
-                    return {ok:true};
-                case 'import-preview':
-                case 'import': {
-                    let draft=payload?.token&&importDraft?.token===payload.token?importDraft:null;
-                    if(payload?.token&&!draft)throw Error('导入预览已失效，请重新选择文件');
-                    if(!draft){
-                        const result = await dialog.showOpenDialog(win, {
-                        title: '导入工作空间数据',
-                        properties: ['openFile'],
-                        filters: [{name: 'JSON', extensions: ['json']}]
-                    });
-                    if (result.canceled) return {ok: true, data: null};
-                    if (fs.statSync(result.filePaths[0]).size > 20 * 1024 * 1024) throw new Error('数据文件不能超过 20 MB');
-                    const raw = JSON.parse(fs.readFileSync(result.filePaths[0], 'utf8').replace(/^\uFEFF/, ''));
-                    const parsed=parseWorkspace(raw);
-                    if(parsed.sections.includes('bookmarks'))parsed.data.entries=await Promise.all(parsed.data.entries.map(entry=>credentials.prepare(entry)));
-                    draft={token:randomUUID(),raw:parsed,name:path.basename(result.filePaths[0])};
-                    }
-                    if(action==='import-preview'){
-                        importDraft=draft;
-                        return {ok:true,data:{...describeWorkspace(draft.raw),token:draft.token,name:draft.name}};
-                    }
-                    const result=importWorkspace(store,draft.raw,{
-                        mode: payload?.mode === 'replace' ? 'replace' : 'merge',
-                        sections:payload?.sections||draft.raw.sections,
-                        sourceName:draft.name
-                    });
-                    if(result.sections.includes('bookmarks'))for (const tab of [...tabs.values()]) closeTab(tab.id);
-                    importDraft=null;dataChanged();
-                    return {ok: true, data: result};
-                }
-                default:
-                    throw new Error('未知操作');
-            }
-        } catch (error) {
-            return {ok: false, error: error.message};
-        } finally {
-            if (['task-save', 'task-delete', 'note-save', 'note-delete', 'theme-save', 'settings', 'import', 'save', 'delete'].includes(action)) desktopWidget?.update();
-        }
-    });
-}
-
-app.whenReady().then(async () => {
-    try {
-        const externalDefault = path.join(app.isPackaged ? path.dirname(app.getPath('exe')) : path.join(__dirname, '..'), 'default-config.json');
-        const portableDefault = process.env.PORTABLE_EXECUTABLE_DIR && path.join(process.env.PORTABLE_EXECUTABLE_DIR, 'default-config.json');
-        const bundledDefault = path.join(__dirname, '..', 'config', 'default-config.json');
-        const defaults = portableDefault && fs.existsSync(portableDefault) ? portableDefault : fs.existsSync(externalDefault) ? externalDefault : bundledDefault;
-        const file = path.join(app.getPath('userData'), 'collectify.sqlite');
-        let defaultData;
-        if (!smoke && !fs.existsSync(file)) {
-            defaultData = JSON.parse(fs.readFileSync(defaults, 'utf8').replace(/^\uFEFF/, ''));
-            if (Array.isArray(defaultData.entries)) defaultData.entries = await Promise.all(defaultData.entries.map(entry => credentials.prepare(entry)));
-        }
-        store = new Store(file, smoke ? {} : {defaults, defaultData});
-    } catch (error) {
-        dialog.showErrorBox('无法读取配置', `配置未被覆盖，请检查 ${app.getPath('userData')} 中的 collectify.sqlite。\n${error.message}`);
-        app.quit();
-        return;
-    }
-    registerApi();
-    desktopWidget = new DesktopWidget(store, dataChanged, () => showMain('tasks'), smoke);
-    loginHelper = new LoginHelper(() => win, smoke);
-    localMcp = new LocalMcpService(store, dataChanged);
-    const createWindow = async () => {
-        win = new BrowserWindow({
-            width: 1440,
-            height: 940,
-            minWidth: 1050,
-            minHeight: 720,
-            backgroundColor: store.data.settings.theme.background,
-            title: 'Collectify · 工作收藏夹',
-            autoHideMenuBar: true,
-            icon: path.join(__dirname, '..', 'assets', 'icon.png'),
-            webPreferences: {
-                preload: path.join(__dirname, 'preload.js'),
-                nodeIntegration: false,
-                contextIsolation: true,
-                sandbox: true,
-                backgroundThrottling: false,
-                offscreen: smoke
-            }
-        });
-        win.webContents.setWindowOpenHandler(() => ({action: 'deny'}));
-        if(smoke)win.webContents.on('console-message',event=>{if(event.level===3)console.error('Renderer:',event.message);});
-        win.webContents.on('will-navigate', event => event.preventDefault());
-        win.on('resize', layout);
-        win.on('close', event => {
-            if (!smoke && !quitting && tray && (store.data.settings.keepInTray || store.data.settings.widget.visible)) {
-                event.preventDefault();
-                win.hide();
-            } else if (!quitting && !store.data.settings.widget.visible) desktopWidget?.destroy();
-        });
-        win.on('hide', () => loginHelper?.hide());
-        win.on('minimize', () => loginHelper?.hide());
-        win.on('closed', () => {
-            loginHelper?.destroy();
-            for (const tab of tabs.values()) if (!tab.view.webContents.isDestroyed()) tab.view.webContents.close();
-            tabs.clear();
-            active = null;
-            dashboard = true;
-            overlay = false;
-            win = null;
-        });
-        await win.loadFile(path.join(__dirname, 'index.html'));
+function pluginRuntimeStatus(id) {
+    const plugin = registry.get(id),
+        record = runtime.views.get(id);
+    return {
+        pluginId: id,
+        enabled: plugin.enabled,
+        state: !plugin.enabled
+            ? 'disabled'
+            : !record
+              ? 'not-open'
+              : record.error
+                ? 'failed'
+                : record.loading
+                  ? 'loading'
+                  : 'ready',
+        scriptErrors: record?.diagnostics || [],
+        notice: '仅报告加载和脚本类别/位置，不返回页面内容或用户数据；ready 不等于业务行为已完整测试'
     };
-    createMainWindow = createWindow;
-    await createWindow();
-    app.setAppUserModelId('com.collectify.desktop');
-    if (!smoke) {
-        tray = new Tray(path.join(__dirname, '..', 'assets', 'icon.png'));
-        tray.setToolTip('Collectify · 收藏与待办');
-        tray.setContextMenu(Menu.buildFromTemplate([{
-            label: '打开Collectify',
-            click: () => showMain()
-        }, {label: '查看待办', click: () => showMain('tasks')}, {type: 'separator'}, {
-            label: '退出（停止提醒）',
-            click: () => {
-                quitting = true;
-                app.quit();
+}
+async function openPlugin(id, route, payload) {
+    if (!win || win.isDestroyed()) await createWindow();
+    win.show();
+    if (win.isMinimized()) win.restore();
+    registry.get(id, true);
+    registry.setSetting('lastPlugin', id);
+    await runtime.open(id, undefined, route, payload);
+    layout();
+    publish();
+}
+async function revealInstalledPlugin(id) {
+    if (win && !win.isDestroyed()) await win.webContents.executeJavaScript('closeDialogsForPlugin()');
+    overlay = false;
+    await openPlugin(id);
+}
+function updateTray() {
+    if (!tray) return;
+    tray.setContextMenu(
+        Menu.buildFromTemplate([
+            {
+                label: '打开 Collectify',
+                click: () => {
+                    win?.show();
+                    win?.focus();
+                }
+            },
+            ...registry
+                .list()
+                .filter((p) => p.enabled)
+                .map((p) => ({ label: p.name, click: () => void openPlugin(p.id) })),
+            { type: 'separator' },
+            {
+                label: '退出',
+                click: () => {
+                    quitting = true;
+                    app.quit();
+                }
             }
-        }]));
-        tray.on('double-click', () => showMain());
-        void checkReminders();
-        setInterval(checkReminders, 15000).unref();
-        if (store.data.settings.widget.autoRestore) await desktopWidget.open(store.data.settings.widget.mode);
-        else if (store.data.settings.widget.visible) {
-            const data = store.snapshot();
-            data.settings.widget.visible = false;
-            store.commit(data);
-        }
-        if (localMcp.config.enabled) {
-            try {
-                await localMcp.start();
-            } catch (error) {
-                dialog.showErrorBox('MCP 未启动', error.message);
-            }
-        }
-    }
-    app.on('activate', () => {
-        if (BrowserWindow.getAllWindows().length === 0) void createWindow();
+        ])
+    );
+}
+function protectedTarget(file) {
+    const normalize = (s) => (process.platform === 'win32' ? path.resolve(s).toLowerCase() : path.resolve(s)),
+        target = normalize(file),
+        root = normalize(app.getPath('userData'));
+    return target === root || target.startsWith(root + path.sep);
+}
+async function pick(kind) {
+    const result = await dialog.showOpenDialog(win, {
+        title: kind === 'folder' ? '选择文件夹' : '选择文件',
+        properties:
+            kind === 'folder' ? ['openDirectory'] : kind === 'files' ? ['openFile', 'multiSelections'] : ['openFile']
     });
-    if (smoke) {
-        try {
-            if(process.argv.includes('--smoke-appearance-only')){await require('./smoke-v12').run({win,store,desktopWidget});await require('./smoke-v13').run({win,store,desktopWidget});app.exit(0);return;}
-            if(!process.argv.includes('--smoke-ui-only')) {
-            if (!process.argv.includes('--smoke-v6-only')) {
-                await require('./smoke').run({
-                    win, store, tabs, openEntry, closeTab, layout, publish, home: () => {
-                        dashboard = true;
-                        layout();
-                        publish();
-                    }
-                });
-                await require('./smoke-v3').run({win, store, tabs, openEntry, closeTab});
-                await require('./smoke-v4').run({win, store, tabs, openEntry, closeTab, desktopWidget});
-                await require('./smoke-v5').run({win, store, desktopWidget});
+    return kind === 'files' ? (result.canceled ? [] : result.filePaths) : result.canceled ? '' : result.filePaths[0];
+}
+async function pluginEnabled(id, enabled) {
+    registry.setEnabled(id, enabled);
+    try {
+        if (enabled) await services.enable(id);
+        else {
+            runtime.close(id);
+            await services.disable(id);
+        }
+    } catch (error) {
+        registry.setEnabled(id, !enabled);
+        throw error;
+    }
+    updateTray();
+    layout();
+    publish();
+}
+async function hostAction(action, payload) {
+    if (
+        [
+            'plugin-install',
+            'plugin-package-install',
+            'plugin-package-export',
+            'plugin-uninstall',
+            'plugin-restore',
+            'plugin-catalog-status',
+            'plugin-catalog-configure',
+            'plugin-catalog-refresh',
+            'plugin-catalog-install'
+        ].includes(action)
+    )
+        return pluginManagement(action, payload);
+    switch (action) {
+        case 'state':
+            return catalog();
+        case 'plugin-list':
+            return catalog();
+        case 'plugin-open':
+            await openPlugin(payload.id, payload.route, payload.data);
+            return runtime.active();
+        case 'plugin-bounds':
+            runtime.setBounds(payload);
+            layout();
+            return;
+        case 'plugin-reload': {
+            const active = runtime.active();
+            if (active) {
+                runtime.close(active.id);
+                await openPlugin(active.id, active.route);
             }
-            await require('./smoke-v6').run({win, store, tabs, openEntry, closeTab, loginHelper});
-            await require('./smoke-v7').run({win, store, tabs, loginHelper, desktopWidget, localMcp});
-            await require('./smoke-v8').run({win, store});
-            await require('./smoke-v9').run({win, store});
-            }
-            await require('./smoke-v10').run({win, store});
-            await require('./smoke-v11').run({win,store,desktopWidget});
-            await require('./smoke-v12').run({win,store,desktopWidget});
-            await require('./smoke-v13').run({win,store,desktopWidget});
-        } catch (error) {
-            console.error(error);
-            app.exit(1);
             return;
         }
-        app.exit(0);
+        case 'plugin-enable':
+            await pluginEnabled(payload.id, payload.enabled);
+            return;
+        case 'overlay':
+            overlay = payload === true;
+            layout();
+            return;
+        case 'workspace-info':
+            return {
+                directory: app.getPath('userData'),
+                file: registry.hostFile,
+                version: app.getVersion(),
+                mcp: mcp.status()
+            };
+        case 'open-data-directory': {
+            const error = await shell.openPath(app.getPath('userData'));
+            if (error) throw Error(error);
+            return;
+        }
+        case 'settings':
+            return setSettings(payload);
+        case 'theme-save':
+            setSettings({ ...settings(), theme: payload });
+            return settings().theme;
+        case 'theme-export': {
+            const result = await dialog.showSaveDialog(win, {
+                title: '导出主题',
+                defaultPath: 'Collectify-theme.json',
+                filters: [{ name: 'JSON', extensions: ['json'] }]
+            });
+            if (result.canceled) return null;
+            if (protectedTarget(result.filePath)) throw Error('不能覆盖工作台内部数据');
+            fs.writeFileSync(result.filePath, JSON.stringify({ version: 1, theme: settings().theme }, null, 2), 'utf8');
+            return result.filePath;
+        }
+        case 'theme-import': {
+            const file = await pick('file');
+            if (!file) return null;
+            if (fs.statSync(file).size > 16000) throw Error('主题文件过大');
+            const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
+            if (raw.version !== 1 || !raw.theme) throw Error('主题格式不正确');
+            return Theme.validate(raw.theme);
+        }
+        case 'mcp-start':
+            return mcp.start(payload.port);
+        case 'mcp-stop':
+            return mcp.stop();
+        case 'mcp-copy':
+            await copyText(JSON.stringify(mcp.connection(), null, 2));
+            return;
+        case 'export': {
+            const value = backup.export(payload.ids, payload.settings, payload.includeCredentials !== false),
+                text = JSON.stringify(value, null, 2);
+            if (Buffer.byteLength(text) > 20 * 1024 * 1024) throw Error('所选数据超过 20 MB，请分插件导出');
+            const result = await dialog.showSaveDialog(win, {
+                title: '导出工作台数据',
+                defaultPath: 'Collectify-workspace.json',
+                filters: [{ name: 'JSON', extensions: ['json'] }]
+            });
+            if (result.canceled) return null;
+            if (protectedTarget(result.filePath)) throw Error('不能覆盖工作台内部数据');
+            fs.writeFileSync(result.filePath, text, 'utf8');
+            return result.filePath;
+        }
+        case 'import-preview': {
+            const file = await pick('file');
+            if (!file) return null;
+            if (fs.statSync(file).size > 20 * 1024 * 1024) throw Error('数据文件不能超过 20 MB');
+            const raw = backup.parse(JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '')));
+            importDraft = { token: require('node:crypto').randomUUID(), raw };
+            return {
+                token: importDraft.token,
+                ids: raw.plugins.map((p) => p.id),
+                settings: !!raw.settings,
+                name: path.basename(file)
+            };
+        }
+        case 'import-cancel':
+            importDraft = null;
+            return;
+        case 'import': {
+            if (!importDraft || payload.token !== importDraft.token) throw Error('导入预览失效');
+            runtime.destroy();
+            layout();
+            backup.import(importDraft.raw, payload);
+            importDraft = null;
+            runtime.themeChanged();
+            publish();
+            return true;
+        }
+        default:
+            throw Error('宿主不提供该业务操作，请通过所属插件调用');
     }
-}).catch(error => {
-    // 捕获窗口、辅助服务等后续初始化异常，避免 whenReady 链产生未处理的 Promise 拒绝。
-    console.error('Collectify 启动失败:', error);
-    if (smoke) { app.exit(1); return; }
-    dialog.showErrorBox('Collectify 启动失败', `程序未能完成初始化。\n${error.message}\n数据目录：${app.getPath('userData')}`);
-    app.exit(1);
+}
+ipcMain.handle('workbench', async (event, action, payload) => {
+    try {
+        if (
+            event.sender !== win?.webContents ||
+            event.senderFrame !== win.webContents.mainFrame ||
+            event.senderFrame.url !== rendererUrl
+        )
+            throw Error('无权调用宿主接口');
+        return { ok: true, data: await hostAction(action, payload) };
+    } catch (error) {
+        return { ok: false, error: error.message };
+    }
+});
+async function createWindow() {
+    win = new BrowserWindow({
+        width: 1440,
+        height: 960,
+        minWidth: 1080,
+        minHeight: 720,
+        title: 'Collectify · 插件工作台',
+        backgroundColor: settings().theme.background,
+        icon: path.join(__dirname, '..', 'assets', 'icon.png'),
+        show: !smoke,
+        autoHideMenuBar: true,
+        webPreferences: {
+            preload: path.join(__dirname, 'preload.js'),
+            sandbox: true,
+            contextIsolation: true,
+            nodeIntegration: false,
+            offscreen: smoke && !process.argv.includes('--smoke-visible')
+        }
+    });
+    win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    win.webContents.on('will-navigate', (event) => event.preventDefault());
+    if (smoke)
+        win.webContents.on('console-message', (event) => {
+            if (event.level === 3) console.error('Shell renderer:', event.message);
+        });
+    win.on('resize', layout);
+    win.on('close', (event) => {
+        if (
+            !quitting &&
+            tray &&
+            (settings().keepInTray || [...services.providers.values()].some((p) => p.keepAlive?.()))
+        ) {
+            event.preventDefault();
+            win.hide();
+        }
+    });
+    win.on('closed', () => {
+        runtime.destroy();
+        win = null;
+    });
+    await win.loadFile(path.join(__dirname, 'index.html'));
+    publish();
+}
+app.on('second-instance', () => {
+    win?.show();
+    win?.focus();
 });
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
 });
+app.on('activate', () => {
+    if (!win) void createWindow();
+});
 app.on('before-quit', () => {
     quitting = true;
-    if (localMcp?.http) void localMcp.stop(false);
+    void services?.dispose();
+    void mcp?.stop(false);
 });
+app.whenReady()
+    .then(async () => {
+        const dataDirectory = app.getPath('userData');
+        registry = new PluginRegistry({
+            builtinRoot: path.join(__dirname, 'plugins'),
+            userRoot: path.join(dataDirectory, 'plugin-packages'),
+            dataRoot: path.join(dataDirectory, 'plugins'),
+            hostFile: path.join(dataDirectory, 'host.sqlite')
+        });
+        packages = new PluginPackages(registry, path.join(dataDirectory, 'plugin-staging'));
+        pluginCatalog = new PluginCatalog(registry);
+        // 只迁移宿主自己的全局偏好，不在宿主加载任何业务实体。
+        const legacy = path.join(dataDirectory, 'collectify.sqlite');
+        if (registry.getSetting('theme') === null && fs.existsSync(legacy)) {
+            const db = new DatabaseSync(legacy, { readOnly: true });
+            try {
+                for (const row of db.prepare("SELECT * FROM settings WHERE key IN ('theme','keepInTray')").all())
+                    registry.setSetting(row.key, JSON.parse(row.value_json));
+                if (db.prepare("SELECT name FROM sqlite_master WHERE name='mcp_connection'").get()) {
+                    const row = db.prepare('SELECT * FROM mcp_connection WHERE id=1').get();
+                    if (row) registry.saveMcpConfig({ enabled: !!row.enabled, port: row.port, token: row.token });
+                }
+            } finally {
+                db.close();
+            }
+        }
+        const externalDefault = path.join(
+            app.isPackaged ? path.dirname(app.getPath('exe')) : path.join(__dirname, '..'),
+            'default-config.json'
+        );
+        const defaultsFile = fs.existsSync(externalDefault)
+            ? externalDefault
+            : path.join(__dirname, '..', 'config', 'default-config.json');
+        if (registry.getSetting('theme') === null) {
+            const initial =
+                !smoke && fs.existsSync(defaultsFile)
+                    ? JSON.parse(fs.readFileSync(defaultsFile, 'utf8').replace(/^\uFEFF/, '')).settings || {}
+                    : {};
+            registry.setSetting('theme', Theme.validate(initial.theme || {}));
+            registry.setSetting('keepInTray', initial.keepInTray === true);
+        }
+        runtime = new PluginRuntime({
+            registry,
+            getWindow: () => win,
+            getTheme: () => settings().theme,
+            changed: () => {
+                layout();
+                publish();
+            },
+            smoke
+        });
+        services = new PluginServices(registry, {
+            getWindow: () => win,
+            getSettings: settings,
+            setSettings,
+            dataDirectory,
+            defaultsFile,
+            smoke,
+            pick,
+            openPlugin
+        });
+        runtime.services = services;
+        services.on('event', ({ pluginId, name, data }) => runtime.emit(pluginId, name, data));
+        services.on('changed', (id) => {
+            runtime.emit(id, 'data-changed');
+            publish();
+        });
+        await services.load({ activate: false });
+        backup = new WorkspaceBackup(registry, settings, setSettings);
+        backup.recover();
+        development = new PluginDevelopment({
+            registry,
+            root: path.join(dataDirectory, 'plugin-drafts'),
+            templatesRoot: path.join(__dirname, 'plugin-templates'),
+            setEnabled: pluginEnabled,
+            runtimeStatus: pluginRuntimeStatus,
+            installed: async (id, { open }) => {
+                runtime.close(id);
+                updateTray();
+                publish();
+                if (open) await revealInstalledPlugin(id);
+                return { opened: open, runtime: pluginRuntimeStatus(id) };
+            }
+        });
+        mcp = new LocalMcpService(registry, publish, () => [
+            {
+                name: 'workspace_summary',
+                description: '查询已启用插件的概况',
+                inputSchema: {},
+                handler: () => ({
+                    plugins: registry
+                        .list()
+                        .filter((p) => p.enabled)
+                        .map((p) => ({ id: p.id, name: p.name, ...services.providers.get(p.id)?.summary?.() })),
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    now: new Date().toISOString()
+                })
+            },
+            ...services.contributions(),
+            ...development.tools(z)
+        ]);
+        await createWindow();
+        await services.activateEnabled();
+        if (!smoke) {
+            tray = new Tray(path.join(__dirname, '..', 'assets', 'icon.png'));
+            tray.setToolTip('Collectify');
+            updateTray();
+            if (mcp.config.enabled)
+                try {
+                    await mcp.start();
+                } catch (error) {
+                    dialog.showErrorBox('MCP 未启动', error.message);
+                }
+        }
+        if (smoke) {
+            try {
+                const verification = require('./smoke-shell'),
+                    context = {
+                        win,
+                        registry,
+                        runtime,
+                        services,
+                        backup,
+                        mcp,
+                        development,
+                        packages,
+                        pluginCatalog,
+                        hostAction
+                    };
+                if (process.argv.includes('--smoke-tools')) await require('./smoke-tools').run(context);
+                else if (process.argv.includes('--smoke-navigation')) await require('./smoke-navigation').run(context);
+                else if (process.argv.includes('--smoke-startup')) {
+                    await verification.startup(context);
+                    await require('./smoke-packages').run(context);
+                    await require('./smoke-navigation').run(context);
+                    await require('./smoke-tools').run(context);
+                } else {
+                    await verification.run(context);
+                    await require('./smoke-development').run(context);
+                    await require('./smoke-packages').run(context);
+                    await require('./smoke-navigation').run(context);
+                    await require('./smoke-tools').run(context);
+                }
+                await services.dispose();
+                app.exit(0);
+            } catch (error) {
+                console.error(error);
+                app.exit(1);
+            }
+        }
+    })
+    .catch((error) => {
+        console.error(error);
+        if (!smoke) dialog.showErrorBox('Collectify 启动失败', error.message);
+        app.exit(1);
+    });

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>剪贴板历史</title>
+        <link rel="stylesheet" href="collectify-plugin://collectify.sdk/tool.css" />
+        <link rel="stylesheet" href="style.css" />
+    </head>
+    <body>
+        <header>
+            <div>
+                <h1>剪贴板历史</h1>
+                <p>仅在插件显示、窗口未隐藏且你开启采集时读取文本。</p>
+            </div>
+            <span class="tag">本机保存 · 不上传</span>
+        </header>
+        <section class="panel">
+            <div class="toolbar">
+                <button id="capture" class="primary">开启采集</button><button id="read-once">读取一次</button
+                ><button id="clear">清空历史</button>
+            </div>
+            <label class="search-label">搜索<input id="search" placeholder="搜索已记录的文本" /></label>
+            <p id="message" role="status"></p>
+            <div id="history"></div>
+        </section>
+        <p class="caption">
+            最多保留 30 条、每条 2000
+            字符。历史可能包含你复制的敏感内容，可随时清空。离开插件或隐藏窗口时暂停读取；重新打开程序不会自动开启采集。
+        </p>
+        <script src="collectify-plugin://collectify.sdk/toolkit.js"></script>
+        <script src="app.js"></script>
+    </body>
+</html>

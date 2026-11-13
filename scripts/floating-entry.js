@@ -1,1 +1,1 @@
-export {computePosition,offset,flip,shift,size,autoUpdate} from '@floating-ui/dom';
+export { computePosition, offset, flip, shift, size, autoUpdate } from '@floating-ui/dom';

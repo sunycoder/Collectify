@@ -1,0 +1,143 @@
+.timestamp-panel {
+    padding: 18px 20px;
+}
+.live-clock {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    align-items: center;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--paper);
+}
+.live-clock .toolbar {
+    margin: 0;
+}
+.clock-value {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+.clock-value strong {
+    font-size: 26px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+}
+.unit-badge {
+    border-radius: 6px;
+    padding: 1px 7px;
+    background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+    color: var(--accent);
+    font-size: 12px;
+}
+.live-clock small {
+    color: var(--muted);
+    font-size: 11px;
+}
+.conversion-tabs {
+    display: flex;
+    background: var(--paper);
+    border-radius: 9px;
+    padding: 4px;
+    margin: 14px 0 4px;
+    gap: 4px;
+}
+.conversion-tabs button {
+    flex: 1;
+    background: transparent;
+    border-color: transparent;
+    color: var(--muted);
+}
+.conversion-tabs button[aria-pressed='true'] {
+    background: var(--surface);
+    border-color: var(--line);
+    color: var(--ink);
+}
+.conversion-section {
+    padding: 20px 0 24px;
+}
+.conversion-section + section {
+    border-top: 1px solid var(--line);
+}
+.conversion-section h2 {
+    margin-bottom: 18px;
+    font-size: 16px;
+}
+.conversion-inputs {
+    display: flex;
+    gap: 10px;
+    align-items: end;
+}
+.conversion-inputs .grow {
+    flex: 1;
+    min-width: 150px;
+}
+.conversion-inputs > label:not(.grow) {
+    width: 165px;
+    flex-shrink: 0;
+}
+.conversion-inputs > label:has(#unit) {
+    width: 120px;
+}
+.conversion-inputs > button {
+    white-space: nowrap;
+    min-height: 42px;
+}
+.result-label {
+    margin-top: 12px;
+    margin-bottom: 7px;
+}
+.conversion-output {
+    display: flex;
+    gap: 10px;
+}
+.conversion-output input {
+    flex: 1;
+    font-variant-numeric: tabular-nums;
+}
+.conversion-output > .ts-wrapper {
+    width: 145px;
+    flex-shrink: 0;
+}
+.conversion-output button {
+    white-space: nowrap;
+    min-width: 72px;
+}
+.timestamp-panel .ts-wrapper {
+    margin-top: 0;
+}
+.timestamp-panel .ts-control {
+    min-height: 42px !important;
+}
+.timestamp-panel #message {
+    margin-top: 0;
+    min-height: 20px;
+}
+.batch-grid {
+    margin-top: 16px;
+}
+.batch-grid textarea {
+    min-height: 230px;
+}
+#batch-summary {
+    font-size: 12px;
+    margin-top: 12px;
+}
+#batch-panel {
+    padding-top: 20px;
+}
+[hidden] {
+    display: none !important;
+}
+@media (max-width: 950px) {
+    .conversion-inputs {
+        flex-wrap: wrap;
+    }
+    .conversion-inputs .grow {
+        flex-basis: 100%;
+    }
+    .live-clock {
+        flex-wrap: wrap;
+    }
+}

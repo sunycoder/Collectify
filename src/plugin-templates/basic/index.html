@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>自有插件</title>
+        <link rel="stylesheet" href="collectify-plugin://collectify.sdk/tool.css" />
+    </head>
+    <body>
+        <header>
+            <div>
+                <h1 id="title">自有插件</h1>
+                <p>根据你的需要扩展工作台。</p>
+            </div>
+        </header>
+        <section class="panel">
+            <label>内容<textarea id="input" placeholder="输入内容"></textarea></label>
+            <div class="toolbar"><button id="copy" class="primary">复制</button><button id="save">保存</button></div>
+            <p id="message" role="status"></p>
+        </section>
+        <script src="collectify-plugin://collectify.sdk/toolkit.js"></script>
+        <script src="app.js"></script>
+    </body>
+</html>

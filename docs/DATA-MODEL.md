@@ -1,3 +1,5 @@
+> 当前运行时已改为统一插件工作台：宿主使用 host.sqlite，收藏、待办、便签分别使用自己的领域库。现行结构见 [插件架构](plugin-system.md)。下文保留旧 collectify.sqlite 单库模型，用于只读迁移和旧数据回归，不再代表当前运行时的统一业务库。
+
 # Collectify SQLite 数据模型
 
 应用版本 5.5.3。数据库结构版本 2，记录于 `PRAGMA user_version` 和 `schema_migrations`。全局 JSON 交换格式版本 1，原默认收藏配置版本 2；格式、数据库和应用版本分别管理。
@@ -16,18 +18,18 @@ SQL 建表定义及完整列以 `src/sqlite-repository.js` 为准。
 
 ## 表与字段
 
-| 表 | 主要字段与关系 |
-| --- | --- |
-| categories | id 主键、name、name_key 唯一、description、color、icon、sort_order；inbox 是系统保留分类 |
-| entries | id 主键、category_id 外键、type、name、url、local_path、content、environment、note、username、password、auth_mode、open_mode、favorite、last_opened、sort_order |
-| tasks | id 主键、title、note、status、priority、important、urgent、all_day、start_at、end_at、due_at、remind_at、notified_at、bookmark_id 可空外键、archived、created_at、completed_at、sort_order |
-| task_attachments | task_id 外键、position、path；联合主键 task_id + position |
-| notes | id 主键、title、content、color、updated_at、sort_order |
-| settings | key 主键、value_json；theme、widget、keepInTray、designVersion 分别存行 |
-| workspace_meta | 单行；revision、initialized、config_source、source_name；管理初始化和乐观并发控制 |
-| mcp_connection | 单行；enabled、port、token；本机服务设置，不暴露给 AI 业务查询 |
-| mcp_audit | id、at、tool、result；只记录成功写工具的名称、时间与结果，不保存工具参数或密码 |
-| schema_migrations | version、applied_at；数据库结构变更记录 |
+| 表                | 主要字段与关系                                                                                                                                                                             |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| categories        | id 主键、name、name_key 唯一、description、color、icon、sort_order；inbox 是系统保留分类                                                                                                   |
+| entries           | id 主键、category_id 外键、type、name、url、local_path、content、environment、note、username、password、auth_mode、open_mode、favorite、last_opened、sort_order                            |
+| tasks             | id 主键、title、note、status、priority、important、urgent、all_day、start_at、end_at、due_at、remind_at、notified_at、bookmark_id 可空外键、archived、created_at、completed_at、sort_order |
+| task_attachments  | task_id 外键、position、path；联合主键 task_id + position                                                                                                                                  |
+| notes             | id 主键、title、content、color、updated_at、sort_order                                                                                                                                     |
+| settings          | key 主键、value_json；theme、widget、keepInTray、designVersion 分别存行                                                                                                                    |
+| workspace_meta    | 单行；revision、initialized、config_source、source_name；管理初始化和乐观并发控制                                                                                                          |
+| mcp_connection    | 单行；enabled、port、token；本机服务设置，不暴露给 AI 业务查询                                                                                                                             |
+| mcp_audit         | id、at、tool、result；只记录成功写工具的名称、时间与结果，不保存工具参数或密码                                                                                                             |
+| schema_migrations | version、applied_at；数据库结构变更记录                                                                                                                                                    |
 
 所有表采用 STRICT 类型约束。布尔列限制为 0/1；状态、优先级、资源类型等由 CHECK 约束。SQL 字段使用 snake_case，领域对象使用 camelCase，映射仅存在于仓储层。
 

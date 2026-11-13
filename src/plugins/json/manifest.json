@@ -1,0 +1,18 @@
+{
+  "id": "collectify.json",
+  "name": "JSON 工具",
+  "iconAsset": "Json.svg",
+  "glyph": "{}",
+  "order": 50,
+  "description": "在本机校验、格式化、压缩 JSON，并定位语法错误。",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "entry": "index.html",
+  "permissions": ["storage", "clipboard.write"],
+  "commands": [{ "id": "open", "title": "打开 JSON 工具" }],
+  "navigation": [
+    { "id": "format", "label": "格式化" },
+    { "id": "compact", "label": "压缩" },
+    { "id": "validate", "label": "校验" }
+  ]
+}

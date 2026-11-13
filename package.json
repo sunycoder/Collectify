@@ -6,6 +6,8 @@
   "author": "Collectify",
   "license": "UNLICENSED",
   "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "start": "electron .",
     "test": "node --test test/*.test.js",
     "smoke": "electron . --smoke-test",
@@ -28,6 +30,7 @@
     "esbuild": "0.25.12",
     "flatpickr": "4.6.13",
     "fullcalendar": "6.1.19",
+    "prettier": "3.10.1",
     "tom-select": "2.4.3",
     "zod": "3.25.76"
   },
@@ -39,6 +42,7 @@
     },
     "files": [
       "src/**/*",
+      "src/plugins/.shared/**/*",
       "assets/**/*",
       "package.json",
       "config/**/*"

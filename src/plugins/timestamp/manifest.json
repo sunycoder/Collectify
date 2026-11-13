@@ -1,0 +1,17 @@
+{
+  "id": "collectify.timestamp",
+  "name": "时间戳工具",
+  "iconAsset": "时间戳.svg",
+  "glyph": "时",
+  "order": 40,
+  "description": "秒、毫秒时间戳与本地时间、UTC 时间互转。",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "entry": "index.html",
+  "permissions": ["storage", "clipboard.write"],
+  "commands": [{ "id": "open", "title": "打开时间戳工具" }],
+  "navigation": [
+    { "id": "to-date", "label": "时间戳转日期" },
+    { "id": "to-timestamp", "label": "日期转时间戳" }
+  ]
+}

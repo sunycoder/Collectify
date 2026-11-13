@@ -3,7 +3,9 @@ async function loadAuxiliary(window, file) {
     window.setOpacity(0);
     try {
         await window.loadFile(file);
-        const ready = await window.webContents.executeJavaScript('document.readyState === "complete" && document.body && document.body.textContent.trim().length > 0');
+        const ready = await window.webContents.executeJavaScript(
+            'document.readyState === "complete" && document.body && document.body.textContent.trim().length > 0'
+        );
         if (!ready) throw Error('辅助窗口页面尚未准备好');
         window.setOpacity(1);
     } catch (error) {
@@ -12,4 +14,4 @@ async function loadAuxiliary(window, file) {
     }
 }
 
-module.exports = {loadAuxiliary};
+module.exports = { loadAuxiliary };

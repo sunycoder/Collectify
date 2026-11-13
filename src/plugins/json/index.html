@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>JSON 工具</title>
+        <link rel="stylesheet" href="collectify-plugin://collectify.sdk/tool.css" />
+    </head>
+    <body>
+        <header>
+            <div>
+                <h1>JSON 工具</h1>
+                <p>校验、格式化与压缩，内容只在本机处理。</p>
+            </div>
+            <span class="tag">本地计算</span>
+        </header>
+        <section class="panel">
+            <div class="grid">
+                <label
+                    >输入<textarea
+                        id="input"
+                        spellcheck="false"
+                        placeholder='{"name":"Collectify","plugins":["timestamp","json"]}'
+                    ></textarea></label
+                ><label
+                    >输出<textarea id="output" readonly spellcheck="false" placeholder="处理结果显示在这里"></textarea>
+                </label>
+            </div>
+            <div class="toolbar">
+                <button id="format" class="primary">格式化</button><button id="compact">压缩</button
+                ><button id="validate">校验</button
+                ><label
+                    >缩进<select id="indent">
+                        <option value="2">2 个空格</option>
+                        <option value="4">4 个空格</option>
+                        <option value="tab">Tab</option>
+                    </select></label
+                ><button id="copy">复制结果</button><button id="clear">清空</button>
+            </div>
+            <p id="message" role="status"></p>
+        </section>
+        <p class="caption">
+            支持对象、数组和 JSON
+            标量。仅保存缩进偏好，不保存文本内容；超过安全整数范围时停止格式化，避免悄悄改变数据。单次最多 1 MB。
+        </p>
+        <script src="collectify-plugin://collectify.sdk/toolkit.js"></script>
+        <script src="format.js"></script>
+        <script src="app.js"></script>
+    </body>
+</html>

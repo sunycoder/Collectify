@@ -64,32 +64,43 @@
             sidebar: '#3b2c33'
         }
     ];
-    const hex = (value, fallback) => typeof value === 'string' && /^#[\da-f]{6}$/i.test(value) ? value.toLowerCase() : fallback;
+    const hex = (value, fallback) =>
+        typeof value === 'string' && /^#[\da-f]{6}$/i.test(value) ? value.toLowerCase() : fallback;
 
     function validate(input = {}) {
-        const preset = PRESETS.find(p => p.id === input.preset) || PRESETS[0];
+        const preset = PRESETS.find((p) => p.id === input.preset) || PRESETS[0];
         return {
             preset: preset.id,
             accent: hex(input.accent, preset.accent),
             background: hex(input.background, preset.background),
             surface: hex(input.surface, preset.surface),
             sidebar: hex(input.sidebar, preset.sidebar),
-            radius: Number.isFinite(Number(input.radius)) ? Math.max(8, Math.min(22, Number(input.radius))) : preset.id === 'office' ? 8 : 14,
+            radius: Number.isFinite(Number(input.radius))
+                ? Math.max(8, Math.min(22, Number(input.radius)))
+                : preset.id === 'office'
+                  ? 8
+                  : 14,
             density: input.density === 'compact' ? 'compact' : 'comfortable',
             motion: input.motion !== false,
             widgetMaterial: input.widgetMaterial === 'glass' ? 'glass' : 'solid',
-            glassOpacity: Number.isFinite(Number(input.glassOpacity)) ? Math.max(20,Math.min(90,Number(input.glassOpacity))) : 42
+            glassOpacity: Number.isFinite(Number(input.glassOpacity))
+                ? Math.max(20, Math.min(90, Number(input.glassOpacity)))
+                : 42
         };
     }
 
     function luminance(color) {
-        const rgb = color.match(/[\da-f]{2}/gi).map(n => parseInt(n, 16) / 255).map(v => v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4);
-        return rgb[0] * .2126 + rgb[1] * .7152 + rgb[2] * .0722;
+        const rgb = color
+            .match(/[\da-f]{2}/gi)
+            .map((n) => parseInt(n, 16) / 255)
+            .map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+        return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
     }
 
     function contrast(a, b) {
-        const aa = luminance(a), bb = luminance(b);
-        return (Math.max(aa, bb) + .05) / (Math.min(aa, bb) + .05);
+        const aa = luminance(a),
+            bb = luminance(b);
+        return (Math.max(aa, bb) + 0.05) / (Math.min(aa, bb) + 0.05);
     }
 
     function foreground(background) {
@@ -97,12 +108,14 @@
     }
 
     function tokens(input) {
-        const theme = validate(input), dark = luminance(theme.surface) < .2, office = theme.preset === 'office',
+        const theme = validate(input),
+            dark = luminance(theme.surface) < 0.2,
+            office = theme.preset === 'office',
             fg = dark ? '#e5e6eb' : office ? '#1f2329' : '#24332c';
         return {
             '--paper': theme.background,
             '--paper-ink': office ? fg : foreground(theme.background),
-            '--paper-muted': office ? '#646a73' : luminance(theme.background) < .2 ? '#a7b4ad' : '#718077',
+            '--paper-muted': office ? '#646a73' : luminance(theme.background) < 0.2 ? '#a7b4ad' : '#718077',
             '--surface': theme.surface,
             '--sidebar': theme.sidebar,
             '--sidebar-fg': office ? '#1f2329' : foreground(theme.sidebar),
@@ -128,13 +141,13 @@
         target.dataset.motion = String(theme.motion);
         target.dataset.density = theme.density;
         target.dataset.theme = theme.preset;
-        target.dataset.widgetMaterial=theme.widgetMaterial;
-        target.style.setProperty('--glass-opacity',`${theme.glassOpacity}%`);
-        target.style.setProperty('--glass-wash',`${(theme.glassOpacity*20.5/42).toFixed(2)}%`);
+        target.dataset.widgetMaterial = theme.widgetMaterial;
+        target.style.setProperty('--glass-opacity', `${theme.glassOpacity}%`);
+        target.style.setProperty('--glass-wash', `${((theme.glassOpacity * 12) / 42).toFixed(2)}%`);
         return theme;
     }
 
-    const api = {PRESETS, validate, tokens, contrast, apply};
+    const api = { PRESETS, validate, tokens, contrast, apply };
     if (typeof module !== 'undefined') module.exports = api;
     else root.ShiyueTheme = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

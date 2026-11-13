@@ -1,0 +1,184 @@
+@import url('collectify-plugin://collectify.sdk/vendor/tom-select.css');
+.ts-wrapper {
+    font-size: 12px;
+    color: var(--ink);
+    min-width: 110px;
+    display: inline-block;
+    vertical-align: middle;
+    --ts-pr-clear-button: 0;
+}
+
+.ts-wrapper.single .ts-control {
+    background: var(--surface);
+    background-image: none !important;
+    box-shadow: none;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    min-height: 36px;
+    padding: 9px 30px 9px 11px;
+    line-height: 18px;
+    color: var(--ink);
+    cursor: pointer;
+}
+
+.ts-wrapper.single .ts-control:after {
+    border: 0 !important;
+    border-right: 1.5px solid var(--subtle) !important;
+    border-bottom: 1.5px solid var(--subtle) !important;
+    transform: rotate(45deg);
+    width: 5px;
+    height: 5px;
+    right: 12px;
+    margin-top: -4px !important;
+}
+
+.ts-wrapper.single.dropdown-active .ts-control:after {
+    transform: rotate(225deg);
+    margin-top: 0 !important;
+}
+
+.ts-wrapper.focus .ts-control {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.ts-wrapper.single .ts-control .item {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    font-size: 12px;
+}
+
+.ts-wrapper .ts-control > input {
+    font-size: 12px;
+    color: var(--ink);
+    padding: 0 !important;
+    min-width: 0;
+    box-shadow: none !important;
+    background: none !important;
+    border: 0 !important;
+    height: auto;
+    line-height: 18px;
+}
+
+.ts-wrapper.disabled .ts-control {
+    background: var(--paper);
+    color: var(--subtle);
+}
+
+label > .ts-wrapper {
+    display: block;
+    margin-top: 8px;
+    width: 100%;
+}
+
+.task-toolbar > .ts-wrapper {
+    min-width: 112px;
+    flex: 0 0 auto;
+}
+
+.task-card-actions .ts-wrapper {
+    min-width: 83px;
+    max-width: 100px;
+}
+
+.task-card-actions .ts-control {
+    font-size: 10px !important;
+    min-height: 28px !important;
+    padding: 5px 24px 5px 8px !important;
+}
+
+.task-card-actions .ts-control .item {
+    font-size: 10px !important;
+}
+
+.sort-wrap .ts-wrapper {
+    min-width: 104px;
+}
+
+.sort-wrap .ts-control {
+    background: transparent !important;
+    border-color: transparent !important;
+    min-height: 30px !important;
+    padding: 5px 25px 5px 7px !important;
+}
+
+.ts-dropdown {
+    z-index: 1000 !important;
+    position: fixed;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+    box-shadow: 0 4px 22px #1f23291a;
+    margin: 0;
+    padding: 5px;
+    font-size: 12px;
+    color: var(--ink);
+    overflow: hidden;
+    animation: menu-in 120ms ease-out;
+}
+
+.ts-dropdown-content {
+    max-height: 240px;
+    padding: 0;
+}
+
+.ts-dropdown .option {
+    padding: 9px 30px 9px 11px;
+    border-radius: 5px;
+    min-height: 34px;
+    color: var(--muted);
+    position: relative;
+    line-height: 18px;
+}
+
+.ts-dropdown .option.active {
+    background: color-mix(in srgb, var(--ink) 6%, var(--surface));
+    color: var(--ink);
+}
+
+.ts-dropdown .option.selected {
+    background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+    color: var(--accent-text);
+    font-weight: 500;
+}
+
+.ts-dropdown .option.selected:after {
+    content: '✓';
+    position: absolute;
+    right: 11px;
+    font-size: 12px;
+    color: var(--accent-text);
+}
+
+.ts-dropdown .no-results {
+    padding: 12px;
+    color: var(--subtle);
+}
+
+.ts-dropdown .highlight {
+    background: none;
+    color: var(--accent-text);
+}
+
+.ts-wrapper {
+    min-width: 100px;
+}
+.toolbar .ts-wrapper {
+    width: auto;
+    min-width: 100px;
+}
+.toolbar label > .ts-wrapper {
+    margin-top: 0;
+}
+.ts-control {
+    box-shadow: none;
+}
+.ts-dropdown.managed-overlay {
+    max-height: 260px;
+}
+.ts-dropdown.managed-overlay .ts-dropdown-content {
+    max-height: 240px;
+    overflow: auto;
+}

@@ -34943,246 +34943,42 @@ var require_streamableHttp = __commonJS({
   }
 });
 
-// src/productivity.js
-var require_productivity = __commonJS({
-  "src/productivity.js"(exports2, module2) {
-    var { randomUUID } = require("node:crypto");
-    var STATUSES = ["inbox", "todo", "doing", "done"];
-    function string(value, max = 1e4) {
-      if (typeof value !== "string") return "";
-      if (value.length > max) throw new Error("\u5185\u5BB9\u8FC7\u957F");
-      return value.trim();
-    }
-    function date(value) {
-      if (!value) return "";
-      if (typeof value !== "string" || !Number.isFinite(Date.parse(value))) throw new Error("\u65E5\u671F\u4E0D\u6B63\u786E");
-      return new Date(value).toISOString();
-    }
-    function validateTask(input) {
-      const title = string(input?.title, 160);
-      if (!title) throw new Error("\u8BF7\u586B\u5199\u5F85\u529E\u6807\u9898");
-      const dueAt = date(input.dueAt), remindAt = date(input.remindAt), startAt = date(input.startAt), endAt = date(input.endAt);
-      if (endAt && (!startAt || Date.parse(endAt) <= Date.parse(startAt))) throw new Error("\u7ED3\u675F\u65F6\u95F4\u5FC5\u987B\u665A\u4E8E\u5F00\u59CB\u65F6\u95F4");
-      const attachments = (input.attachments || []).map((p) => string(p, 2048));
-      const path = require("node:path");
-      if (attachments.length > 20 || attachments.some((p) => !path.posix.isAbsolute(p) && !path.win32.isAbsolute(p))) throw new Error("\u8BF7\u9009\u62E9\u6709\u6548\u7684\u672C\u5730\u6587\u4EF6\u6216\u6587\u4EF6\u5939\uFF0C\u6700\u591A 20 \u9879");
-      return {
-        id: input.id || randomUUID(),
-        title,
-        status: STATUSES.includes(input.status) ? input.status : "inbox",
-        priority: ["high", "medium", "low"].includes(input.priority) ? input.priority : "medium",
-        note: string(input.note),
-        dueAt,
-        remindAt,
-        startAt,
-        endAt,
-        allDay: input.allDay === true,
-        important: input.important === void 0 ? input.priority === "high" : input.important === true,
-        urgent: input.urgent === true,
-        attachments,
-        bookmarkId: string(input.bookmarkId, 80),
-        archived: input.archived === true,
-        notifiedAt: date(input.notifiedAt),
-        createdAt: date(input.createdAt) || (/* @__PURE__ */ new Date()).toISOString(),
-        completedAt: date(input.completedAt)
-      };
-    }
-    function validateNote(input) {
-      return {
-        id: input.id || randomUUID(),
-        title: string(input.title, 120) || "\u672A\u547D\u540D\u4FBF\u7B7E",
-        content: string(input.content, 3e4),
-        color: ["yellow", "blue", "pink", "green"].includes(input.color) ? input.color : "yellow",
-        updatedAt: date(input.updatedAt) || (/* @__PURE__ */ new Date()).toISOString()
-      };
-    }
-    function saveTask2(store, input) {
-      const data = store.snapshot(), previous = data.tasks.find((t) => t.id === input.id);
-      if (input.id && !previous) throw new Error("\u5F85\u529E\u4E0D\u5B58\u5728");
-      const next = validateTask({ ...previous, ...input });
-      if (previous && (next.remindAt !== previous.remindAt || previous.status === "done" && next.status !== "done" || previous.archived && !next.archived)) next.notifiedAt = "";
-      if (next.status === "done") next.completedAt = previous?.completedAt || (/* @__PURE__ */ new Date()).toISOString();
-      else next.completedAt = "";
-      if (next.archived && next.status !== "done") throw new Error("\u8BF7\u5148\u5B8C\u6210\u5F85\u529E\uFF0C\u518D\u5F52\u6863");
-      if (previous) data.tasks = data.tasks.map((t) => t.id === next.id ? next : t);
-      else data.tasks.push(next);
-      store.commit(data);
-      return next;
-    }
-    function dueReminders(tasks, now = Date.now()) {
-      return tasks.filter((t) => !t.archived && t.status !== "done" && t.remindAt && Date.parse(t.remindAt) <= now && !t.notifiedAt);
-    }
-    module2.exports = { validateTask, validateNote, saveTask: saveTask2, dueReminders, STATUSES };
-  }
-});
-
-// src/task-query.js
-var require_task_query = __commonJS({
-  "src/task-query.js"(exports2, module2) {
-    (function(root) {
-      function localDay(value) {
-        const d = new Date(value);
-        if (!Number.isFinite(d.getTime())) return "";
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      }
-      function matchesTaskDate2(task, selected, field = "dueAt") {
-        if (!selected) return true;
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(selected) || !["dueAt", "createdAt", "completedAt", "remindAt", "startAt"].includes(field)) return false;
-        return !!task[field] && localDay(task[field]) === selected;
-      }
-      function matchesFilters(task, filters = {}, now = /* @__PURE__ */ new Date()) {
-        const filter = filters.filter || "active", query = (filters.query || "").trim().toLocaleLowerCase();
-        return (filter === "archive" ? task.archived : !task.archived) && matchesTaskDate2(task, filters.date, filters.dateField || "dueAt") && (filter !== "today" || task.dueAt && localDay(task.dueAt) === localDay(now)) && (filter !== "overdue" || task.status !== "done" && task.dueAt && (task.allDay ? new Date(new Date(task.dueAt).setHours(24, 0, 0, 0)) : new Date(task.dueAt)) < now) && (filter !== "high" || task.priority === "high") && [task.title, task.note].some((value) => (value || "").toLocaleLowerCase().includes(query));
-      }
-      const api = { localDay, matchesTaskDate: matchesTaskDate2, matchesFilters };
-      if (typeof module2 !== "undefined") module2.exports = api;
-      else root.TaskQuery = api;
-    })(typeof globalThis !== "undefined" ? globalThis : exports2);
-  }
-});
-
 // src/mcp-service.js
 var http = require("node:http");
 var { randomBytes, timingSafeEqual } = require("node:crypto");
 var { McpServer } = require_mcp();
 var { StreamableHTTPServerTransport } = require_streamableHttp();
 var { z } = require_zod();
-var { saveTask } = require_productivity();
-var { matchesTaskDate } = require_task_query();
-var reply = (data) => ({ content: [{ type: "text", text: JSON.stringify(data) }] });
-function redact(entry) {
-  const { password, username, ...rest } = entry;
-  return rest;
-}
+var SERVER_INSTRUCTIONS = "Collectify \u662F\u63D2\u4EF6\u5DE5\u4F5C\u53F0\u3002\u7528\u6237\u8981\u6C42\u65B0\u589E\u6216\u6269\u5C55\u529F\u80FD\u65F6\uFF0C\u5148\u8C03\u7528 get_plugin_sdk \u8BFB\u53D6\u771F\u5B9E SDK \u5408\u540C\uFF0C\u518D\u521B\u5EFA\u8349\u7A3F\u3001\u5199\u5165\u6587\u4EF6\u3001\u6821\u9A8C\u5E76\u5B89\u88C5\uFF0C\u4E0D\u8981\u53EA\u628A\u4EE3\u7801\u4EA4\u7ED9\u7528\u6237\u624B\u5DE5\u590D\u5236\u3002\u4EC5\u5728\u7528\u6237\u660E\u786E\u8981\u6C42\u521B\u5EFA\u6216\u66F4\u65B0\u65F6\u5B89\u88C5\u63D2\u4EF6\uFF1B\u4E0D\u8981\u4FEE\u6539\u5BBF\u4E3B\u6E90\u7801\u6216\u5C1D\u8BD5\u4EFB\u610F Node.js/\u6587\u4EF6\u7CFB\u7EDF\u3002\u5B89\u88C5\u540E\u68C0\u67E5 get_plugin_runtime_status\uFF0C\u52A0\u8F7D\u6210\u529F\u4E0D\u4EE3\u8868\u4E1A\u52A1\u529F\u80FD\u5DF2\u5B8C\u6574\u6D4B\u8BD5\u3002\u5F00\u53D1\u5DE5\u5177\u4E0D\u8BFB\u53D6\u526A\u8D34\u677F\u5386\u53F2\u548C\u63D2\u4EF6\u6570\u636E\u5E93\u3002";
 var LocalMcpService = class {
-  constructor(store, onChange, options = {}) {
-    this.store = store;
+  constructor(repository, onChange, getTools = () => []) {
+    this.repository = repository;
     this.onChange = onChange;
+    this.getTools = getTools;
     this.http = null;
     this.port = null;
-    this.config = store.repository.readMcpConfig() || {
-      enabled: false,
-      port: 17863,
-      token: randomBytes(32).toString("hex")
-    };
+    this.config = repository.readMcpConfig() || { enabled: false, port: 17863, token: randomBytes(32).toString("hex") };
     if (!/^[a-f0-9]{64}$/.test(this.config.token)) this.config.token = randomBytes(32).toString("hex");
   }
   persist() {
-    this.store.repository.saveMcpConfig(this.config);
+    this.repository.saveMcpConfig(this.config);
   }
   status() {
-    return {
-      enabled: !!this.http,
-      port: this.port || this.config.port,
-      url: `http://127.0.0.1:${this.port || this.config.port}/mcp`,
-      configured: this.config.enabled,
-      tools: ["workspace_summary", "list_bookmarks", "list_tasks", "save_tasks", "save_note", "organize_bookmarks"]
-    };
+    return { enabled: !!this.http, port: this.port || this.config.port, url: "http://127.0.0.1:" + (this.port || this.config.port) + "/mcp", configured: this.config.enabled, tools: this.getTools().map((t) => t.name) };
   }
   connection() {
-    return {
-      mcpServers: {
-        collectify: {
-          type: "streamable_http",
-          url: this.status().url,
-          headers: { Authorization: `Bearer ${this.config.token}` }
-        }
-      }
-    };
+    return { mcpServers: { collectify: { type: "streamable_http", url: this.status().url, headers: { Authorization: "Bearer " + this.config.token } } } };
   }
   server() {
-    const server = new McpServer({ name: "collectify-workspace", version: "5.5.3" });
-    const tool = (name, description, schema, write, handler) => server.registerTool(name, {
-      description,
-      inputSchema: schema,
-      annotations: { readOnlyHint: !write, destructiveHint: false, idempotentHint: !write, openWorldHint: false }
-    }, async (input) => {
+    const server = new McpServer({ name: "collectify", version: "5.5.3" }, { instructions: SERVER_INSTRUCTIONS });
+    for (const tool of this.getTools()) server.registerTool(tool.name, { description: tool.description, inputSchema: tool.inputSchema || {}, annotations: { readOnlyHint: !tool.write, destructiveHint: false, idempotentHint: !tool.write, openWorldHint: false } }, async (input) => {
       try {
-        const data = write ? this.store.withAudit(name, () => handler(input)) : handler(input);
-        if (write) {
-          this.onChange();
-        }
-        return reply(data);
+        const result = await tool.handler(input);
+        if (tool.write) this.onChange();
+        return { content: [{ type: "text", text: JSON.stringify(result ?? null) }] };
       } catch (error) {
         return { isError: true, content: [{ type: "text", text: error.message }] };
       }
-    });
-    tool("workspace_summary", "\u8BFB\u53D6Collectify\u6536\u85CF\u5206\u7C7B\u4E0E\u5F85\u529E\u6982\u51B5\u3002\u5BC6\u7801\u548C\u767B\u5F55\u8D44\u6599\u4E0D\u63D0\u4F9B\u7ED9 AI\u3002", {}, false, () => ({
-      categories: this.store.categories,
-      bookmarks: this.store.entries.length,
-      tasks: this.store.data.tasks.length,
-      notes: this.store.data.notes.length,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      now: (/* @__PURE__ */ new Date()).toISOString()
-    }));
-    tool("list_bookmarks", "\u6309\u5173\u952E\u8BCD\u6216\u5206\u7C7B\u67E5\u8BE2\u8D44\u6E90\u6536\u85CF\uFF0C\u4E0D\u8FD4\u56DE\u8D26\u53F7\u5BC6\u7801\u3002", {
-      query: z.string().optional(),
-      categoryId: z.string().optional()
-    }, false, (input) => this.store.entries.filter((e) => (!input.categoryId || e.categoryId === input.categoryId) && (!input.query || [e.name, e.note, e.url].some((v) => v.toLowerCase().includes(input.query.toLowerCase())))).map(redact));
-    tool("list_tasks", "\u67E5\u8BE2\u5F85\u529E\u4E0E\u65E5\u7A0B\uFF1Bdate \u4F7F\u7528\u672C\u673A\u65E5\u671F YYYY-MM-DD\uFF0C\u53EF\u5305\u542B\u5DF2\u5F52\u6863\u3002", {
-      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-      dateField: z.enum(["dueAt", "startAt", "remindAt", "createdAt", "completedAt"]).optional(),
-      status: z.enum(["inbox", "todo", "doing", "done"]).optional(),
-      query: z.string().optional(),
-      archived: z.boolean().optional()
-    }, false, (input) => this.store.data.tasks.filter((t) => (input.archived ? t.archived : !t.archived) && (!input.status || t.status === input.status) && matchesTaskDate(t, input.date, input.dateField || "dueAt") && (!input.query || [t.title, t.note].some((s) => s.toLowerCase().includes(input.query.toLowerCase())))));
-    const taskSchema = z.object({
-      id: z.string().optional(),
-      title: z.string().max(160).optional(),
-      status: z.enum(["inbox", "todo", "doing", "done"]).optional(),
-      priority: z.enum(["high", "medium", "low"]).optional(),
-      important: z.boolean().optional(),
-      urgent: z.boolean().optional(),
-      allDay: z.boolean().optional(),
-      startAt: z.string().optional(),
-      endAt: z.string().optional(),
-      dueAt: z.string().optional(),
-      remindAt: z.string().optional(),
-      note: z.string().max(1e4).optional(),
-      bookmarkId: z.string().optional(),
-      archived: z.boolean().optional()
-    });
-    tool("save_tasks", "\u6279\u91CF\u521B\u5EFA/\u66F4\u65B0\u5F85\u529E\u6216\u5B89\u6392\u65E5\u7A0B\u3002\u4F7F\u7528\u5E26\u65F6\u533A\u7684 ISO \u65F6\u95F4\uFF1B\u6CA1\u6709 id \u5219\u65B0\u5EFA\u3002\u6574\u6279\u6821\u9A8C\u540E\u4E00\u6B21\u4FDD\u5B58\uFF0C\u5931\u8D25\u4E0D\u90E8\u5206\u5199\u5165\u3002\u8C03\u7528\u524D\u6839\u636E\u7528\u6237\u8981\u6C42\u786E\u5B9A\u65E5\u671F\u4E0E\u65F6\u533A\u3002", { tasks: z.array(taskSchema).min(1).max(100) }, true, (input) => {
-      let staged = this.store.snapshot();
-      const staging = {
-        snapshot: () => structuredClone(staged),
-        commit: (data) => {
-          staged = data;
-        }
-      };
-      const results = input.tasks.map((item) => saveTask(staging, item));
-      this.store.commit(staged);
-      return results;
-    });
-    tool("save_note", "\u6839\u636E\u7528\u6237\u610F\u56FE\u65B0\u5EFA\u6216\u66F4\u65B0\u4FBF\u7B7E\uFF0C\u4E0D\u81EA\u52A8\u5220\u9664\u539F\u5185\u5BB9\u3002", {
-      id: z.string().optional(),
-      title: z.string().max(120),
-      content: z.string().max(3e4),
-      color: z.enum(["yellow", "blue", "pink", "green"]).optional()
-    }, true, (input) => this.store.saveNote(input));
-    tool("organize_bookmarks", "\u5C06\u5DF2\u6709\u6536\u85CF\u79FB\u52A8\u5230\u6307\u5B9A\u5206\u7C7B\uFF1B\u5206\u7C7B\u4E0D\u5B58\u5728\u65F6\u521B\u5EFA\u3002\u4FDD\u6301\u6536\u85CF ID\u3001\u767B\u5F55\u8D44\u6599\u548C\u5730\u5740\u4E0D\u53D8\u3002\u6574\u6279\u6821\u9A8C\u540E\u4FDD\u5B58\u3002", {
-      categoryName: z.string().min(1).max(60),
-      bookmarkIds: z.array(z.string()).min(1).max(200)
-    }, true, (input) => {
-      const data = this.store.snapshot();
-      if (input.bookmarkIds.some((id) => !data.entries.some((e) => e.id === id))) throw Error("\u90E8\u5206\u6536\u85CF\u5DF2\u4E0D\u5B58\u5728\uFF0C\u8BF7\u91CD\u65B0\u67E5\u8BE2");
-      let category = data.categories.find((c) => c.name.toLowerCase() === input.categoryName.toLowerCase());
-      if (!category) {
-        category = {
-          id: require("node:crypto").randomUUID(),
-          name: input.categoryName,
-          color: "blue",
-          icon: "link",
-          description: ""
-        };
-        data.categories.push(category);
-      }
-      data.entries = data.entries.map((e) => input.bookmarkIds.includes(e.id) ? {
-        ...e,
-        categoryId: category.id
-      } : e);
-      this.store.commit(data);
-      return { categoryId: category.id, moved: input.bookmarkIds.length };
     });
     return server;
   }
@@ -35255,7 +35051,7 @@ var LocalMcpService = class {
     return this.status();
   }
 };
-module.exports = { LocalMcpService };
+module.exports = { LocalMcpService, z };
 /*! Bundled license information:
 
 content-type/index.js:

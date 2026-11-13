@@ -1,0 +1,12 @@
+{
+  "id": "example.clipboard-history",
+  "name": "剪贴板历史",
+  "glyph": "剪",
+  "description": "在插件显示且手动开启后，记录本机剪贴板文本并快速复制。",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "entry": "index.html",
+  "permissions": ["storage", "clipboard.read", "clipboard.write"],
+  "commands": [{ "id": "open", "title": "打开剪贴板历史" }],
+  "navigation": [{ "id": "history", "label": "文本历史" }]
+}

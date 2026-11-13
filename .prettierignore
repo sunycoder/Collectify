@@ -1,0 +1,20 @@
+# Dependencies, generated bundles and build outputs
+node_modules/
+dist/
+artifacts/
+build-tools/
+coverage/
+src/vendor/
+package-lock.json
+
+# Local settings, private configuration and persisted data
+.idea/
+default-config.json
+*.sqlite*
+*.bak
+*.log
+
+# Binary assets and scripts without a built-in Prettier parser
+assets/
+*.py
+*.ps1

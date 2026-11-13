@@ -1,0 +1,41 @@
+{
+  "id": "collectify.tasks",
+  "name": "待办",
+  "description": "清单、四象限、看板、日历与桌面待办",
+  "iconAsset": "待办.svg",
+  "glyph": "待",
+  "order": 20,
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "entry": "index.html",
+  "backend": "backend.js",
+  "permissions": ["clipboard.write"],
+  "commands": [
+    {
+      "id": "open",
+      "title": "打开待办"
+    }
+  ],
+  "navigation": [
+    {
+      "id": "list",
+      "label": "清单"
+    },
+    {
+      "id": "matrix",
+      "label": "四象限"
+    },
+    {
+      "id": "board",
+      "label": "看板"
+    },
+    {
+      "id": "calendar",
+      "label": "日历"
+    },
+    {
+      "id": "archive",
+      "label": "已归档"
+    }
+  ]
+}

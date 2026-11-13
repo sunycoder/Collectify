@@ -1,0 +1,33 @@
+{
+  "id": "collectify.bookmarks",
+  "name": "收藏",
+  "description": "常用资源、分类、登录资料与独立浏览会话",
+  "iconAsset": "收藏.svg",
+  "glyph": "藏",
+  "order": 10,
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "entry": "index.html",
+  "backend": "backend.js",
+  "permissions": ["storage", "clipboard.write"],
+  "commands": [
+    {
+      "id": "open",
+      "title": "打开收藏"
+    }
+  ],
+  "navigation": [
+    {
+      "id": "all",
+      "label": "全部收藏"
+    },
+    {
+      "id": "favorite",
+      "label": "已置顶"
+    },
+    {
+      "id": "recent",
+      "label": "最近打开"
+    }
+  ]
+}

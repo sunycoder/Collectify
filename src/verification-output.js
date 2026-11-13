@@ -2,5 +2,5 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const directory = path.join(require('node:os').tmpdir(), 'Collectify-verification');
-fs.mkdirSync(directory, {recursive: true});
-module.exports = {directory};
+fs.mkdirSync(directory, { recursive: true });
+module.exports = { directory };

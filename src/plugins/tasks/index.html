@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>待办</title>
+        <link rel="stylesheet" href="collectify-plugin://collectify.sdk/vendor/tom-select.css" />
+        <link rel="stylesheet" href="collectify-plugin://collectify.sdk/vendor/flatpickr.css" />
+        <link rel="stylesheet" href="collectify-plugin://collectify.sdk/styles.css" />
+        <link rel="stylesheet" href="collectify-plugin://collectify.sdk/office-ui.css" />
+        <link rel="stylesheet" href="collectify-plugin://collectify.sdk/interaction-fixes.css" />
+        <link rel="stylesheet" href="collectify-plugin://collectify.sdk/readability.css" />
+        <link rel="stylesheet" href="collectify-plugin://collectify.sdk/board.css" />
+        <link rel="stylesheet" href="collectify-plugin://collectify.sdk/plugin-page.css" />
+    </head>
+    <body>
+        <main>
+            <section id="tasks-page" class="dashboard">
+                <div class="page-heading">
+                    <div>
+                        <h1>我的待办</h1>
+                        <p class="page-description">先收集，再推进。让每一件事都有着落。</p>
+                    </div>
+                    <div class="heading-actions">
+                        <button id="desktop-tasks" class="subtle"><i data-icon="external"></i>桌面待办</button>
+                        <button id="new-task" class="primary"><i data-icon="plus"></i>新建待办</button>
+                    </div>
+                </div>
+                <div class="task-stats" id="task-stats"></div>
+                <div class="task-toolbar">
+                    <label class="date-query-label"
+                        >查询日期<input id="task-date-query" type="date" aria-label="查询某日待办" /></label
+                    ><select id="task-date-field" aria-label="查询日期类型">
+                        <option value="dueAt">按截止日</option>
+                        <option value="startAt">按计划日</option>
+                        <option value="createdAt">按创建日</option>
+                        <option value="completedAt">按完成日</option>
+                        <option value="remindAt">按提醒日</option>
+                    </select>
+                    <button id="clear-task-date" class="quiet" hidden>清除日期</button>
+                    <input id="task-search" placeholder="搜索待办标题或备注" aria-label="搜索待办" /><select
+                        id="task-filter"
+                        aria-label="待办筛选"
+                    >
+                        <option value="active">全部未归档</option>
+                        <option value="today">今天到期</option>
+                        <option value="overdue">已逾期</option>
+                        <option value="high">高优先级</option>
+                        <option value="archive">已归档</option>
+                    </select>
+                    <div class="task-view-tabs">
+                        <button id="task-list-button" class="subtle">清单</button>
+                        <button id="task-matrix-button" class="subtle">四象限</button>
+                        <button id="task-board-button" class="subtle">看板</button>
+                        <button id="task-calendar-button" class="subtle">日历</button>
+                    </div>
+                </div>
+                <div id="task-list" class="task-list-view"></div>
+                <div id="task-matrix" class="task-matrix" hidden></div>
+                <div id="task-board" class="task-board" hidden></div>
+                <div id="task-calendar" class="office-calendar" hidden>
+                    <aside class="calendar-sidebar">
+                        <div id="mini-calendar"></div>
+                        <div class="calendar-legend">
+                            <strong>我的安排</strong><span><b class="legend-blue"></b>计划与进行中</span
+                            ><span><b class="legend-red"></b>重要或已逾期</span
+                            ><span><b class="legend-green"></b>已完成</span>
+                        </div>
+                        <div class="unscheduled-heading">尚未安排时间 <b id="unscheduled-count">0</b></div>
+                        <div id="unscheduled-list"></div>
+                    </aside>
+                    <div class="calendar-main">
+                        <div id="calendar-grid"></div>
+                        <div id="calendar-summary" class="calendar-summary"></div>
+                    </div>
+                </div>
+                <div class="reminder-settings">
+                    <label class="checkbox-label"
+                        ><input id="keep-in-tray" type="checkbox" />关闭窗口后驻留托盘，继续提醒</label
+                    ><span id="notification-status">运行期间自动提醒；完全退出后停止，下次启动补报错过的提醒。</span>
+                </div>
+            </section>
+            <dialog id="task-dialog">
+                <form id="task-form">
+                    <div class="dialog-head">
+                        <div class="dialog-symbol" data-icon="list"></div>
+                        <button
+                            type="button"
+                            class="icon-button dialog-close"
+                            data-icon="close"
+                            aria-label="关闭"
+                        ></button>
+                    </div>
+                    <h2 id="task-dialog-title">新建待办</h2>
+                    <p class="dialog-intro">可以先只记标题，再补充安排。</p>
+                    <label
+                        >标题 *<input name="title" required maxlength="160" placeholder="这件事的下一步是什么？"
+                    /></label>
+                    <div class="form-grid">
+                        <label
+                            >状态<select name="status">
+                                <option value="inbox">收集箱</option>
+                                <option value="todo">待处理</option>
+                                <option value="doing">进行中</option>
+                                <option value="done">已完成</option>
+                            </select></label
+                        ><label
+                            >优先级<select name="priority">
+                                <option value="medium">普通</option>
+                                <option value="high">高优先级</option>
+                                <option value="low">低优先级</option>
+                            </select></label
+                        >
+                    </div>
+                    <div class="task-flags">
+                        <label class="checkbox-label"><input type="checkbox" name="important" />重要</label
+                        ><label class="checkbox-label"><input type="checkbox" name="urgent" />紧急</label
+                        ><label class="checkbox-label"><input type="checkbox" name="allDay" />全天事项</label>
+                    </div>
+                    <div class="form-grid">
+                        <label>开始时间<input name="startAt" type="datetime-local" /></label
+                        ><label>结束时间<input name="endAt" type="datetime-local" /></label>
+                    </div>
+                    <div class="form-grid">
+                        <label>截止时间<input name="dueAt" type="datetime-local" /></label
+                        ><label>提醒时间<input name="remindAt" type="datetime-local" /></label>
+                    </div>
+                    <label
+                        >备注<textarea
+                            name="note"
+                            rows="4"
+                            maxlength="10000"
+                            placeholder="背景、步骤、验收条件…"
+                        ></textarea></label
+                    ><label
+                        >关联收藏<select name="bookmarkId">
+                            <option value="">不关联</option>
+                        </select></label
+                    >
+                    <div class="attachment-head">
+                        <span>本地文件 / 文件夹</span>
+                        <button id="attach-file" type="button" class="quiet">＋ 文件</button>
+                        <button id="attach-folder" type="button" class="quiet">＋ 文件夹</button>
+                    </div>
+                    <div id="task-attachments"></div>
+                    <p class="form-help">文件仅保存路径，不复制文件；更换电脑后可能需要重新关联。</p>
+                    <p class="form-error" role="alert"></p>
+                    <div class="dialog-actions">
+                        <button type="button" class="cancel-dialog subtle">取消</button>
+                        <button type="submit" class="primary">保存待办</button>
+                    </div>
+                </form>
+            </dialog>
+            <input id="keep-in-tray" type="checkbox" hidden /><span id="notification-status" hidden></span>
+        </main>
+        <div id="popup-menu" class="popup-menu" role="menu" hidden></div>
+        <dialog id="action-dialog">
+            <div class="dialog-head">
+                <div class="dialog-symbol" data-icon="folder"></div>
+                <button
+                    type="button"
+                    class="icon-button dialog-close"
+                    title="关闭"
+                    aria-label="关闭"
+                    data-icon="close"
+                ></button>
+            </div>
+            <h2 id="action-title"></h2>
+            <p id="action-description" class="dialog-intro"></p>
+            <label id="target-label">接收分类<select id="target-category"></select></label>
+            <p class="form-error" role="alert"></p>
+            <div class="dialog-actions">
+                <button class="cancel-dialog subtle">取消</button>
+                <button id="action-confirm" class="primary">确认</button>
+            </div>
+        </dialog>
+        <div id="toast" class="toast" role="status" hidden></div>
+        <script src="collectify-plugin://collectify.sdk/vendor/tom-select.js"></script>
+        <script src="collectify-plugin://collectify.sdk/vendor/flatpickr.js"></script>
+        <script src="collectify-plugin://collectify.sdk/vendor/flatpickr-zh.js"></script>
+        <script src="collectify-plugin://collectify.sdk/vendor/fullcalendar.js"></script>
+        <script src="collectify-plugin://collectify.sdk/vendor/floating-ui.js"></script>
+        <script src="collectify-plugin://collectify.sdk/overlay.js"></script>
+        <script src="collectify-plugin://collectify.sdk/theme.js"></script>
+        <script src="collectify-plugin://collectify.sdk/workspace-ui.js"></script>
+        <script src="task-query.js"></script>
+        <script src="task-schedule.js"></script>
+        <script src="task-calendar.js"></script>
+        <script src="app.js"></script>
+        <script src="collectify-plugin://collectify.sdk/ui-components.js"></script>
+    </body>
+</html>

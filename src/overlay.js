@@ -1,5 +1,5 @@
 (function () {
-    const {computePosition, offset, flip, shift, size, autoUpdate} = window.FloatingUIDOM;
+    const { computePosition, offset, flip, shift, size, autoUpdate } = window.FloatingUIDOM;
     const opened = new Map();
 
     function close(panel) {
@@ -22,7 +22,7 @@
         panel.style.visibility = 'hidden';
         panel.hidden = false;
         panel.showPopover();
-        const entry = {cleanup: null};
+        const entry = { cleanup: null };
         opened.set(panel, entry);
         let updating = false;
 
@@ -34,19 +34,25 @@
                 const result = await computePosition(anchor, panel, {
                     strategy: 'fixed',
                     placement: options.placement || 'bottom-start',
-                    middleware: [offset(6), flip({padding: 10}), shift({padding: 10}), size({
-                        padding: 10, apply({availableHeight, availableWidth, elements}) {
-                            Object.assign(elements.floating.style, {
-                                maxWidth: `${Math.max(0, availableWidth)}px`,
-                                maxHeight: `${Math.max(0, availableHeight)}px`,
-                                overflowY: 'auto',
-                                overflowX: 'hidden'
-                            });
-                        }
-                    })]
+                    middleware: [
+                        offset(6),
+                        flip({ padding: 10 }),
+                        shift({ padding: 10 }),
+                        size({
+                            padding: 10,
+                            apply({ availableHeight, availableWidth, elements }) {
+                                Object.assign(elements.floating.style, {
+                                    maxWidth: `${Math.max(0, availableWidth)}px`,
+                                    maxHeight: `${Math.max(0, availableHeight)}px`,
+                                    overflowY: 'auto',
+                                    overflowX: 'hidden'
+                                });
+                            }
+                        })
+                    ]
                 });
                 if (opened.has(panel)) {
-                    Object.assign(panel.style, {left: `${result.x}px`, top: `${result.y}px`, visibility: 'visible'});
+                    Object.assign(panel.style, { left: `${result.x}px`, top: `${result.y}px`, visibility: 'visible' });
                     panel.dataset.placement = result.placement;
                 }
             } finally {
@@ -71,7 +77,10 @@
     }
 
     window.WorkspaceOverlay = {
-        show, close, reposition, closeAll: () => {
+        show,
+        close,
+        reposition,
+        closeAll: () => {
             for (const panel of [...opened.keys()]) close(panel);
         }
     };

@@ -1,0 +1,41 @@
+{
+  "id": "collectify.notes",
+  "name": "便签",
+  "description": "记录想法、整理便签并转为待办",
+  "iconAsset": "便签.svg",
+  "glyph": "记",
+  "order": 30,
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "entry": "index.html",
+  "backend": "backend.js",
+  "permissions": ["clipboard.write"],
+  "commands": [
+    {
+      "id": "open",
+      "title": "打开便签"
+    }
+  ],
+  "navigation": [
+    {
+      "id": "all",
+      "label": "全部便签"
+    },
+    {
+      "id": "yellow",
+      "label": "黄色"
+    },
+    {
+      "id": "blue",
+      "label": "蓝色"
+    },
+    {
+      "id": "pink",
+      "label": "粉色"
+    },
+    {
+      "id": "green",
+      "label": "绿色"
+    }
+  ]
+}
