@@ -86,6 +86,7 @@ function renderDistribution(next) {
         next.error || (!next.secureStorage ? '系统安全存储不可用，请配置密钥环后再登录。' : '');
     $('#source-login').disabled = busy || !next.config.clientId;
     const update = next.update;
+    TransferUI.render($('#app-download-progress'), next.progress, () => void distributionAction('cancel'));
     const updates = update?.available || next.pluginUpdates > 0 || next.profiles.some((profile) => profile.available);
     for (const id of ['settings-button', 'collapsed-settings-button']) {
         $('#' + id).classList.toggle('has-update', !!updates);

@@ -394,6 +394,9 @@ function reportBounds() {
 new ResizeObserver(reportBounds).observe($('#plugin-stage'));
 window.addEventListener('resize', reportBounds);
 api.onEvent('shell-state', renderShell);
+api.onEvent('plugin-transfer', (value) =>
+    TransferUI.render($('#plugin-download-progress'), value, () => void call('plugin-download-cancel'))
+);
 $('#plugin-search').oninput = () => renderShell(state);
 document.addEventListener('keydown', (event) => {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
@@ -430,6 +433,11 @@ async function openSettings(panel = 'general') {
         renderMcpStatus(info.mcp);
         catalogState = await call('plugin-catalog-status');
         renderPluginCatalog();
+        TransferUI.render(
+            $('#plugin-download-progress'),
+            await call('plugin-download-status'),
+            () => void call('plugin-download-cancel')
+        );
         await loadDistribution();
         selectSettingsPanel(typeof panel === 'string' ? panel : 'general');
         $('#settings-error').textContent = '';

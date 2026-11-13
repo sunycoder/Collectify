@@ -212,6 +212,12 @@
                             ><button id="source-install" class="primary" hidden>安装已下载版本</button>
                         </div>
                         <p id="source-update-status" role="status"></p>
+                        <section
+                            id="app-download-progress"
+                            class="download-progress"
+                            aria-live="polite"
+                            hidden
+                        ></section>
                         <pre id="source-update-notes" class="distribution-notes" hidden></pre>
                         <p id="source-plugin-status" role="status"></p>
                         <hr />
@@ -248,7 +254,7 @@
                             </details>
                         </section>
                         <section id="catalog-plugins" hidden>
-                            <label for="plugin-catalog-url">插件目录地址（HTTPS JSON）</label>
+                            <label for="plugin-catalog-url">插件目录地址（HTTPS，或已允许的公司内网 JSON）</label>
                             <div class="catalog-source">
                                 <input
                                     id="plugin-catalog-url"
@@ -271,6 +277,12 @@
                             <div id="plugin-catalog-list"></div>
                         </section>
                         <p id="plugin-operation-status" role="status"></p>
+                        <section
+                            id="plugin-download-progress"
+                            class="download-progress"
+                            aria-live="polite"
+                            hidden
+                        ></section>
                         <p id="plugin-operation-error" class="form-error" role="alert"></p>
                         <p id="plugin-diagnostics" class="form-error"></p>
                     </div>
@@ -435,6 +447,7 @@
         <script src="vendor/floating-ui.js"></script>
         <script src="overlay.js"></script>
         <script src="theme.js"></script>
+        <script src="transfer-ui.js"></script>
         <script src="renderer.js"></script>
         <script src="distribution-ui.js"></script>
         <script src="appearance.js"></script>

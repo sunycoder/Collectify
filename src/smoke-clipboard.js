@@ -225,6 +225,47 @@ exports.run = async ({ win, registry, runtime, hostAction }) => {
             )
         );
         assert.deepEqual(shortcut.window.getSize(), [48, 48]);
+        const beforeDrag = shortcut.window.getPosition();
+        shortcut.window.showInactive();
+        shortcut.window.focus();
+        await delay(100);
+        shortcut.window.webContents.sendInputEvent({
+            type: 'mouseMove',
+            x: 18,
+            y: 18,
+            globalX: beforeDrag[0] + 18,
+            globalY: beforeDrag[1] + 18
+        });
+        shortcut.window.webContents.sendInputEvent({
+            type: 'mouseDown',
+            button: 'left',
+            clickCount: 1,
+            x: 18,
+            y: 18,
+            globalX: beforeDrag[0] + 18,
+            globalY: beforeDrag[1] + 18
+        });
+        await delay(80);
+        shortcut.window.webContents.sendInputEvent({
+            type: 'mouseMove',
+            x: 35,
+            y: 32,
+            globalX: beforeDrag[0] + 35,
+            globalY: beforeDrag[1] + 32,
+            modifiers: ['leftButtonDown']
+        });
+        await delay(100);
+        shortcut.window.webContents.sendInputEvent({
+            type: 'mouseUp',
+            button: 'left',
+            clickCount: 1,
+            x: 35,
+            y: 32,
+            globalX: beforeDrag[0] + 35,
+            globalY: beforeDrag[1] + 32
+        });
+        await delay(120);
+        assert.notDeepEqual(shortcut.window.getPosition(), beforeDrag, '按钮中心应能拖动，不仅是边缘');
         assert.equal(
             await shortcut.window.webContents.executeJavaScript('collectify.context().then(value=>value.windowMode)'),
             'shortcut'

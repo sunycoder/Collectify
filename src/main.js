@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, protocol, safeStorage } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, protocol, safeStorage, net } = require('electron');
 const fs = require('node:fs'),
     path = require('node:path'),
     os = require('node:os');
@@ -53,6 +53,10 @@ let win,
     overlay = false,
     quitting = false,
     importDraft;
+let pluginTransfer = null;
+function sendPluginTransfer(value) {
+    if (win && !win.isDestroyed()) win.webContents.send('plugin-transfer', value);
+}
 const rendererUrl = pathToFileURL(path.join(__dirname, 'index.html')).href;
 function settings() {
     return {
@@ -115,7 +119,7 @@ function catalog() {
 function publish() {
     if (win && !win.isDestroyed()) win.webContents.send('shell-state', catalog());
 }
-async function installPrepared(prepared, sourceLabel) {
+async function installPrepared(prepared, sourceLabel, signal) {
     const { manifest } = prepared,
         previous = registry.plugins.get(manifest.id),
         previousVersion = previous?.version;
@@ -136,6 +140,7 @@ async function installPrepared(prepared, sourceLabel) {
         cancelId: 0
     });
     if (answer.response !== 1) return null;
+    signal?.throwIfAborted();
     if (registry.plugins.get(manifest.id)?.version !== previousVersion)
         throw Error('确认期间插件状态已改变，请重新安装');
     if (
@@ -170,12 +175,56 @@ async function pluginManagement(action, payload) {
             case 'plugin-catalog-refresh':
                 return await pluginCatalog.refresh();
             case 'plugin-catalog-install': {
-                const { data, item } = await pluginCatalog.package(payload),
-                    prepared = packages.prepare(data, item);
+                const controller = new AbortController(),
+                    meter = require('./distribution/transfer').transferMeter({
+                        total: pluginCatalog.items.find((item) => item.id === payload)?.size || 0
+                    });
+                const transfer = {
+                    controller,
+                    status: {
+                        ...meter(0, 0, 'connecting'),
+                        label: pluginCatalog.items.find((item) => item.id === payload)?.name || payload
+                    }
+                };
+                pluginTransfer = transfer;
+                const update = (received, total, phase = 'downloading') => {
+                    transfer.status = { ...meter(received, total, phase), label: transfer.status.label };
+                    sendPluginTransfer(transfer.status);
+                };
+                let prepared, heartbeat;
                 try {
-                    return await installPrepared(prepared, new URL(pluginCatalog.source).host);
+                    sendPluginTransfer(transfer.status);
+                    heartbeat = setInterval(
+                        () => update(transfer.status.received, transfer.status.total, transfer.status.phase),
+                        500
+                    );
+                    const { data, item } = await pluginCatalog.package(payload, controller.signal, (received, total) =>
+                        update(received, total)
+                    );
+                    controller.signal.throwIfAborted();
+                    clearInterval(heartbeat);
+                    update(data.length, data.length, 'verifying');
+                    await new Promise((resolve) => setImmediate(resolve));
+                    prepared = packages.prepare(data, item);
+                    update(data.length, data.length, 'confirming');
+                    const result = await installPrepared(
+                        prepared,
+                        new URL(pluginCatalog.source).host,
+                        controller.signal
+                    );
+                    update(data.length, data.length, result ? 'complete' : 'cancelled');
+                    return result;
+                } catch (error) {
+                    transfer.status = {
+                        ...transfer.status,
+                        phase: controller.signal.aborted ? 'cancelled' : 'error',
+                        error: controller.signal.aborted ? '已取消下载' : error.message
+                    };
+                    sendPluginTransfer(transfer.status);
+                    throw Error(transfer.status.error);
                 } finally {
-                    packages.cleanup(prepared);
+                    clearInterval(heartbeat);
+                    if (prepared) packages.cleanup(prepared);
                 }
             }
             case 'plugin-package-install': {
@@ -369,6 +418,11 @@ async function pluginEnabled(id, enabled) {
     publish();
 }
 async function hostAction(action, payload) {
+    if (action === 'plugin-download-status') return pluginTransfer?.status || null;
+    if (action === 'plugin-download-cancel') {
+        pluginTransfer?.controller.abort(Error('已取消下载'));
+        return;
+    }
     if (action.startsWith('distribution-')) {
         switch (action) {
             case 'distribution-status':
@@ -670,7 +724,8 @@ app.whenReady()
         }
         pluginCatalog = new PluginCatalog(registry, {
             validateUrl: (value) => webUrl(value, distribution?.config).href,
-            download: (url, limit, options) => distribution.client.download(url, { limit, signal: options.signal })
+            download: (url, limit, options) =>
+                distribution.client.download(url, { limit, signal: options.signal, progress: options.progress })
         });
         // 只迁移宿主自己的全局偏好，不在宿主加载任何业务实体。
         const legacy = path.join(dataDirectory, 'collectify.sqlite');
@@ -743,6 +798,7 @@ app.whenReady()
         await sourceCredentials.initialize();
         distribution = new Distribution({
             registry,
+            fetcher: (url, options) => net.fetch(url, options),
             backup,
             getSettings: settings,
             version: app.getVersion(),

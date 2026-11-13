@@ -194,6 +194,16 @@ class Distribution {
         return this.status();
     }
     cancel() {
+        if (this.busy === '下载安装包') {
+            this.generation++;
+            this.client.dispose();
+            this.credentials.invalidateWrites?.();
+            this.client = this.newClient();
+            this.busy = '';
+            this.progress = { ...this.progress, phase: 'cancelled', error: '已取消下载' };
+            this.changed();
+            return this.status();
+        }
         this.reset();
         this.changed();
         return this.status();
@@ -346,17 +356,46 @@ class Distribution {
         return this.run('下载安装包', async () => {
             if (!this.update?.available) throw Error('请先检查是否有新版本');
             const update = this.update;
+            const generation = this.generation,
+                client = this.client;
+            const meter = require('./transfer').transferMeter({ total: update.file.size });
             let last = 0;
-            this.downloaded = await downloadUpdate(this.client, update, path.join(this.directory, 'updates'), {
-                progress: (received, total) => {
-                    this.progress = { received, total: total || update.file.size };
-                    if (Date.now() - last > 300) {
-                        last = Date.now();
-                        this.changed();
-                    }
+            this.progress = meter(0, update.file.size, 'connecting');
+            this.changed();
+            const heartbeat = setInterval(() => {
+                if (generation === this.generation && this.progress) {
+                    this.progress = meter(this.progress.received, this.progress.total, this.progress.phase);
+                    this.changed();
                 }
-            });
-            return this.status();
+            }, 500);
+            try {
+                this.downloaded = await downloadUpdate(client, update, path.join(this.directory, 'updates'), {
+                    progress: (received, total) => {
+                        if (generation !== this.generation) return;
+                        this.progress = meter(
+                            received,
+                            total || update.file.size,
+                            received === update.file.size ? 'verifying' : 'downloading'
+                        );
+                        if (Date.now() - last > 300) {
+                            last = Date.now();
+                            this.changed();
+                        }
+                    }
+                });
+                this.progress = meter(update.file.size, update.file.size, 'complete');
+                return this.status();
+            } catch (error) {
+                if (generation === this.generation)
+                    this.progress = {
+                        ...this.progress,
+                        phase: client.controller.signal.aborted ? 'cancelled' : 'error',
+                        error: error.message
+                    };
+                throw error;
+            } finally {
+                clearInterval(heartbeat);
+            }
         });
     }
     async installer() {

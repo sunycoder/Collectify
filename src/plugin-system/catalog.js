@@ -42,7 +42,9 @@ function validateCatalog(input, { validateUrl = httpsUrl } = {}) {
             item.size <= 0 ||
             item.size > ARCHIVE_LIMIT
         )
-            throw Error('插件目录信息无效、重复或不兼容');
+            throw Error(
+                `插件目录信息无效、重复或不兼容：${item.id || '未知插件'}${item.size > ARCHIVE_LIMIT ? '，程序包超过当前主程序支持的大小，请先升级主程序' : item.apiVersion !== 1 ? '，不支持的 API 版本' : '，请维护者检查版本、大小和校验字段'}`
+            );
         ids.add(item.id);
         return {
             ...validateCompatibility(item),
@@ -60,50 +62,13 @@ function validateCatalog(input, { validateUrl = httpsUrl } = {}) {
 }
 
 // 网络只在主进程的显式操作中使用；渲染页面和插件自身仍无网络权限。
-async function download(url, limit, { fetcher = fetch, signal } = {}) {
-    let current = httpsUrl(url);
-    const timeout = AbortSignal.timeout(30000),
-        combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
-    for (let hop = 0; hop <= 5; hop++) {
-        const response = await fetcher(current, {
-            redirect: 'manual',
-            signal: combined,
-            credentials: 'omit',
-            headers: { Accept: 'application/json, application/octet-stream' }
-        });
-        if ([301, 302, 303, 307, 308].includes(response.status)) {
-            const location = response.headers.get('location');
-            await response.body?.cancel();
-            if (!location || hop === 5) throw Error('插件下载重定向次数过多');
-            current = httpsUrl(new URL(location, current).href);
-            continue;
-        }
-        if (!response.ok) {
-            await response.body?.cancel();
-            throw Error(`插件下载失败（HTTP ${response.status}）`);
-        }
-        if (Number(response.headers.get('content-length')) > limit) {
-            await response.body?.cancel();
-            throw Error('下载内容超过大小限制');
-        }
-        const reader = response.body?.getReader();
-        if (!reader) throw Error('下载内容为空');
-        const chunks = [];
-        let total = 0;
-        try {
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                total += value.length;
-                if (total > limit) throw Error('下载内容超过大小限制');
-                chunks.push(Buffer.from(value));
-            }
-        } catch (error) {
-            await reader.cancel().catch(() => {});
-            throw error;
-        }
-        return Buffer.concat(chunks);
-    }
+async function download(url, limit, options = {}) {
+    httpsUrl(url);
+    return require('../distribution/transport').request(url, {
+        ...options,
+        limit,
+        headers: () => ({ Accept: 'application/json, application/octet-stream' })
+    });
 }
 class PluginCatalog {
     constructor(registry, options = {}) {
@@ -155,14 +120,15 @@ class PluginCatalog {
         this.updatedAt = new Date().toISOString();
         return this.status();
     }
-    async package(id, signal) {
+    async package(id, signal, progress) {
         const item = this.items.find((p) => p.id === id);
         if (!item || !this.loaded) throw Error('请刷新插件目录后再安装');
         const support = compatibility(item);
         if (!support.compatible) throw Error(support.compatibilityReason);
         const data = await (this.options.download || download)(item.url, Math.min(ARCHIVE_LIMIT, item.size), {
             ...this.options,
-            signal
+            signal,
+            progress
         });
         if (data.length !== item.size) throw Error('下载的插件包大小与目录不一致');
         return { data, item };

@@ -5,7 +5,7 @@
       "source": "src/plugin-library/clipboard-history",
       "id": "collectify.clipboard-history",
       "name": "剪贴板历史",
-      "version": "2.2.0",
+      "version": "2.2.1",
       "iconAsset": "剪切板.svg"
     },
     {

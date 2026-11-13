@@ -68,6 +68,8 @@ function reference(templates) {
             'collectify.windows.shortcut(enabled)':
                 '需要 window 和清单 shortcut HTML 入口；显示/隐藏本插件的48px桌面快捷按钮，支持后台恢复、边缘拖动和位置保存。停用或卸载回收窗口。',
             'collectify.windows.reveal()': '需要 window；从插件前台主动唤起主窗口并切换至本插件，不接受其他插件ID。',
+            'collectify.windows.drag({phase,x,y})':
+                '仅 shortcut 页面且有 window 权限；phase 为 start/move/end，x/y 为指针屏幕坐标。只移动本插件自己的快捷按钮，位置约束在显示器可用区域。',
             'collectify.desktop.paste()':
                 '需要 desktop.paste；仅前台插件主动调用，Windows 隐藏本应用后向恢复焦点的外部应用发送 Ctrl+V；其他平台明确报错',
             'collectify.clipboard.readText()':

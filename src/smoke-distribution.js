@@ -30,6 +30,26 @@ async function wait(condition) {
     throw Error('分发流程等待超时');
 }
 exports.run = async ({ win, distribution, registry, services, hostAction, pluginCatalog }) => {
+    let slowDownload = false;
+    const downloadResponse = (bytes) => {
+        if (!slowDownload) return new Response(bytes);
+        let timer;
+        return new Response(
+            new ReadableStream({
+                start(controller) {
+                    const split = Math.max(1, Math.floor(bytes.length / 2));
+                    controller.enqueue(bytes.subarray(0, split));
+                    timer = setTimeout(() => {
+                        controller.enqueue(bytes.subarray(split));
+                        controller.close();
+                    }, 5000);
+                },
+                cancel() {
+                    clearTimeout(timer);
+                }
+            })
+        );
+    };
     const previousDialog = dialog.showMessageBox,
         previousStore = distribution.credentials;
     let record = null,
@@ -123,7 +143,7 @@ exports.run = async ({ win, distribution, registry, services, hostAction, plugin
                     }
                 ]
             });
-        if (url.endsWith('/installer')) return new Response(installer);
+        if (url.endsWith('/installer')) return downloadResponse(installer);
         if (url.includes('plugins%2Fcatalog.json')) {
             const data = archive();
             return respond({
@@ -143,7 +163,7 @@ exports.run = async ({ win, distribution, registry, services, hostAction, plugin
                 ]
             });
         }
-        if (url.endsWith('/plugin')) return new Response(archive());
+        if (url.endsWith('/plugin')) return downloadResponse(archive());
         if (url.includes('profiles%2Findex.json')) {
             const bytes = profile();
             return respond({
@@ -265,6 +285,40 @@ exports.run = async ({ win, distribution, registry, services, hostAction, plugin
         await hostAction('plugin-catalog-install', manifest().id);
         assert.equal(registry.get(manifest().id).version, '1.1.0');
         assert.equal(registry.storage.get(manifest().id, 'keep'), 'personal');
+        assert.equal((await hostAction('plugin-download-status')).phase, 'complete');
+        await wait(() =>
+            win.webContents.executeJavaScript(
+                "document.querySelector('#plugin-download-progress progress')?.value===100"
+            )
+        );
+        pluginVersion = '1.2.0';
+        await hostAction('distribution-check');
+        slowDownload = true;
+        const pluginJob = hostAction('plugin-catalog-install', manifest().id).catch((error) => error);
+        await wait(async () => {
+            const progress = await hostAction('plugin-download-status');
+            return progress?.received > 0 && progress.received < progress.total;
+        });
+        await hostAction('plugin-download-cancel');
+        assert.match((await pluginJob).message, /取消/);
+        assert.equal(registry.get(manifest().id).version, '1.1.0');
+        assert.equal((await hostAction('plugin-download-status')).phase, 'cancelled');
+        const appJob = hostAction('distribution-download').catch((error) => error);
+        await wait(
+            () => distribution.progress?.received > 0 && distribution.progress.received < distribution.progress.total
+        );
+        await hostAction('distribution-cancel');
+        await appJob;
+        assert.equal(distribution.progress.phase, 'cancelled');
+        assert.equal(distribution.update.available, true);
+        assert.equal(distribution.downloaded, null);
+        assert.equal(
+            require('node:fs')
+                .readdirSync(require('node:path').join(distribution.directory, 'updates'))
+                .some((name) => name.endsWith('.partial')),
+            false
+        );
+        slowDownload = false;
         await hostAction('distribution-download');
         assert.equal(distribution.status().downloaded, true);
         await distribution.installer(); // 仅验证测试文件，绝不执行系统安装器。

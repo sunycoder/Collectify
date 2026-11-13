@@ -9,45 +9,61 @@ body {
 }
 * {
     box-sizing: border-box;
+    -webkit-app-region: no-drag;
 }
 .drag-ring {
-    width: 44px;
-    height: 44px;
-    margin: 2px;
-    padding: 5px;
-    border-radius: 50%;
-    background: linear-gradient(140deg, #60bdda, #a9a3ef, #ed9dbf);
-    -webkit-app-region: drag;
-    opacity: 0.78;
-    transition: opacity 0.15s;
-}
-.drag-ring:hover {
-    opacity: 1;
+    width: 48px;
+    height: 48px;
+    padding: 4px;
+    background: transparent;
 }
 button {
+    position: relative;
     display: grid;
     place-items: center;
-    width: 34px;
-    height: 34px;
-    margin: 0;
-    border: 0;
-    border-radius: 50%;
-    background: #ffffffee;
-    color: #29372f;
-    cursor: pointer;
-    -webkit-app-region: no-drag;
-    box-shadow: 0 1px 3px #0002;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 1px solid #ffffffb8;
+    border-radius: 14px;
+    background: linear-gradient(145deg, #7b9bff 0%, #426ced 48%, #6546d8 100%);
+    cursor: grab;
+    touch-action: none;
+    box-shadow:
+        inset 0 1px 1px #ffffff87,
+        0 2px 4px #16397438;
+    transition:
+        filter 0.15s,
+        box-shadow 0.15s;
+    isolation: isolate;
+    overflow: hidden;
+}
+button:before {
+    content: '';
+    position: absolute;
+    inset: 1px;
+    border-radius: 12px;
+    background: linear-gradient(145deg, #ffffff45, transparent 52%);
+    z-index: -1;
+}
+button:hover {
+    filter: brightness(1.1);
+    box-shadow:
+        inset 0 1px 1px #ffffffb0,
+        0 2px 5px #16397455;
+}
+button.dragging {
+    cursor: grabbing;
+    filter: brightness(0.96);
 }
 button:focus-visible {
-    outline: 2px solid #2764ed;
-    outline-offset: -3px;
+    outline: 2px solid #ffffff;
+    outline-offset: -4px;
 }
-svg {
-    width: 22px;
-    height: 22px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.7;
-    stroke-linecap: round;
-    stroke-linejoin: round;
+img {
+    width: 23px;
+    height: 23px;
+    filter: brightness(0) invert(1);
+    pointer-events: none;
+    user-select: none;
 }

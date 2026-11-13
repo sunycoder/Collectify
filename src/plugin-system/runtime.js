@@ -121,6 +121,32 @@ class PluginRuntime {
             await this.openPlugin(plugin.id, plugin.navigation[0]?.id);
             return;
         }
+        if (action === 'window.drag') {
+            const record = pair[1];
+            if (
+                record.mode !== 'shortcut' ||
+                !plugin.permissions.includes('window') ||
+                !payload ||
+                !['start', 'move', 'end'].includes(payload.phase) ||
+                ![payload.x, payload.y].every((v) => Number.isFinite(v) && Math.abs(v) < 10000000)
+            )
+                throw Error('仅桌面快捷按钮可调整自身位置');
+            if (payload.phase === 'start') {
+                const [x, y] = record.window.getPosition();
+                record.drag = { x, y, pointerX: payload.x, pointerY: payload.y };
+                return;
+            }
+            if (!record.drag) return;
+            const x = Math.round(record.drag.x + payload.x - record.drag.pointerX),
+                y = Math.round(record.drag.y + payload.y - record.drag.pointerY),
+                area = screen.getDisplayNearestPoint({ x, y }).workArea;
+            record.window.setPosition(
+                Math.max(area.x, Math.min(area.x + area.width - 48, x)),
+                Math.max(area.y, Math.min(area.y + area.height - 48, y))
+            );
+            if (payload.phase === 'end') record.drag = null;
+            return;
+        }
         if (action === 'window.open') {
             if (isBackground || !plugin.permissions.includes('window')) throw Error('插件未声明独立窗口权限');
             return this.openWindow(plugin, payload);

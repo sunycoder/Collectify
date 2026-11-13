@@ -1,4 +1,37 @@
 /* 设置共用固定外框；侧栏和标题保持原位，仅内容区域滚动。 */
+.download-progress {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 9px 14px;
+    padding: 16px;
+    margin: 14px 0;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+}
+.download-progress[hidden] {
+    display: none;
+}
+.download-progress strong {
+    font-size: 13px;
+    grid-column: 1;
+}
+.download-progress progress {
+    width: 100%;
+    height: 7px;
+    accent-color: var(--accent);
+    grid-column: 1;
+}
+.download-progress .transfer-detail {
+    font-size: 12px;
+    color: var(--muted);
+    grid-column: 1;
+}
+.download-progress button {
+    grid-column: 2;
+    grid-row: 1/4;
+    align-self: center;
+}
 .source-overview {
     display: grid;
     gap: 7px;

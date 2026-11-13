@@ -34,7 +34,8 @@ contextBridge.exposeInMainWorld('collectify', {
     windows: {
         open: (options) => call('window.open', options),
         shortcut: (enabled) => call('window.shortcut', enabled),
-        reveal: () => call('window.reveal')
+        reveal: () => call('window.reveal'),
+        drag: (position) => call('window.drag', position)
     },
     desktop: { paste: () => call('desktop.paste') },
     onBackgroundRequest: (callback) =>

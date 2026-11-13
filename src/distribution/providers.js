@@ -70,7 +70,18 @@ function createProvider(config) {
                     if (release || releases.length < 100) break;
                 }
             } else release = await read(`${projectUrl()}/releases/latest`);
-            if (!release) throw Error('该源尚未发布带更新清单的主程序版本');
+            if (!release) {
+                let version = '';
+                try {
+                    const metadata = await read(this.fileUrl(config.project, config.ref, 'package.json'));
+                    if (/^\d+\.\d+\.\d+$/.test(metadata.version)) version = metadata.version;
+                } catch (error) {
+                    if (error.status === 401 || error.status === 403) throw error;
+                }
+                throw Error(
+                    `当前项目${version ? '只有源码版本 ' + version : '尚无主程序 Release'}，尚未发布安装包与 collectify-update.json。请维护者运行主程序标签发布流水线，或在高级设置切换更新源。`
+                );
+            }
             const assets = gitlab ? release.assets?.links : release.assets;
             const manifest = assets?.find((a) => a.name === 'collectify-update.json');
             if (!manifest) throw Error('该源尚未发布 collectify-update.json 更新清单');
