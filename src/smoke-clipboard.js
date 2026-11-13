@@ -267,12 +267,49 @@ exports.run = async ({ win, registry, runtime, hostAction }) => {
         await delay(120);
         assert.notDeepEqual(shortcut.window.getPosition(), beforeDrag, '按钮中心应能拖动，不仅是边缘');
         assert.equal(
+            await shortcut.window.webContents.executeJavaScript(
+                "document.querySelector('#open img').getAttribute('src')"
+            ),
+            'icons/system.svg'
+        );
+        const edgePosition = shortcut.window.getPosition();
+        for (const [type, x, y] of [
+            ['mouseDown', 2, 24],
+            ['mouseMove', 12, 30],
+            ['mouseUp', 12, 30]
+        ]) {
+            shortcut.window.webContents.sendInputEvent({
+                type,
+                x,
+                y,
+                button: 'left',
+                clickCount: 1,
+                globalX: edgePosition[0] + x,
+                globalY: edgePosition[1] + y,
+                modifiers: type === 'mouseMove' ? ['leftButtonDown'] : []
+            });
+            await delay(80);
+        }
+        assert.notDeepEqual(shortcut.window.getPosition(), edgePosition, '按钮外沿也应支持拖动');
+        assert.equal(
             await shortcut.window.webContents.executeJavaScript('collectify.context().then(value=>value.windowMode)'),
             'shortcut'
         );
         await hostAction('plugin-open', { id: 'collectify.json' });
         win.hide();
-        await shortcut.window.webContents.executeJavaScript("document.querySelector('#open').click()");
+        const clickPosition = shortcut.window.getPosition();
+        for (const type of ['mouseDown', 'mouseUp']) {
+            shortcut.window.webContents.sendInputEvent({
+                type,
+                x: 24,
+                y: 24,
+                button: 'left',
+                clickCount: 1,
+                globalX: clickPosition[0] + 24,
+                globalY: clickPosition[1] + 24
+            });
+            await delay(80);
+        }
         await until(() => runtime.activeId === id && win.isVisible());
         await until(() => registry.storage.get(id, 'history.v2').shortcutEnabled === true);
         shortcut.window.setPosition(80, 120);

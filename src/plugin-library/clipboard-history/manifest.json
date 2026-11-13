@@ -4,7 +4,7 @@
   "glyph": "剪",
   "iconAsset": "剪切板.svg",
   "description": "后台记录文本、图片和文件，支持搜索、收藏、预览与一键复制。",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "apiVersion": 1,
   "minHostVersion": "5.7.3",
   "shortcut": "shortcut.html",

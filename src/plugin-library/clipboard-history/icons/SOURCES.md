@@ -6,3 +6,4 @@
 - `text.svg`：24gl-clipboardText，J_icon_id_7594793，来源 `https://www.iconfont.cn/search/index?searchType=icon&q=%E5%89%AA%E8%B4%B4%E6%9D%BF`。
 - `image.svg`： 图片，J_icon_id_2076242，来源 `https://www.iconfont.cn/search/index?searchType=icon&q=%E5%9B%BE%E7%89%87`。
 - `files.svg`：文件，J_icon_id_1305090，来源 `https://www.iconfont.cn/search/index?searchType=icon&q=%E6%96%87%E4%BB%B6`。
+- `system.svg`：用户提供的 `assets/iconfont icon-xitong.svg` 原始矢量，p-id 为 22321/22322，用于桌面快捷按钮。
