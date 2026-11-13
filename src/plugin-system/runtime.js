@@ -1,6 +1,15 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { BrowserWindow, WebContentsView, session, ipcMain, clipboard, nativeImage, ClipboardItem } = require('electron');
+const {
+    BrowserWindow,
+    WebContentsView,
+    session,
+    ipcMain,
+    clipboard,
+    nativeImage,
+    ClipboardItem,
+    screen
+} = require('electron');
 const { pasteToPreviousApplication } = require('./desktop-paste');
 const { randomUUID } = require('node:crypto');
 const { captureClipboard, writeSnapshot } = require('./clipboard-formats');
@@ -26,8 +35,8 @@ const CSP =
 const { SDK_FILES, SHARED_FILES } = require('./contract');
 
 class PluginRuntime {
-    constructor({ registry, getWindow, getTheme, changed, smoke = false }) {
-        Object.assign(this, { registry, getWindow, getTheme, changed, smoke });
+    constructor({ registry, getWindow, getTheme, changed, openPlugin, smoke = false }) {
+        Object.assign(this, { registry, getWindow, getTheme, changed, openPlugin, smoke });
         this.clipboard = clipboard;
         this.views = new Map();
         this.backgrounds = new Map();
@@ -88,15 +97,30 @@ class PluginRuntime {
         if (!pair || event.senderFrame !== event.sender.mainFrame) throw Error('无权调用插件接口');
         const plugin = this.registry.get(pair[0], true);
         const isBackground = this.backgrounds.get(plugin.id) === pair[1];
-        if (event.senderFrame.url !== this.url(isBackground ? { ...plugin, entry: plugin.background } : plugin))
-            throw Error('插件页面来源不正确');
+        const page =
+            pair[1].mode === 'shortcut'
+                ? { ...plugin, entry: plugin.shortcut }
+                : isBackground
+                  ? { ...plugin, entry: plugin.background }
+                  : plugin;
+        if (event.senderFrame.url !== this.url(page)) throw Error('插件页面来源不正确');
         if (Buffer.byteLength(JSON.stringify(payload ?? null)) > 10 * 1024 * 1024) throw Error('插件请求过大');
         if (action === 'context')
             return {
                 ...this.context(plugin),
                 platform: process.platform,
-                windowMode: pair[1].window ? 'floating' : isBackground ? 'background' : 'main'
+                windowMode: pair[1].mode || (pair[1].window ? 'floating' : isBackground ? 'background' : 'main')
             };
+        if (action === 'window.shortcut') {
+            if (!plugin.permissions.includes('window') || !plugin.shortcut || typeof payload !== 'boolean')
+                throw Error('插件未声明桌面快捷按钮入口与权限');
+            return this.shortcut(plugin, payload);
+        }
+        if (action === 'window.reveal') {
+            if (isBackground || !plugin.permissions.includes('window')) throw Error('请从插件前台主动打开主窗口');
+            await this.openPlugin(plugin.id, plugin.navigation[0]?.id);
+            return;
+        }
         if (action === 'window.open') {
             if (isBackground || !plugin.permissions.includes('window')) throw Error('插件未声明独立窗口权限');
             return this.openWindow(plugin, payload);
@@ -369,7 +393,9 @@ class PluginRuntime {
                 record.view.webContents.send('plugin-event', { name, data });
     }
     async openWindow(plugin, payload = {}) {
-        const existing = [...this.popouts.values()].find((record) => record.pluginId === plugin.id);
+        const existing = [...this.popouts.values()].find(
+            (record) => record.pluginId === plugin.id && record.mode !== 'shortcut'
+        );
         if (existing) {
             existing.window.show();
             existing.window.focus();
@@ -408,6 +434,103 @@ class PluginRuntime {
         try {
             await window.loadURL(this.url(plugin));
             window.webContents.send('plugin-navigate', { route: plugin.navigation[0]?.id, payload });
+        } catch (error) {
+            window.destroy();
+            throw error;
+        }
+    }
+    async shortcut(plugin, enabled) {
+        const key = 'shortcut:' + plugin.id,
+            existing = this.popouts.get(key);
+        if (!enabled) {
+            existing?.window.destroy();
+            return;
+        }
+        if (existing) return;
+        const work = screen.getPrimaryDisplay().workArea;
+        const saved = this.registry.getSetting(key + ':position', {});
+        const display =
+            Number.isFinite(saved.x) && Number.isFinite(saved.y)
+                ? screen.getDisplayNearestPoint({ x: saved.x, y: saved.y }).workArea
+                : work;
+        const x = Math.round(
+            Math.max(
+                display.x,
+                Math.min(display.x + display.width - 48, Number.isFinite(saved.x) ? saved.x : work.x + work.width - 64)
+            )
+        );
+        const y = Math.round(
+            Math.max(
+                display.y,
+                Math.min(
+                    display.y + display.height - 48,
+                    Number.isFinite(saved.y) ? saved.y : work.y + Math.round(work.height * 0.45)
+                )
+            )
+        );
+        const window = new BrowserWindow({
+            width: 48,
+            height: 48,
+            x,
+            y,
+            frame: false,
+            transparent: true,
+            backgroundColor: '#00000000',
+            resizable: false,
+            skipTaskbar: true,
+            alwaysOnTop: true,
+            hasShadow: false,
+            show: false,
+            title: plugin.name + ' · 快捷按钮',
+            webPreferences: {
+                partition: this.prepare(plugin),
+                preload: path.join(__dirname, 'preload.js'),
+                sandbox: true,
+                nodeIntegration: false,
+                contextIsolation: true,
+                webSecurity: true,
+                offscreen: this.smoke
+            }
+        });
+        const record = {
+            pluginId: plugin.id,
+            mode: 'shortcut',
+            window,
+            view: { webContents: window.webContents },
+            errors: []
+        };
+        this.popouts.set(key, record);
+        window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+        for (const name of ['will-navigate', 'will-redirect', 'will-frame-navigate'])
+            window.webContents.on(name, (event) => event.preventDefault());
+        window.webContents.on('console-message', (event) => {
+            if (event.level === 3) record.errors.push(String(event.message).slice(0, 300));
+        });
+        let positionTimer, pendingPosition;
+        const savePosition = () => {
+            clearTimeout(positionTimer);
+            if (pendingPosition) {
+                this.registry.setSetting(key + ':position', pendingPosition);
+                pendingPosition = null;
+            }
+        };
+        window.on('move', () => {
+            const [x, y] = window.getPosition();
+            pendingPosition = { x, y };
+            clearTimeout(positionTimer);
+            positionTimer = setTimeout(savePosition, 100);
+        });
+        window.on('closed', () => {
+            savePosition();
+            this.popouts.delete(key);
+        });
+        try {
+            await window.loadURL(this.url({ ...plugin, entry: plugin.shortcut }));
+            if (!this.registry.plugins.get(plugin.id)?.enabled) {
+                window.destroy();
+                return;
+            }
+            if (!this.smoke) window.showInactive();
         } catch (error) {
             window.destroy();
             throw error;
@@ -504,6 +627,7 @@ class PluginRuntime {
         if (this.activeId === id) this.deactivate();
     }
     destroy() {
+        for (const record of [...this.popouts.values()]) record.window.destroy();
         for (const id of [...this.backgrounds.keys()]) this.stopBackground(id);
         for (const id of [...this.views.keys()]) this.close(id);
     }

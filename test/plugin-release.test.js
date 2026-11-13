@@ -13,7 +13,11 @@ function fixture(t, all = false) {
     const result = buildCatalog({ output, check: true });
     return all
         ? result
-        : { ...result, plugins: result.plugins.slice(0, 1), tag: 'plugin-collectify.clipboard-history-v2.1.1' };
+        : {
+              ...result,
+              plugins: result.plugins.slice(0, 1),
+              tag: `plugin-${result.plugins[0].id}-v${result.plugins[0].version}`
+          };
 }
 test('官方目录可重现构建，程序包身份、大小和校验值完全匹配', (t) => {
     const built = fixture(t, true),

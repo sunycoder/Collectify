@@ -70,6 +70,7 @@ const ready = (async () => {
         }
     }
     await collectify.background.setActive(state.capturing === true);
+    await collectify.windows.shortcut(state.shortcutEnabled === true);
 })();
 collectify.onBackgroundRequest((request) =>
     serial(async () => {
@@ -87,8 +88,18 @@ collectify.onBackgroundRequest((request) =>
                         text = (await collectify.storage.get('entry.' + item.id))?.text || item.preview;
                     if (!query || text.toLowerCase().includes(query)) matches.push(item.id);
                 }
-                return { items: state.items, matches, capturing: state.capturing, error: lastError };
+                return {
+                    items: state.items,
+                    matches,
+                    capturing: state.capturing,
+                    shortcutEnabled: state.shortcutEnabled === true,
+                    error: lastError
+                };
             }
+            case 'shortcut':
+                await collectify.windows.shortcut(request.enabled === true);
+                await save({ ...state, shortcutEnabled: request.enabled === true });
+                return;
             case 'capture':
                 lastError = '';
                 await save({ ...state, capturing: request.enabled === true });

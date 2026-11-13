@@ -1,0 +1,53 @@
+html,
+body {
+    margin: 0;
+    width: 48px;
+    height: 48px;
+    overflow: hidden;
+    background: transparent;
+    user-select: none;
+}
+* {
+    box-sizing: border-box;
+}
+.drag-ring {
+    width: 44px;
+    height: 44px;
+    margin: 2px;
+    padding: 5px;
+    border-radius: 50%;
+    background: linear-gradient(140deg, #60bdda, #a9a3ef, #ed9dbf);
+    -webkit-app-region: drag;
+    opacity: 0.78;
+    transition: opacity 0.15s;
+}
+.drag-ring:hover {
+    opacity: 1;
+}
+button {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    margin: 0;
+    border: 0;
+    border-radius: 50%;
+    background: #ffffffee;
+    color: #29372f;
+    cursor: pointer;
+    -webkit-app-region: no-drag;
+    box-shadow: 0 1px 3px #0002;
+}
+button:focus-visible {
+    outline: 2px solid #2764ed;
+    outline-offset: -3px;
+}
+svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}

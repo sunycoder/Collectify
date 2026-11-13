@@ -31,7 +31,11 @@ contextBridge.exposeInMainWorld('collectify', {
         setActive: (value) => call('background.active', value)
     },
     notify: (data) => call('plugin.notify', data),
-    windows: { open: (options) => call('window.open', options) },
+    windows: {
+        open: (options) => call('window.open', options),
+        shortcut: (enabled) => call('window.shortcut', enabled),
+        reveal: () => call('window.reveal')
+    },
     desktop: { paste: () => call('desktop.paste') },
     onBackgroundRequest: (callback) =>
         subscribe('plugin-background-request', async (request) => {

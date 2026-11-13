@@ -704,6 +704,7 @@ app.whenReady()
         }
         runtime = new PluginRuntime({
             registry,
+            openPlugin,
             getWindow: () => win,
             getTheme: () => settings().theme,
             changed: () => {

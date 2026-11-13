@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>剪贴板快捷按钮</title>
+        <link rel="stylesheet" href="shortcut.css" />
+    </head>
+    <body>
+        <div class="drag-ring" title="拖动边缘调整位置">
+            <button id="open" title="打开剪贴板历史（右键可隐藏）" aria-label="打开剪贴板历史">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="6" y="5" width="12" height="16" rx="3" />
+                    <rect x="9" y="3" width="6" height="4" rx="1.5" />
+                    <path d="M9 12h6M9 16h5" />
+                </svg>
+            </button>
+        </div>
+        <script src="shortcut.js"></script>
+    </body>
+</html>

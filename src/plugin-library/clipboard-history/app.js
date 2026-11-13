@@ -332,6 +332,8 @@ async function refresh() {
     matchedIds = new Set(data.matches || data.items.map((item) => item.id));
     $('#capture').textContent = data.capturing ? '暂停采集' : '开启后台采集';
     $('#capture').setAttribute('aria-pressed', String(data.capturing));
+    $('#desktop-shortcut').setAttribute('aria-pressed', String(data.shortcutEnabled));
+    $('#desktop-shortcut').textContent = data.shortcutEnabled ? '隐藏桌面按钮' : '桌面快捷按钮';
     $('#capture-status').textContent =
         data.error || (data.capturing ? '● 后台采集中 · 切换应用也会记录' : '采集已暂停');
     for (const id of imageCache.keys()) if (!items.some((item) => item.id === id)) imageCache.delete(id);
@@ -409,6 +411,14 @@ $('#history').onkeydown = (event) => {
     }
 };
 $('#float-window').onclick = () => void ToolUI.run(() => floatItem(items.find((item) => item.id === selected)));
+$('#desktop-shortcut').onclick = () =>
+    void ToolUI.run(async () => {
+        await collectify.background.request({
+            action: 'shortcut',
+            enabled: $('#desktop-shortcut').getAttribute('aria-pressed') !== 'true'
+        });
+        await refresh();
+    });
 document.addEventListener('pointerdown', (event) => {
     if (!event.target.closest('#context-menu')) hideContext();
 });

@@ -142,6 +142,25 @@ exports.run = async ({ win, registry, runtime, services, hostAction }) => {
         assert.equal(opened.length, 2);
         assert.equal(services.providers.get('collectify.bookmarks').browser.tabs.size, 1);
         await services.call('collectify.bookmarks', 'home');
+        await hostAction('plugin-open', { id: 'collectify.bookmarks' });
+        const bookmarks = runtime.views.get('collectify.bookmarks').view.webContents;
+        await until(() => bookmarks.executeJavaScript("!document.querySelector('#return-tabs').hidden"));
+        const pinned = await bookmarks.executeJavaScript(
+            "(()=>{const dashboard=document.querySelector('#dashboard'),spacer=document.createElement('div');spacer.style.height='3000px';dashboard.append(spacer);dashboard.scrollTop=2000;const button=document.querySelector('#return-tabs').getBoundingClientRect();const value={scroll:dashboard.scrollTop,top:button.top,bottom:button.bottom,pageScroll:window.scrollY};spacer.remove();dashboard.scrollTop=0;return value})()"
+        );
+        assert.ok(pinned.scroll > 0);
+        assert.ok(pinned.top >= 0 && pinned.bottom < 100);
+        assert.equal(pinned.pageScroll, 0);
+        await services.call(
+            'collectify.bookmarks',
+            'activate',
+            [...services.providers.get('collectify.bookmarks').browser.tabs.keys()][0]
+        );
+        const back = await bookmarks.executeJavaScript(
+            "(()=>{window.scrollTo(0,2000);const r=document.querySelector('#back-to-library').getBoundingClientRect();return {top:r.top,bottom:r.bottom,scroll:window.scrollY}})()"
+        );
+        assert.ok(back.top >= 0 && back.bottom <= 120);
+        assert.equal(back.scroll, 0);
     } finally {
         shell.openExternal = original;
     }

@@ -21,6 +21,48 @@ main {
     gap: 10px;
     padding: 12px 30px 0;
 }
+.bookmark-plugin {
+    height: 100dvh;
+    overflow: hidden;
+}
+.bookmark-plugin > main {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+}
+.bookmark-plugin .bookmark-top-actions {
+    flex: 0 0 auto;
+    padding: 10px 30px;
+    min-height: 46px;
+    box-sizing: border-box;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    z-index: 5;
+}
+.bookmark-plugin .bookmark-top-actions:has(#return-tabs[hidden]) {
+    display: none;
+}
+.bookmark-plugin #return-tabs {
+    padding: 7px 12px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    color: var(--accent-text);
+    background: var(--soft);
+}
+.bookmark-plugin #dashboard {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+.bookmark-plugin #workspace {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+}
 .bookmark-top-actions:has(+ #dashboard[hidden]) {
     display: none;
 }

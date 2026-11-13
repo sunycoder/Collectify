@@ -216,6 +216,39 @@ exports.run = async ({ win, registry, runtime, hostAction }) => {
         assert.equal(registry.storage.get(id, 'history.v2').items[0].favorite, true);
         assert.deepEqual(runtime.views.get(id).errors, []);
         assert.deepEqual(runtime.backgrounds.get(id).errors, []);
+        await page("document.querySelector('#desktop-shortcut').click()");
+        await until(() => runtime.popouts.has('shortcut:' + id));
+        const shortcut = runtime.popouts.get('shortcut:' + id);
+        await until(() =>
+            shortcut.window.webContents.executeJavaScript(
+                "typeof collectify==='object'&&!!document.querySelector('#open')"
+            )
+        );
+        assert.deepEqual(shortcut.window.getSize(), [48, 48]);
+        assert.equal(
+            await shortcut.window.webContents.executeJavaScript('collectify.context().then(value=>value.windowMode)'),
+            'shortcut'
+        );
+        await hostAction('plugin-open', { id: 'collectify.json' });
+        win.hide();
+        await shortcut.window.webContents.executeJavaScript("document.querySelector('#open').click()");
+        await until(() => runtime.activeId === id && win.isVisible());
+        await until(() => registry.storage.get(id, 'history.v2').shortcutEnabled === true);
+        shortcut.window.setPosition(80, 120);
+        await delay(120);
+        await hostAction('plugin-enable', { id, enabled: false });
+        assert.equal(runtime.popouts.has('shortcut:' + id), false);
+        await hostAction('plugin-enable', { id, enabled: true });
+        await hostAction('plugin-open', { id });
+        await until(() => runtime.popouts.has('shortcut:' + id));
+        const restored = runtime.popouts.get('shortcut:' + id);
+        await until(() => restored.window.webContents.executeJavaScript("typeof collectify==='object'"));
+        assert.deepEqual(restored.window.getPosition(), [80, 120]);
+        await restored.window.webContents.executeJavaScript(
+            "document.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true}))"
+        );
+        await until(() => !runtime.popouts.has('shortcut:' + id));
+        await until(() => registry.storage.get(id, 'history.v2').shortcutEnabled === false);
         console.log(
             'CLIPBOARD PASS：真实沙箱后台、窗口隐藏后文本/图片/文件采集、暂停、收藏筛选、图片格式复制、分块持久化、停用回收和重启保留通过；剪贴板为注入测试数据。'
         );

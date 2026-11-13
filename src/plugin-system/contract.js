@@ -65,6 +65,9 @@ function reference(templates) {
             'collectify.notify(data)': '向本插件前台发送 plugin-notify 事件，不跨插件',
             'collectify.windows.open({focusItem})':
                 '需要 window；打开本插件的隔离置顶窗口，同一插件复用一个窗口，停用时关闭',
+            'collectify.windows.shortcut(enabled)':
+                '需要 window 和清单 shortcut HTML 入口；显示/隐藏本插件的48px桌面快捷按钮，支持后台恢复、边缘拖动和位置保存。停用或卸载回收窗口。',
+            'collectify.windows.reveal()': '需要 window；从插件前台主动唤起主窗口并切换至本插件，不接受其他插件ID。',
             'collectify.desktop.paste()':
                 '需要 desktop.paste；仅前台插件主动调用，Windows 隐藏本应用后向恢复焦点的外部应用发送 Ctrl+V；其他平台明确报错',
             'collectify.clipboard.readText()':

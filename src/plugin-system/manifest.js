@@ -68,6 +68,15 @@ function readManifest(root, { builtin = false } = {}) {
         throw Error('插件请求了不支持的权限');
     if (!input.entry?.endsWith('.html')) throw Error('插件入口必须为 HTML 页面');
     assetPath(root, input.entry);
+    if (input.shortcut !== undefined) {
+        if (
+            typeof input.shortcut !== 'string' ||
+            !input.shortcut.endsWith('.html') ||
+            !input.permissions.includes('window')
+        )
+            throw Error('桌面快捷按钮需声明 window 权限和 HTML 入口');
+        assetPath(root, input.shortcut);
+    }
     if (!Array.isArray(input.commands) || !input.commands.length || input.commands.length > 20)
         throw Error('插件必须声明至少一个打开命令');
     const ids = new Set();
@@ -129,6 +138,7 @@ function readManifest(root, { builtin = false } = {}) {
         throw Error('插件导航不正确');
     return {
         ...requirements,
+        ...(input.shortcut ? { shortcut: input.shortcut } : {}),
         ...(input.runtime === 'native' ? { runtime: 'native', publisher } : {}),
         ...(input.background ? { background: input.background } : {}),
         ...(input.iconAsset ? { iconAsset: input.iconAsset } : {}),
