@@ -1,6 +1,6 @@
 {
   "name": "collectify",
-  "version": "5.6.0",
+  "version": "5.7.0",
   "description": "Collectify · 可扩展的个人插件工作台",
   "main": "src/main.js",
   "author": "Collectify",
@@ -14,6 +14,8 @@
     "plugins:build": "node scripts/build-plugin-catalog.cjs",
     "plugins:check": "node scripts/build-plugin-catalog.cjs --check",
     "plugins:publish": "node scripts/publish-plugins.cjs",
+    "profiles:build": "node scripts/build-team-profiles.cjs",
+    "source:configure": "node scripts/configure-source.cjs",
     "dist": "electron-builder --win nsis",
     "dist:mac": "electron-builder --mac dmg --x64 --arm64",
     "dist:linux": "electron-builder --linux AppImage deb --x64",

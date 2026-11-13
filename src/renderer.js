@@ -409,6 +409,7 @@ async function openSettings(panel = 'general') {
         renderMcpStatus(info.mcp);
         catalogState = await call('plugin-catalog-status');
         renderPluginCatalog();
+        await loadDistribution();
         selectSettingsPanel(typeof panel === 'string' ? panel : 'general');
         $('#settings-error').textContent = '';
         $('#settings-dialog').showModal();
@@ -444,7 +445,10 @@ document.querySelectorAll('[data-plugin-tab]').forEach(
         }))
 );
 $('#open-data-directory').onclick = task(() => call('open-data-directory'));
-$('#download-app').onclick = task(() => call('app-download'));
+$('#download-app').onclick = task(async () => {
+    await loadDistribution();
+    selectSettingsPanel('distribution');
+});
 $('#keep-in-tray').onchange = task(() =>
     call('settings', { ...state.settings, keepInTray: $('#keep-in-tray').checked })
 );

@@ -36,6 +36,9 @@ jobs:
         run: node scripts/release-files.cjs check-version
       - run: npm ci
       - run: npm test
+      - run: node scripts/configure-source.cjs --ci
+        env:
+          COLLECTIFY_OAUTH_CLIENT_ID: ${{ vars.COLLECTIFY_OAUTH_CLIENT_ID }}
       - run: ${{ matrix.build }}
       - name: 核对安装包内文件
         run: node scripts/release-files.cjs verify

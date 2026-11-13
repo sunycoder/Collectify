@@ -92,6 +92,7 @@
                 <button class="selected" data-settings-panel="general">通用</button
                 ><button id="theme-button">自定义外观</button
                 ><button id="settings-plugins" data-settings-panel="plugins">插件</button
+                ><button data-settings-panel="distribution">账号与更新</button
                 ><button data-settings-panel="ai">AI 连接</button
                 ><button data-settings-panel="data">导入 / 导出</button>
             </nav>
@@ -113,6 +114,86 @@
                     </select></label
                 >
                 <p>外部打开使用系统已设置的默认浏览器；收藏菜单仍可临时选择另一种方式。</p>
+            </div>
+            <div class="settings-panel" data-panel="distribution" hidden>
+                <h3>账号与发布源</h3>
+                <p>一次登录，用于私有插件、主程序更新和团队默认配置。源地址与项目可以随时修改。</p>
+                <form id="distribution-form" class="distribution-form">
+                    <label
+                        >服务类型<select id="source-provider">
+                            <option value="gitlab">GitLab</option>
+                            <option value="github">GitHub</option>
+                        </select></label
+                    >
+                    <label
+                        >服务地址<input
+                            id="source-baseUrl"
+                            type="url"
+                            placeholder="https://gitlab.example.com"
+                            required
+                    /></label>
+                    <label
+                        >项目路径<input id="source-project" placeholder="group/project" required spellcheck="false"
+                    /></label>
+                    <label
+                        >OAuth Application ID<input
+                            id="source-clientId"
+                            placeholder="由维护者注册的公开应用标识，不是 Secret"
+                            spellcheck="false"
+                    /></label>
+                    <details class="distribution-advanced">
+                        <summary>目录路径与连接选项</summary>
+                        <label>分支<input id="source-ref" value="main" /></label>
+                        <label>插件目录路径<input id="source-catalogPath" value="plugins/catalog.json" /></label>
+                        <label>团队配置索引<input id="source-profilesPath" value="profiles/index.json" /></label>
+                        <label class="checkbox-label"
+                            ><input id="source-allowInsecureHttp" type="checkbox" />允许内网 IP 使用 HTTP</label
+                        >
+                        <small>HTTP 不加密登录授权和下载内容，仅在公司可信内网中启用；不会忽略 HTTPS 证书错误。</small>
+                        <label class="checkbox-label"
+                            ><input
+                                id="source-automaticChecks"
+                                type="checkbox"
+                                checked
+                            />启动后及每小时自动检查更新</label
+                        >
+                    </details>
+                    <div class="settings-data-actions">
+                        <button id="source-save" class="subtle" type="submit">保存发布源</button>
+                    </div>
+                </form>
+                <p id="source-account" role="status"></p>
+                <p id="source-groups" class="distribution-groups"></p>
+                <p id="source-login-code" hidden></p>
+                <div class="settings-data-actions">
+                    <button id="source-login" class="primary">登录</button
+                    ><button id="source-logout" class="subtle" hidden>退出登录</button
+                    ><button id="source-cancel" class="subtle" hidden>取消当前操作</button>
+                </div>
+                <small
+                    >GitLab 使用浏览器授权与 PKCE；GitHub
+                    使用设备码登录。登录凭据由系统安全存储加密，导出备份不包含凭据。</small
+                >
+                <hr />
+                <h3>主程序与插件更新</h3>
+                <div class="settings-data-actions">
+                    <button id="source-check" class="subtle">检查更新</button
+                    ><button id="source-download" class="primary" hidden>下载新版本</button
+                    ><button id="source-install" class="primary" hidden>安装已下载版本</button>
+                </div>
+                <p id="source-update-status" role="status"></p>
+                <pre id="source-update-notes" class="distribution-notes" hidden></pre>
+                <p id="source-plugin-status" role="status"></p>
+                <hr />
+                <h3>团队默认配置</h3>
+                <p>按账号所属用户组提供配置；仅补充新内容，保留个人修改。切换账号不会自动清除已应用到本机的内容。</p>
+                <p id="source-profile-status" role="status"></p>
+                <div id="source-profile-list"></div>
+                <section id="source-profile-preview" class="distribution-preview" hidden>
+                    <p id="source-profile-summary"></p>
+                    <button id="source-profile-apply" class="primary">确认应用</button>
+                </section>
+                <p id="source-error" class="form-error" role="alert"></p>
             </div>
             <div class="settings-panel" data-panel="plugins" hidden>
                 <div class="plugin-manager-heading">
@@ -320,6 +401,7 @@
         <script src="overlay.js"></script>
         <script src="theme.js"></script>
         <script src="renderer.js"></script>
+        <script src="distribution-ui.js"></script>
         <script src="appearance.js"></script>
         <script src="ui-components.js"></script>
     </body>

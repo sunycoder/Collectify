@@ -6,10 +6,11 @@ const { checkVersion } = require('./release-files.cjs');
 function publishApp() {
     const version = checkVersion(),
         tag = 'v' + version,
-        repo = 'sunycoder/Collectify',
+        repo = process.env.GITHUB_REPOSITORY || require('../plugins/definitions.json').repository,
         out = path.resolve(__dirname, '../dist'),
         notes = path.resolve(__dirname, '../docs/releases', version + '.md');
     if (!fs.existsSync(notes)) throw Error('缺少当前版本发布说明');
+    if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) throw Error('GitHub 发布项目不正确');
     // 下载入口必须对应本次真实产物，避免平台打包器转换架构名称后留下失效链接。
     const readme = fs.readFileSync(path.resolve(__dirname, '../README.md'), 'utf8');
     for (const match of readme.matchAll(/releases\/download\/([^/]+)\/(Collectify-[^\s)]+)/g)) {
@@ -22,6 +23,12 @@ function publishApp() {
         if (result.status !== 0) throw Error(result.stderr || '发布失败');
         return result.stdout;
     }
+    require('./distribution-manifest.cjs').generate({
+        directory: out,
+        version,
+        notes: fs.readFileSync(notes, 'utf8'),
+        assetUrl: (name) => `https://github.com/${repo}/releases/download/${tag}/${name}`
+    });
     const releases = JSON.parse(gh(['api', `repos/${repo}/releases?per_page=100`]));
     let release = releases.find((item) => item.tag_name === tag);
     if (!release) {
@@ -42,7 +49,11 @@ function publishApp() {
     }
     for (const name of fs
         .readdirSync(out)
-        .filter((name) => /^Collectify.*\.(exe|dmg|deb|AppImage)$/.test(name) || name === 'SHA256SUMS.txt')) {
+        .filter(
+            (name) =>
+                /^Collectify.*\.(exe|dmg|deb|AppImage)$/.test(name) ||
+                ['SHA256SUMS.txt', 'collectify-update.json'].includes(name)
+        )) {
         const file = path.join(out, name),
             digest = 'sha256:' + createHash('sha256').update(fs.readFileSync(file)).digest('hex'),
             prior = release.assets.find((asset) => asset.name === name);

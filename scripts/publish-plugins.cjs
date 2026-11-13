@@ -12,6 +12,8 @@ async function publish({
 } = {}) {
     const result = build(),
         repo = result.repository;
+    if (result.plugins.some((plugin) => new URL(plugin.url).hostname !== 'github.com'))
+        throw Error('当前目录使用 GitLab 发布源，请运行 publish-gitlab.cjs');
     function invoke(args) {
         const response = run(args);
         if (response.error) throw response.error;
