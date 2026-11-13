@@ -231,6 +231,13 @@ class PluginRuntime {
                     if (url.hostname !== plugin.id && url.hostname !== 'collectify.sdk')
                         return new Response('Forbidden', { status: 403 });
                     const relative = decodeURIComponent(url.pathname.slice(1));
+                    // 可信后台可发布短期预览资源；协议不接受本机路径，后台自行校验随机资源票据。
+                    const resourceProvider = this.services?.providers.get(plugin.id);
+                    if (url.hostname === plugin.id && relative.startsWith('__resources/')) {
+                        if (!this.registry.get(plugin.id, true).backend || !resourceProvider?.resource)
+                            return new Response('Forbidden', { status: 403 });
+                        return await resourceProvider.resource(relative, request);
+                    }
                     if (url.hostname === 'collectify.sdk' && !SDK_FILES.has(relative) && !SHARED_FILES.has(relative))
                         return new Response('Not found', { status: 404 });
                     const root =
@@ -251,7 +258,10 @@ class PluginRuntime {
                     return new Response(await fs.promises.readFile(file), {
                         headers: {
                             'Content-Type': `${MIME[extension]}; charset=utf-8`,
-                            'Content-Security-Policy': CSP,
+                            'Content-Security-Policy': resourceProvider?.resource
+                                ? CSP.replace("connect-src 'none'", "connect-src 'self'") +
+                                  "; media-src 'self' blob:; worker-src 'self' blob:"
+                                : CSP,
                             'X-Content-Type-Options': 'nosniff',
                             'Cache-Control': 'no-store'
                         }

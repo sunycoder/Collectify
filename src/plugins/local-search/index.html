@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>本地搜索</title>
+        <link rel="stylesheet" href="collectify-plugin://collectify.sdk/tool.css" />
+        <link rel="stylesheet" href="search.css" />
+    </head>
+    <body>
+        <header class="search-header">
+            <div class="search-heading">
+                <span class="app-glyph">⌕</span>
+                <div>
+                    <h1>本地搜索</h1>
+                    <p>找到文件，先看一眼，再打开。</p>
+                </div>
+            </div>
+            <div class="search-input">
+                <span>⌕</span
+                ><input
+                    id="query"
+                    placeholder="搜索文件名或路径…"
+                    autocomplete="off"
+                    aria-label="搜索文件名或路径"
+                /><kbd>Ctrl K</kbd><button id="clear-query" title="清除搜索">×</button>
+            </div>
+            <button id="settings-open" class="icon-action" aria-label="搜索设置" title="搜索设置">⚙</button>
+        </header>
+        <section class="engine-bar">
+            <span id="engine-status" class="status-dot">尚未连接搜索引擎</span
+            ><button id="connect">连接 Everything</button><button id="engine-window">打开引擎</button
+            ><button id="choose-folder">选择文件夹搜索</button><span id="scope" title="当前搜索范围"></span>
+        </section>
+        <main class="search-layout">
+            <nav id="filters" aria-label="文件分类"></nav>
+            <section class="result-panel">
+                <div class="result-heading"><span>搜索结果</span><span id="result-count"></span></div>
+                <div id="results" role="listbox" tabindex="0" aria-label="搜索结果"></div>
+                <button id="load-more" hidden>加载更多</button>
+                <div id="empty" class="empty-state">
+                    <span>⌕</span>
+                    <h2>从一个关键词开始</h2>
+                    <p>连接 Everything 搜索全盘文件，或选择文件夹进行搜索。</p>
+                </div>
+            </section>
+            <section id="preview" class="preview-panel" aria-label="文件预览">
+                <div class="preview-empty">
+                    <span>▤</span>
+                    <h2>在这里预览文件</h2>
+                    <p>单击选择 · 双击打开<br />↑ ↓ 切换 · Enter 打开 · 右键更多操作</p>
+                </div>
+            </section>
+        </main>
+        <footer>
+            <div class="sort-field">
+                <label for="sort">排序</label
+                ><select id="sort">
+                    <option value="modified">修改时间降序</option>
+                    <option value="name">名称升序</option>
+                    <option value="size">大小降序</option>
+                </select>
+            </div>
+            <label class="toggle"><input id="preview-toggle" type="checkbox" checked /><span></span>文件预览</label>
+            <p id="message" role="status"></p>
+            <span id="footer-count"></span>
+        </footer>
+        <div id="result-menu" popover="auto" class="result-menu">
+            <button data-action="open">↗ 打开</button><button data-action="reveal">▣ 在文件夹中显示</button
+            ><button data-action="copy">⧉ 复制完整路径</button>
+        </div>
+        <dialog id="settings">
+            <form method="dialog">
+                <div class="modal-heading">
+                    <h2>搜索设置</h2>
+                    <button aria-label="关闭设置">×</button>
+                </div>
+            </form>
+            <p class="hint">拖动分类调整顺序，关闭不常用的分类。设置仅保存在此插件中。</p>
+            <div id="filter-settings"></div>
+            <form id="custom-filter">
+                <h3>新增分类</h3>
+                <label>名称<input id="filter-label" maxlength="30" required placeholder="例如：设计源文件" /></label
+                ><label>扩展名<input id="filter-extensions" required placeholder="例如：psd, ai, sketch" /></label
+                ><button type="submit">添加分类</button>
+            </form>
+            <div class="settings-foot">
+                <button id="reset-filters">恢复默认分类</button
+                ><button id="settings-save" class="primary-button">保存设置</button>
+            </div>
+        </dialog>
+        <script src="collectify-plugin://collectify.sdk/toolkit.js"></script>
+        <script src="vendor/pdf.js"></script>
+        <script src="app.js"></script>
+    </body>
+</html>

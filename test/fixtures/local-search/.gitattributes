@@ -1,0 +1,3 @@
+# PDF/AI fixtures contain byte offsets; never normalize their line endings.
+*.pdf -text -diff
+*.ai -text -diff

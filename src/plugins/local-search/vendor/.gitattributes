@@ -1,0 +1,3 @@
+# Preserve upstream bundles and license text without whitespace rewrites.
+* -text -diff
+README.md text eol=lf diff

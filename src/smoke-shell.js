@@ -4,7 +4,7 @@ const fs = require('node:fs'),
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 exports.startup = async ({ registry, runtime, services, development, hostAction }) => {
     assert.deepEqual([...services.errors], []);
-    assert.equal(registry.list().length, 5);
+    assert.equal(registry.list().length, 6);
     for (const plugin of registry.list()) {
         await hostAction('plugin-open', { id: plugin.id });
         await delay(120);
@@ -64,7 +64,7 @@ exports.run = async ({ win, registry, runtime, services, backup, mcp, hostAction
         assert.equal(runtime.active().error, '');
         assert.deepEqual(runtime.views.get(id).errors, []);
     }
-    assert.equal(await host("document.querySelectorAll('#plugin-rail [data-plugin-id]').length"), 5);
+    assert.equal(await host("document.querySelectorAll('#plugin-rail [data-plugin-id]').length"), 6);
     assert.equal(await host("document.querySelector('#tasks-page')"), null);
     assert.deepEqual([...services.errors], []);
     const books = services.providers.get('collectify.bookmarks'),
