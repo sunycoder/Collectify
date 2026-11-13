@@ -20,7 +20,16 @@ async function main() {
     );
     const child = cp.spawn(
         path.join(vendor, 'Everything.exe'),
-        ['-instance', instance, '-startup', '-minimized', '-config', path.join(root, 'Everything.ini'), '-db', path.join(root,'Everything.db')],
+        [
+            '-instance',
+            instance,
+            '-startup',
+            '-minimized',
+            '-config',
+            path.join(root, 'Everything.ini'),
+            '-db',
+            path.join(root, 'Everything.db')
+        ],
         { windowsHide: true, stdio: 'ignore' }
     );
     await new Promise((resolve, reject) => {

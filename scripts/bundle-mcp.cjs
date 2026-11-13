@@ -2,6 +2,7 @@ const path = require('node:path');
 require('esbuild').buildSync({
     entryPoints: [path.join(__dirname, '..', 'src', 'mcp-service.js')],
     bundle: true,
+    preserveSymlinks: true,
     platform: 'node',
     format: 'cjs',
     target: 'node22',

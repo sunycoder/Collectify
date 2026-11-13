@@ -190,9 +190,6 @@ kbd {
     display: none;
 }
 
-
-
-
 .result-panel {
     display: flex;
     flex-direction: column;

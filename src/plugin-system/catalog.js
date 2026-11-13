@@ -16,7 +16,7 @@ function httpsUrl(value) {
         throw Error('插件目录与下载必须使用无凭据的 HTTPS 地址');
     return url.href;
 }
-function validateCatalog(input) {
+function validateCatalog(input, { validateUrl = httpsUrl } = {}) {
     if (
         input?.format !== 'collectify-plugin-catalog' ||
         input.version !== 1 ||
@@ -53,8 +53,8 @@ function validateCatalog(input) {
             apiVersion: item.apiVersion,
             sha256: item.sha256,
             size: item.size,
-            url: httpsUrl(item.url),
-            ...(item.homepage ? { homepage: httpsUrl(item.homepage) } : {})
+            url: validateUrl(item.url),
+            ...(item.homepage ? { homepage: validateUrl(item.homepage) } : {})
         };
     });
 }
@@ -133,7 +133,7 @@ class PluginCatalog {
         };
     }
     configure(value) {
-        const source = value.trim() ? httpsUrl(value.trim()) : DEFAULT_CATALOG_URL;
+        const source = value.trim() ? (this.options.validateUrl || httpsUrl)(value.trim()) : DEFAULT_CATALOG_URL;
         this.registry.setSetting('pluginCatalogUrl', source);
         this.source = source;
         this.items = [];
@@ -144,9 +144,10 @@ class PluginCatalog {
     async refresh(signal) {
         if (!this.source) throw Error('请先配置插件目录地址');
         const source = this.source,
-            data = await download(source, 512 * 1024, { ...this.options, signal });
+            data = await (this.options.download || download)(source, 512 * 1024, { ...this.options, signal });
         const items = validateCatalog(
-            JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(data).replace(/^\uFEFF/, ''))
+            JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(data).replace(/^\uFEFF/, '')),
+            this.options
         );
         if (source !== this.source) throw Error('插件目录地址已更改，请重新刷新');
         this.items = items;
@@ -159,7 +160,10 @@ class PluginCatalog {
         if (!item || !this.loaded) throw Error('请刷新插件目录后再安装');
         const support = compatibility(item);
         if (!support.compatible) throw Error(support.compatibilityReason);
-        const data = await download(item.url, Math.min(ARCHIVE_LIMIT, item.size), { ...this.options, signal });
+        const data = await (this.options.download || download)(item.url, Math.min(ARCHIVE_LIMIT, item.size), {
+            ...this.options,
+            signal
+        });
         if (data.length !== item.size) throw Error('下载的插件包大小与目录不一致');
         return { data, item };
     }

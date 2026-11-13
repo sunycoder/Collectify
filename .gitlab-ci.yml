@@ -1,0 +1,84 @@
+stages: [check, build, publish]
+
+check:
+  stage: check
+  image: node:24-bookworm
+  script:
+    - npm ci
+    - npm run format:check
+    - npm test
+    - npm run plugins:check
+
+# 各系统 Runner 按需启用；不假定公司已经配置 Windows/macOS 构建机。
+build:windows:
+  stage: build
+  tags: [collectify-windows]
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/ && $COLLECTIFY_RELEASE_WINDOWS == "true"'
+  script:
+    - npm.cmd ci
+    - node scripts/configure-source.cjs --ci
+    - npm.cmd run dist:win -- --x64 --publish never
+    - node scripts/release-files.cjs verify
+    - '& dist/win-unpacked/Collectify.exe --smoke-test --smoke-startup'
+    - 'if ($LASTEXITCODE -ne 0) { exit 1 }'
+  artifacts:
+    paths: [dist/Collectify-*.exe]
+    expire_in: 7 days
+
+build:macos:
+  stage: build
+  tags: [collectify-macos]
+  variables:
+    CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/ && $COLLECTIFY_RELEASE_MACOS == "true"'
+  script:
+    - npm ci
+    - node scripts/configure-source.cjs --ci
+    - npm run dist:mac -- --publish never
+    - node scripts/release-files.cjs verify
+  artifacts:
+    paths: [dist/Collectify-*.dmg]
+    expire_in: 7 days
+
+build:linux:
+  stage: build
+  image: node:24-bookworm
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/ && $COLLECTIFY_RELEASE_LINUX == "true"'
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends libarchive-tools rpm fakeroot
+  script:
+    - npm ci
+    - node scripts/configure-source.cjs --ci
+    - npm run dist:linux -- --publish never
+    - node scripts/release-files.cjs verify
+  artifacts:
+    paths: [dist/Collectify-*.deb, dist/Collectify-*.AppImage]
+    expire_in: 7 days
+
+publish:app:
+  stage: publish
+  image: node:24-bookworm
+  resource_group: collectify-release
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/ && ($COLLECTIFY_RELEASE_WINDOWS == "true" || $COLLECTIFY_RELEASE_MACOS == "true" || $COLLECTIFY_RELEASE_LINUX == "true")'
+  needs:
+    - job: build:windows
+      optional: true
+    - job: build:macos
+      optional: true
+    - job: build:linux
+      optional: true
+  script:
+    - node scripts/publish-gitlab.cjs
+
+publish:plugin:
+  stage: publish
+  image: node:24-bookworm
+  resource_group: collectify-release
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^plugin-/'
+  script:
+    - node scripts/publish-gitlab.cjs

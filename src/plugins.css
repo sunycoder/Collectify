@@ -1,7 +1,4 @@
 /* 一级导航选择插件，二级导航完全由当前插件贡献；宿主没有业务分类。 */
-#settings-dialog:has(.settings-panel[data-panel='plugins']:not([hidden])) {
-    width: min(860px, calc(100vw - 48px));
-}
 #plugin-catalog-url,
 #catalog-search {
     padding: 10px 12px;
@@ -338,18 +335,6 @@ body.navigation-collapsed {
 .plugin-subnav small {
     font-size: 11px;
     color: var(--subtle);
-}
-.plugin-subnav.has-icon {
-    justify-content: flex-start;
-    gap: 10px;
-}
-.plugin-subnav.has-icon .subnav-label {
-    flex: 1;
-    min-width: 0;
-}
-.plugin-subnav.has-icon > i {
-    display: inline-flex;
-    flex-shrink: 0;
 }
 .plugin-subnav:hover {
     background: var(--paper);

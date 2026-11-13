@@ -44,6 +44,7 @@ npm start
 
 - [贡献约定](CONTRIBUTING.md) · [构建与发布](docs/PACKAGING.md)
 - [插件架构](docs/plugin-system.md) · [官方插件发布](plugins/README.md)
+- [GitLab/GitHub 登录、更新与团队配置](docs/GIT-SOURCES.md)（5.7.0 开发版）
 - [数据说明](docs/DATA-MODEL.md) · [MCP](docs/MCP.md)
 
 项目许可尚未选定，当前标记为 UNLICENSED。第三方依赖和素材保留各自的来源与许可。

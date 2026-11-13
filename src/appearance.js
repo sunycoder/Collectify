@@ -1,7 +1,5 @@
 let draftTheme,
     savedTheme,
-    themeSaved = false,
-    appearanceParent = null,
     appearancePreview = 'main';
 const Theme = window.ShiyueTheme;
 
@@ -64,22 +62,19 @@ function renderAppearance() {
     }
 }
 
-$('#theme-button').onclick = task(async () => {
-    return withDialogTransition(async () => {
-        hideMenu();
-        appearanceParent = $('#settings-dialog').open
-            ? $('.settings-navigation .selected')?.dataset.settingsPanel || 'general'
-            : null;
-        $('#settings-dialog').close();
-        savedTheme = Theme.validate(state.settings?.theme);
-        draftTheme = { ...savedTheme };
-        themeSaved = false;
-        appearancePreview = 'main';
-        $('#theme-error').textContent = '';
-        syncThemeControls();
-        $('#theme-dialog').showModal();
-    });
-});
+function startAppearance() {
+    savedTheme = Theme.validate(state.settings?.theme);
+    draftTheme = { ...savedTheme };
+    appearancePreview = 'main';
+    $('#theme-error').textContent = '';
+    syncThemeControls();
+}
+function leaveAppearance() {
+    if (savedTheme) Theme.apply(savedTheme);
+    savedTheme = null;
+    $('#theme-dialog').hidden = true;
+}
+$('#settings-dialog').addEventListener('workspace-dialog-closed', leaveAppearance);
 for (const field of [
     'accent',
     'background',
@@ -102,15 +97,9 @@ for (const field of [
         renderAppearance();
     });
 }
-$('#theme-dialog').addEventListener('workspace-dialog-closed', () => {
-    if (!themeSaved && savedTheme) Theme.apply(savedTheme);
-    const parent = appearanceParent;
-    appearanceParent = null;
-    if (parent) void task(() => openSettings(parent))();
-});
-$('#appearance-back').onclick = () => {
-    if (!appearanceParent) appearanceParent = 'general';
-    $('#theme-dialog').close();
+$('#cancel-theme').onclick = () => {
+    draftTheme = { ...savedTheme };
+    syncThemeControls();
 };
 $('#preview-main').onclick = () => {
     appearancePreview = 'main';
@@ -122,8 +111,7 @@ $('#preview-widget').onclick = () => {
 };
 $('#save-theme').onclick = task(async () => {
     await call('theme-save', draftTheme);
-    themeSaved = true;
-    $('#theme-dialog').close();
+    savedTheme = Theme.validate(draftTheme);
     await refresh();
     toast('外观已保存，插件同步更新');
 });

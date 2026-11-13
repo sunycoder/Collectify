@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, protocol } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, protocol, safeStorage } = require('electron');
 const fs = require('node:fs'),
     path = require('node:path'),
     os = require('node:os');
@@ -12,6 +12,9 @@ const { PluginDevelopment } = require('./plugin-system/development');
 const { PluginPackages, ARCHIVE_LIMIT } = require('./plugin-system/package');
 const { PluginCatalog, compareVersion } = require('./plugin-system/catalog');
 const { readManifest } = require('./plugin-system/manifest');
+const { Distribution } = require('./distribution/manager');
+const { CredentialStore } = require('./distribution/credentials');
+const { webUrl } = require('./distribution/config');
 const Theme = require('./theme');
 const { LocalMcpService, z } = require('./vendor/mcp-service.cjs');
 const { copyText } = require('./clipboard-service');
@@ -45,6 +48,7 @@ let win,
     development,
     packages,
     pluginCatalog,
+    distribution,
     pluginOperation = false,
     overlay = false,
     quitting = false,
@@ -75,6 +79,12 @@ function setSettings(input, validateOnly = false) {
                   : 'internal'
     };
     if (!validateOnly) {
+        registry.setSetting('personalSettingKeys', [
+            ...new Set([
+                ...registry.getSetting('personalSettingKeys', []),
+                ...Object.keys(input).filter((key) => Object.hasOwn(clean, key))
+            ])
+        ]);
         registry.setSetting('theme', clean.theme);
         registry.setSetting('keepInTray', clean.keepInTray);
         registry.setSetting('navigationCollapsed', clean.navigationCollapsed);
@@ -343,6 +353,79 @@ async function pluginEnabled(id, enabled) {
     publish();
 }
 async function hostAction(action, payload) {
+    if (action.startsWith('distribution-')) {
+        switch (action) {
+            case 'distribution-status':
+                return distribution.status();
+            case 'distribution-save': {
+                if (pluginOperation) throw Error('插件操作正在进行，请稍后修改源');
+                distribution.save(payload);
+                pluginCatalog.configure(
+                    distribution.client.file(
+                        distribution.config.project,
+                        distribution.config.ref,
+                        distribution.config.catalogPath
+                    )
+                );
+                return distribution.status();
+            }
+            case 'distribution-login':
+                return distribution.login();
+            case 'distribution-logout':
+                return distribution.logout();
+            case 'distribution-cancel':
+                return distribution.cancel();
+            case 'distribution-check': {
+                await distribution.check();
+                return distribution.status();
+            }
+            case 'distribution-download':
+                await distribution.download();
+                return distribution.status();
+            case 'distribution-preview':
+                await distribution.previewProfile(payload);
+                return distribution.status();
+            case 'distribution-apply':
+                await distribution.applyProfile(payload);
+                runtime.destroy();
+                layout();
+                await runtime.startBackgrounds();
+                runtime.themeChanged();
+                publish();
+                return distribution.status();
+            case 'distribution-install': {
+                const file = await distribution.installer();
+                const answer = await dialog.showMessageBox(win, {
+                    type: 'question',
+                    message: '安装 Collectify ' + distribution.update.version + '？',
+                    detail:
+                        process.platform === 'win32'
+                            ? '将退出当前程序并启动安装器，用户数据保留。'
+                            : '将打开已校验的安装包，请按系统提示安装。',
+                    buttons: ['取消', '安装'],
+                    defaultId: 0,
+                    cancelId: 0
+                });
+                if (answer.response !== 1) return distribution.status();
+                if ((await distribution.installer()) !== file) throw Error('安装包状态已改变，请重新确认');
+                if (process.platform === 'win32') {
+                    const child = require('node:child_process').spawn(file, [], { detached: true, stdio: 'ignore' });
+                    await new Promise((resolve, reject) => {
+                        child.once('spawn', resolve);
+                        child.once('error', reject);
+                    });
+                    child.unref();
+                    app.quit();
+                } else {
+                    const error = await shell.openPath(file);
+                    if (error) throw Error(error);
+                }
+                return distribution.status();
+            }
+            default:
+                throw Error('未知分发源操作');
+        }
+    }
     if (
         [
             'plugin-install',
@@ -546,6 +629,7 @@ app.on('activate', () => {
 });
 app.on('before-quit', () => {
     quitting = true;
+    distribution?.dispose();
     runtime?.destroy();
     void services?.dispose();
     void mcp?.stop(false);
@@ -560,7 +644,18 @@ app.whenReady()
             hostFile: path.join(dataDirectory, 'host.sqlite')
         });
         packages = new PluginPackages(registry, path.join(dataDirectory, 'plugin-staging'));
-        pluginCatalog = new PluginCatalog(registry);
+        if (registry.getSetting('personalSettingKeys') === null) {
+            const existing =
+                registry.getSetting('theme') !== null || fs.existsSync(path.join(dataDirectory, 'collectify.sqlite'));
+            registry.setSetting(
+                'personalSettingKeys',
+                existing ? ['theme', 'keepInTray', 'navigationCollapsed', 'browserOpenMode'] : []
+            );
+        }
+        pluginCatalog = new PluginCatalog(registry, {
+            validateUrl: (value) => webUrl(value, distribution?.config).href,
+            download: (url, limit, options) => distribution.client.download(url, { limit, signal: options.signal })
+        });
         // 只迁移宿主自己的全局偏好，不在宿主加载任何业务实体。
         const legacy = path.join(dataDirectory, 'collectify.sqlite');
         if (registry.getSetting('theme') === null && fs.existsSync(legacy)) {
@@ -620,6 +715,43 @@ app.whenReady()
         await services.load({ activate: false });
         backup = new WorkspaceBackup(registry, settings, setSettings);
         backup.recover();
+        const deploymentFile = [
+            path.join(
+                app.isPackaged ? path.dirname(app.getPath('exe')) : path.join(__dirname, '..'),
+                'distribution.json'
+            ),
+            path.join(__dirname, '..', 'config', 'distribution.json')
+        ].find((file) => fs.existsSync(file));
+        const sourceCredentials = new CredentialStore(path.join(dataDirectory, 'source-credentials.enc'), safeStorage);
+        await sourceCredentials.initialize();
+        distribution = new Distribution({
+            registry,
+            backup,
+            getSettings: settings,
+            version: app.getVersion(),
+            directory: dataDirectory,
+            credentials: sourceCredentials,
+            openExternal: (url) => shell.openExternal(url),
+            refreshPlugins: async () => {
+                const result = await pluginManagement('plugin-catalog-refresh');
+                return { updates: result.plugins.filter((plugin) => plugin.updateAvailable).length };
+            },
+            deployment:
+                (!smoke || process.argv.includes('--smoke-deployment')) && deploymentFile
+                    ? JSON.parse(fs.readFileSync(deploymentFile, 'utf8').replace(/^\uFEFF/, ''))
+                    : undefined,
+            changed: () => {
+                if (win && !win.isDestroyed()) win.webContents.send('distribution-state', distribution.status());
+            }
+        });
+        if (registry.getSetting('distributionSource'))
+            pluginCatalog.configure(
+                distribution.client.file(
+                    distribution.config.project,
+                    distribution.config.ref,
+                    distribution.config.catalogPath
+                )
+            );
         development = new PluginDevelopment({
             registry,
             root: path.join(dataDirectory, 'plugin-drafts'),
@@ -656,6 +788,7 @@ app.whenReady()
         await services.activateEnabled();
         await runtime.startBackgrounds();
         if (!smoke) {
+            distribution.start();
             tray = new Tray(path.join(__dirname, '..', 'assets', 'icon.png'));
             tray.setToolTip('Collectify');
             updateTray();
@@ -679,9 +812,14 @@ app.whenReady()
                         development,
                         packages,
                         pluginCatalog,
+                        distribution,
                         hostAction
                     };
-                if (process.argv.includes('--smoke-clipboard')) await require('./smoke-clipboard').run(context);
+                if (process.argv.includes('--smoke-deployment'))
+                    await require('./smoke-distribution').deployment(context);
+                else if (process.argv.includes('--smoke-distribution'))
+                    await require('./smoke-distribution').run(context);
+                else if (process.argv.includes('--smoke-clipboard')) await require('./smoke-clipboard').run(context);
                 else if (process.argv.includes('--smoke-official')) await require('./smoke-official').run(context);
                 else if (process.argv.includes('--smoke-tools')) await require('./smoke-tools').run(context);
                 else if (process.argv.includes('--smoke-navigation')) await require('./smoke-navigation').run(context);
@@ -691,6 +829,7 @@ app.whenReady()
                     await require('./smoke-navigation').run(context);
                     await require('./smoke-tools').run(context);
                     await require('./smoke-clipboard').run(context);
+                    await require('./smoke-distribution').run(context);
                 } else {
                     await verification.run(context);
                     await require('./smoke-development').run(context);
@@ -698,6 +837,7 @@ app.whenReady()
                     await require('./smoke-navigation').run(context);
                     await require('./smoke-tools').run(context);
                     await require('./smoke-clipboard').run(context);
+                    await require('./smoke-distribution').run(context);
                 }
                 await services.dispose();
                 app.exit(0);

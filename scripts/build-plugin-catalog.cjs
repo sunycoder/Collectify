@@ -5,6 +5,7 @@ const { spawnSync } = require('node:child_process');
 const { readManifest, pluginId } = require('../src/plugin-system/manifest');
 const { collectFiles, encodeZip, sha256, PluginPackages } = require('../src/plugin-system/package');
 const { validateCatalog } = require('../src/plugin-system/catalog');
+const { webUrl } = require('../src/distribution/config');
 
 // 发布配置只引用仓库中的静态源码，构建不会执行插件脚本或读取用户数据。
 function buildCatalog({
@@ -13,6 +14,10 @@ function buildCatalog({
     check = false
 } = {}) {
     const definition = JSON.parse(fs.readFileSync(path.join(root, 'plugins', 'definitions.json'), 'utf8'));
+    const publisher = definition.publisher;
+    const validateUrl = (value) => webUrl(value, { allowInsecureHttp: publisher?.allowInsecureHttp === true }).href;
+    if (publisher && (publisher.provider !== 'gitlab' || !publisher.project || !publisher.baseUrl))
+        throw Error('插件发布源配置不正确');
     if (
         !/^[\w.-]+\/[\w.-]+$/.test(definition.repository) ||
         !Array.isArray(definition.plugins) ||
@@ -29,7 +34,7 @@ function buildCatalog({
         encoding: 'utf8',
         windowsHide: true
     });
-    const previous = committed.status === 0 ? validateCatalog(JSON.parse(committed.stdout)) : [];
+    const previous = committed.status === 0 ? validateCatalog(JSON.parse(committed.stdout), { validateUrl }) : [];
     try {
         const validator = new PluginPackages(null, path.join(temp, 'validate'));
         for (const item of definition.plugins) {
@@ -72,11 +77,13 @@ function buildCatalog({
                 apiVersion: published.apiVersion,
                 size: data.length,
                 sha256: digest,
-                url: `https://github.com/${definition.repository}/releases/download/plugin-${published.id}-v${published.version}/${filename}`
+                url: publisher
+                    ? `${validateUrl(publisher.baseUrl).replace(/\/$/, '')}/api/v4/projects/${encodeURIComponent(publisher.project)}/packages/generic/${published.id}/${published.version}/${filename}`
+                    : `https://github.com/${definition.repository}/releases/download/plugin-${published.id}-v${published.version}/${filename}`
             });
         }
         const catalog = { format: 'collectify-plugin-catalog', version: 1, plugins: entries };
-        validateCatalog(catalog);
+        validateCatalog(catalog, { validateUrl });
         const text = JSON.stringify(catalog, null, 2) + '\n';
         if (
             check &&
@@ -89,7 +96,7 @@ function buildCatalog({
         fs.writeFileSync(path.join(output, 'catalog.json'), text, 'utf8');
         if (!check) fs.writeFileSync(catalogFile, text, 'utf8');
         return {
-            tag: entries.length === 1 ? new URL(entries[0].url).pathname.split('/')[5] : null,
+            tag: entries.length === 1 ? `plugin-${entries[0].id}-v${entries[0].version}` : null,
             repository: definition.repository,
             plugins: entries,
             output

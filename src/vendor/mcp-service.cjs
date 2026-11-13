@@ -34957,29 +34957,61 @@ var LocalMcpService = class {
     this.getTools = getTools;
     this.http = null;
     this.port = null;
-    this.config = repository.readMcpConfig() || { enabled: false, port: 17863, token: randomBytes(32).toString("hex") };
+    this.config = repository.readMcpConfig() || {
+      enabled: false,
+      port: 17863,
+      token: randomBytes(32).toString("hex")
+    };
     if (!/^[a-f0-9]{64}$/.test(this.config.token)) this.config.token = randomBytes(32).toString("hex");
   }
   persist() {
     this.repository.saveMcpConfig(this.config);
   }
   status() {
-    return { enabled: !!this.http, port: this.port || this.config.port, url: "http://127.0.0.1:" + (this.port || this.config.port) + "/mcp", configured: this.config.enabled, tools: this.getTools().map((t) => t.name) };
+    return {
+      enabled: !!this.http,
+      port: this.port || this.config.port,
+      url: "http://127.0.0.1:" + (this.port || this.config.port) + "/mcp",
+      configured: this.config.enabled,
+      tools: this.getTools().map((t) => t.name)
+    };
   }
   connection() {
-    return { mcpServers: { collectify: { type: "streamable_http", url: this.status().url, headers: { Authorization: "Bearer " + this.config.token } } } };
+    return {
+      mcpServers: {
+        collectify: {
+          type: "streamable_http",
+          url: this.status().url,
+          headers: { Authorization: "Bearer " + this.config.token }
+        }
+      }
+    };
   }
   server() {
     const server = new McpServer({ name: "collectify", version: "5.5.3" }, { instructions: SERVER_INSTRUCTIONS });
-    for (const tool of this.getTools()) server.registerTool(tool.name, { description: tool.description, inputSchema: tool.inputSchema || {}, annotations: { readOnlyHint: !tool.write, destructiveHint: false, idempotentHint: !tool.write, openWorldHint: false } }, async (input) => {
-      try {
-        const result = await tool.handler(input);
-        if (tool.write) this.onChange();
-        return { content: [{ type: "text", text: JSON.stringify(result ?? null) }] };
-      } catch (error) {
-        return { isError: true, content: [{ type: "text", text: error.message }] };
-      }
-    });
+    for (const tool of this.getTools())
+      server.registerTool(
+        tool.name,
+        {
+          description: tool.description,
+          inputSchema: tool.inputSchema || {},
+          annotations: {
+            readOnlyHint: !tool.write,
+            destructiveHint: false,
+            idempotentHint: !tool.write,
+            openWorldHint: false
+          }
+        },
+        async (input) => {
+          try {
+            const result = await tool.handler(input);
+            if (tool.write) this.onChange();
+            return { content: [{ type: "text", text: JSON.stringify(result ?? null) }] };
+          } catch (error) {
+            return { isError: true, content: [{ type: "text", text: error.message }] };
+          }
+        }
+      );
     return server;
   }
   async start(port = this.config.port) {
@@ -34992,9 +35024,11 @@ var LocalMcpService = class {
       };
       if (req.url !== "/mcp") return end(404, "Not found");
       if (req.headers.origin) return end(403, "Browser-origin requests are not accepted");
-      if (![`127.0.0.1:${this.port}`, `localhost:${this.port}`].includes(req.headers.host)) return end(403, "Invalid host");
+      if (![`127.0.0.1:${this.port}`, `localhost:${this.port}`].includes(req.headers.host))
+        return end(403, "Invalid host");
       const provided = Buffer.from(req.headers.authorization || ""), expected = Buffer.from(`Bearer ${this.config.token}`);
-      if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) return end(401, "Unauthorized");
+      if (provided.length !== expected.length || !timingSafeEqual(provided, expected))
+        return end(401, "Unauthorized");
       if (req.method !== "POST") return end(405, "Use Streamable HTTP POST");
       let size = 0, chunks = [];
       try {

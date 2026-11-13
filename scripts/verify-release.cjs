@@ -7,11 +7,15 @@ const root = path.resolve(__dirname, '..'),
         ? path.resolve(process.argv[2])
         : path.join(root, 'dist', 'win-unpacked', 'resources', 'app.asar');
 function files(directory) {
-    return fs
-        .readdirSync(path.join(root, directory), { withFileTypes: true })
-        .flatMap((item) =>
-            item.isDirectory() ? files(path.join(directory, item.name)) : [path.join(directory, item.name)]
-        );
+    return (
+        fs
+            .readdirSync(path.join(root, directory), { withFileTypes: true })
+            // 构建器不打包 Git 元数据；其余业务源码、第三方库和原生组件仍逐字节核对。
+            .filter((item) => !['.gitignore', '.gitattributes', '.gitkeep'].includes(item.name))
+            .flatMap((item) =>
+                item.isDirectory() ? files(path.join(directory, item.name)) : [path.join(directory, item.name)]
+            )
+    );
 }
 for (const relative of [...files('src'), ...files('assets'), ...files('config')]) {
     assert.ok(

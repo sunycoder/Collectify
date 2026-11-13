@@ -1,0 +1,11 @@
+{
+  "provider": "gitlab",
+  "baseUrl": "https://gitlab.example.com",
+  "project": "group/collectify",
+  "clientId": "your-public-oauth-application-id",
+  "ref": "main",
+  "catalogPath": "plugins/catalog.json",
+  "profilesPath": "profiles/index.json",
+  "allowInsecureHttp": false,
+  "automaticChecks": true
+}

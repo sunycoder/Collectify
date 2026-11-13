@@ -241,10 +241,13 @@
     });
     document.querySelectorAll('dialog').forEach((dialog) => {
         // 滚动容器放在卡片内部，外层负责裁剪圆角，所有弹窗共用。
-        const scroller = document.createElement('div');
-        scroller.className = 'dialog-scroll';
-        while (dialog.firstChild) scroller.append(dialog.firstChild);
-        dialog.append(scroller);
+        let scroller = dialog.querySelector('.settings-content');
+        if (!scroller) {
+            scroller = document.createElement('div');
+            scroller.className = 'dialog-scroll';
+            while (dialog.firstChild) scroller.append(dialog.firstChild);
+            dialog.append(scroller);
+        }
         new MutationObserver(() => {
             if (dialog.open)
                 requestAnimationFrame(() => {

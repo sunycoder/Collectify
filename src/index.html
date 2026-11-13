@@ -16,6 +16,7 @@
         <link rel="stylesheet" href="workspace-settings.css" />
         <link rel="stylesheet" href="glass-material.css" />
         <link rel="stylesheet" href="plugins.css" />
+        <link rel="stylesheet" href="settings-layout.css" />
     </head>
     <body>
         <aside class="shell-sidebar">
@@ -80,213 +81,328 @@
                 ><button id="enable-plugins" class="primary">管理插件</button>
             </section>
         </main>
-        <dialog id="settings-dialog">
+        <dialog id="settings-dialog" aria-labelledby="settings-title">
             <div class="dialog-head">
                 <div>
-                    <h2>设置</h2>
+                    <h2 id="settings-title">设置</h2>
                     <p>Collectify <span id="app-version"></span></p>
                 </div>
                 <button class="icon-button dialog-close" aria-label="关闭">×</button>
             </div>
-            <nav class="settings-navigation">
-                <button class="selected" data-settings-panel="general">通用</button
-                ><button id="theme-button">自定义外观</button
-                ><button id="settings-plugins" data-settings-panel="plugins">插件</button
-                ><button data-settings-panel="ai">AI 连接</button
-                ><button data-settings-panel="data">导入 / 导出</button>
-            </nav>
-            <div class="settings-panel" data-panel="general">
-                <h3>本机数据</h3>
-                <p>宿主设置与插件启停记录：</p>
-                <code id="data-file"></code>
-                <p>各插件使用独立的数据目录与数据库，停用插件不会删除数据。</p>
-                <small id="data-directory"></small>
-                <div class="settings-data-actions">
-                    <button id="open-data-directory" class="subtle">打开数据文件夹</button>
-                    <button id="download-app" class="subtle">下载与更新</button>
-                </div>
-                <label class="checkbox-label"><input id="keep-in-tray" type="checkbox" />关闭主窗口后驻留托盘</label>
-                <label class="browser-mode-label"
-                    >网页默认打开方式<select id="browser-open-mode">
-                        <option value="internal">内置浏览器</option>
-                        <option value="external">系统默认浏览器</option>
-                    </select></label
-                >
-                <p>外部打开使用系统已设置的默认浏览器；收藏菜单仍可临时选择另一种方式。</p>
-            </div>
-            <div class="settings-panel" data-panel="plugins" hidden>
-                <div class="plugin-manager-heading">
-                    <div>
-                        <h3>插件</h3>
-                        <p>独立安装、更新和卸载，无需 Git。</p>
-                    </div>
-                    <button id="install-plugin-package" class="primary">安装插件包</button>
-                </div>
-                <nav class="plugin-tabs" aria-label="插件管理">
-                    <button type="button" data-plugin-tab="installed" class="selected">已安装</button
-                    ><button type="button" data-plugin-tab="catalog">发现插件</button>
+            <div class="settings-layout">
+                <nav class="settings-navigation" aria-label="设置分类">
+                    <button class="selected" data-settings-panel="general">通用</button
+                    ><button id="theme-button" data-settings-panel="appearance">自定义外观</button
+                    ><button id="settings-plugins" data-settings-panel="plugins">插件</button
+                    ><button data-settings-panel="distribution">账号与更新</button
+                    ><button data-settings-panel="ai">AI 连接</button
+                    ><button data-settings-panel="data">导入 / 导出</button>
                 </nav>
-                <section id="installed-plugins">
-                    <div id="plugin-manager"></div>
-                    <div id="restore-plugins"></div>
-                    <details class="plugin-advanced">
-                        <summary>开发者选项</summary>
-                        <p>从包含 manifest.json 的源码目录安装页面插件。</p>
-                        <button id="install-plugin" class="subtle">安装源码目录</button>
-                    </details>
-                </section>
-                <section id="catalog-plugins" hidden>
-                    <label for="plugin-catalog-url">插件目录地址（HTTPS JSON）</label>
-                    <div class="catalog-source">
-                        <input
-                            id="plugin-catalog-url"
-                            type="url"
-                            placeholder="https://…/catalog.json"
-                            spellcheck="false"
-                        /><button id="save-plugin-catalog" class="subtle">保存地址</button
-                        ><button id="refresh-plugin-catalog" class="subtle">刷新</button
-                        ><button id="official-plugin-catalog" class="subtle">使用官方源</button>
-                    </div>
-                    <p id="plugin-catalog-status" role="status">配置发布者的目录地址，或直接安装下载好的插件包。</p>
-                    <input
-                        id="catalog-search"
-                        type="search"
-                        placeholder="搜索插件名称或描述"
-                        aria-label="搜索可安装插件"
-                    />
-                    <div id="plugin-catalog-list"></div>
-                </section>
-                <p id="plugin-operation-status" role="status"></p>
-                <p id="plugin-operation-error" class="form-error" role="alert"></p>
-                <p id="plugin-diagnostics" class="form-error"></p>
-            </div>
-            <div class="settings-panel" data-panel="ai" hidden>
-                <h3>本机 MCP 服务</h3>
-                <p>
-                    提供已启用插件的业务能力，以及插件开发工具。连接的 AI
-                    可按你的要求生成、校验、安装和更新页面插件；可随时在插件管理中停用。开发工具不读取剪贴板历史或任意本机文件。
-                </p>
-                <div class="form-grid">
-                    <label>端口<input id="mcp-port" type="number" min="0" max="65535" /></label
-                    ><span id="mcp-status"></span>
-                </div>
-                <div class="settings-data-actions">
-                    <button id="mcp-start" class="primary">开启</button
-                    ><button id="mcp-stop" class="subtle">停用</button
-                    ><button id="mcp-copy" class="subtle">复制连接配置</button>
-                </div>
-            </div>
-            <div class="settings-panel" data-panel="data" hidden>
-                <h3>工作台数据</h3>
-                <p>按插件选择导入、导出内容，包含默认插件和自有插件数据。</p>
-                <div class="settings-data-actions">
-                    <button id="settings-export" class="primary">导出数据</button
-                    ><button id="settings-import" class="subtle">导入数据</button>
-                </div>
-                <p class="form-help">数据文件不包含插件程序、浏览器 Cookie、附件原文件和本机 MCP 令牌。</p>
-            </div>
-            <p id="settings-error" class="form-error"></p>
-        </dialog>
-        <dialog id="theme-dialog">
-            <div class="dialog-head">
-                <div>
-                    <h2>自定义外观</h2>
-                    <button id="appearance-back" class="quiet">返回设置</button>
-                </div>
-                <button class="icon-button dialog-close" data-icon="close" aria-label="关闭"></button>
-            </div>
-            <p class="dialog-intro">换一种心情，让空间更像你。所有调整均可实时预览。</p>
-            <div class="appearance-layout">
-                <div>
-                    <div id="theme-presets" class="theme-presets"></div>
-                    <div class="palette-controls">
-                        <label>强调色<input id="theme-accent" type="color" /></label
-                        ><label>内容背景<input id="theme-background" type="color" /></label
-                        ><label>卡片底色<input id="theme-surface" type="color" /></label
-                        ><label>侧栏底色<input id="theme-sidebar" type="color" /></label>
-                    </div>
-                    <label class="range-label"
-                        >组件圆角
-                        <output id="radius-value"></output>
-                        <input id="theme-radius" type="range" min="8" max="22" step="1"
-                    /></label>
-                    <div class="form-grid">
-                        <label
-                            >信息密度<select id="theme-density">
-                                <option value="comfortable">舒适</option>
-                                <option value="compact">紧凑</option>
-                            </select></label
-                        ><label class="checkbox-label motion-control"
-                            ><input id="theme-motion" type="checkbox" />轻量动效</label
+                <div class="settings-content" role="region" aria-label="设置内容">
+                    <div class="settings-panel" data-panel="general">
+                        <h3>本机数据</h3>
+                        <p>宿主设置与插件启停记录：</p>
+                        <code id="data-file"></code>
+                        <p>各插件使用独立的数据目录与数据库，停用插件不会删除数据。</p>
+                        <small id="data-directory"></small>
+                        <div class="settings-data-actions">
+                            <button id="open-data-directory" class="subtle">打开数据文件夹</button>
+                            <button id="download-app" class="subtle">下载与更新</button>
+                        </div>
+                        <label class="checkbox-label"
+                            ><input id="keep-in-tray" type="checkbox" />关闭主窗口后驻留托盘</label
                         >
+                        <label class="browser-mode-label"
+                            >网页默认打开方式<select id="browser-open-mode">
+                                <option value="internal">内置浏览器</option>
+                                <option value="external">系统默认浏览器</option>
+                            </select></label
+                        >
+                        <p>外部打开使用系统已设置的默认浏览器；收藏菜单仍可临时选择另一种方式。</p>
                     </div>
-                    <section class="glass-controls">
-                        <h3>桌面组件材质</h3>
-                        <div class="form-grid">
-                            <label
-                                >显示效果<select id="theme-widgetMaterial">
-                                    <option value="solid">清晰实色</option>
-                                    <option value="glass">毛玻璃</option>
-                                </select></label
-                            ><label class="range-label"
-                                >底色浓度 <output id="glass-opacity-value"></output
-                                ><input id="theme-glassOpacity" type="range" min="20" max="90" step="1"
-                            /></label>
+                    <div class="settings-panel" data-panel="distribution" hidden>
+                        <h3>账号与发布源</h3>
+                        <p>使用你的公司账号登录，即可访问有权限的插件、更新和团队配置。</p>
+                        <section class="source-overview" aria-label="当前登录服务">
+                            <strong id="source-service-name"></strong><span id="source-service-address"></span
+                            ><small id="source-service-help">连接信息由维护者统一配置，无需自行创建 OAuth 应用。</small>
+                        </section>
+                        <details id="source-maintainer-settings" class="source-maintainer-settings">
+                            <summary>高级设置 · 维护者配置</summary>
+                            <p class="form-help">
+                                更换服务或项目时才需要修改。Application ID
+                                是维护者统一注册的应用标识，所有同事共用；每人仍使用自己的账号登录。
+                            </p>
+                            <form id="distribution-form" class="distribution-form">
+                                <label
+                                    >服务类型<select id="source-provider">
+                                        <option value="gitlab">GitLab</option>
+                                        <option value="github">GitHub</option>
+                                    </select></label
+                                >
+                                <label
+                                    >服务地址<input
+                                        id="source-baseUrl"
+                                        type="url"
+                                        placeholder="https://gitlab.example.com"
+                                        required
+                                /></label>
+                                <label
+                                    >项目路径<input
+                                        id="source-project"
+                                        placeholder="group/project"
+                                        required
+                                        spellcheck="false"
+                                /></label>
+                                <label
+                                    >OAuth Application ID<input
+                                        id="source-clientId"
+                                        placeholder="由维护者注册的公开应用标识，不是 Secret"
+                                        spellcheck="false"
+                                /></label>
+                                <details class="distribution-advanced">
+                                    <summary>目录路径与连接选项</summary>
+                                    <label>分支<input id="source-ref" value="main" /></label>
+                                    <label
+                                        >插件目录路径<input id="source-catalogPath" value="plugins/catalog.json"
+                                    /></label>
+                                    <label
+                                        >团队配置索引<input id="source-profilesPath" value="profiles/index.json"
+                                    /></label>
+                                    <label class="checkbox-label"
+                                        ><input id="source-allowInsecureHttp" type="checkbox" />允许内网 IP 使用
+                                        HTTP</label
+                                    >
+                                    <small
+                                        >HTTP 不加密登录授权和下载内容，仅在公司可信内网中启用；不会忽略 HTTPS
+                                        证书错误。</small
+                                    >
+                                    <label class="checkbox-label"
+                                        ><input
+                                            id="source-automaticChecks"
+                                            type="checkbox"
+                                            checked
+                                        />启动后及每小时自动检查更新</label
+                                    >
+                                </details>
+                                <div class="settings-data-actions">
+                                    <button id="source-save" class="primary" type="submit">保存发布源</button
+                                    ><button id="source-restore" class="subtle" type="button">恢复部署预设</button>
+                                </div>
+                            </form>
+                        </details>
+                        <p id="source-error" class="form-error" role="alert"></p>
+                        <p id="source-account" role="status"></p>
+                        <p id="source-groups" class="distribution-groups"></p>
+                        <p id="source-login-code" hidden></p>
+                        <div class="settings-data-actions">
+                            <button id="source-login" class="primary">登录</button
+                            ><button id="source-logout" class="subtle" hidden>退出登录</button
+                            ><button id="source-cancel" class="subtle" hidden>取消当前操作</button>
                         </div>
-                        <p class="form-help">
-                            毛玻璃使用系统透明材质。支持的 Windows 与 macOS 可模糊窗口后方；不支持时保留清晰底色。
+                        <small
+                            >GitLab 使用浏览器授权与 PKCE；GitHub
+                            使用设备码登录。登录凭据由系统安全存储加密，导出备份不包含凭据。</small
+                        >
+                        <hr />
+                        <h3>主程序与插件更新</h3>
+                        <div class="settings-data-actions">
+                            <button id="source-check" class="subtle">检查更新</button
+                            ><button id="source-download" class="primary" hidden>下载新版本</button
+                            ><button id="source-install" class="primary" hidden>安装已下载版本</button>
+                        </div>
+                        <p id="source-update-status" role="status"></p>
+                        <pre id="source-update-notes" class="distribution-notes" hidden></pre>
+                        <p id="source-plugin-status" role="status"></p>
+                        <hr />
+                        <h3>团队默认配置</h3>
+                        <p>
+                            按账号所属用户组提供配置；仅补充新内容，保留个人修改。切换账号不会自动清除已应用到本机的内容。
                         </p>
-                    </section>
-                </div>
-                <aside class="theme-preview">
-                    <div class="preview-top">
-                        <span>实时预览</span>
-                        <div class="appearance-preview-tabs" role="tablist" aria-label="预览对象">
-                            <button type="button" id="preview-main" role="tab" aria-selected="true">主界面</button
-                            ><button type="button" id="preview-widget" role="tab" aria-selected="false">
-                                桌面组件
-                            </button>
-                        </div>
-                        <div class="preview-swatches"><i></i><i></i><i></i></div>
+                        <p id="source-profile-status" role="status"></p>
+                        <div id="source-profile-list"></div>
+                        <section id="source-profile-preview" class="distribution-preview" hidden>
+                            <p id="source-profile-summary"></p>
+                            <button id="source-profile-apply" class="primary">确认应用</button>
+                        </section>
                     </div>
-                    <div class="glass-backdrop-controls" role="group" aria-label="预览背景">
-                        <span>背景参照</span
-                        ><button type="button" data-glass-backdrop="neutral" aria-pressed="true">浅色桌面</button
-                        ><button type="button" data-glass-backdrop="colorful" aria-pressed="false">彩色桌面</button>
-                    </div>
-                    <div class="widget-glass-scene" data-backdrop="neutral">
-                        <div class="widget-glass-preview">
-                            <span>桌面组件 · 材质预览</span><strong>今天，做一点重要的事</strong>
-                            <div><time>09:30</time><span>整理工作安排</span></div>
-                            <div><time>14:00</time><span>留一段专注时间</span></div>
-                        </div>
-                    </div>
-                    <div class="preview-mini-app">
-                        <div class="preview-sidebar">
-                            <b>Collectify</b><span class="preview-selected">我的收藏</span><span>我的待办</span
-                            ><span>便签</span>
-                        </div>
-                        <div class="preview-content">
-                            <strong>刚刚好的秩序。</strong>
-                            <p>把常用的放在手边，把重要的留在心上。</p>
-                            <div class="preview-card">
-                                <span class="preview-glyph">↗</span><b>新的灵感</b><small>收藏、计划与一点留白</small>
-                                <button type="button" tabindex="-1">打开收藏 ↗</button>
+                    <div class="settings-panel" data-panel="plugins" hidden>
+                        <div class="plugin-manager-heading">
+                            <div>
+                                <h3>插件</h3>
+                                <p>独立安装、更新和卸载，无需 Git。</p>
                             </div>
+                            <button id="install-plugin-package" class="primary">安装插件包</button>
+                        </div>
+                        <nav class="plugin-tabs" aria-label="插件管理">
+                            <button type="button" data-plugin-tab="installed" class="selected">已安装</button
+                            ><button type="button" data-plugin-tab="catalog">发现插件</button>
+                        </nav>
+                        <section id="installed-plugins">
+                            <div id="plugin-manager"></div>
+                            <div id="restore-plugins"></div>
+                            <details class="plugin-advanced">
+                                <summary>开发者选项</summary>
+                                <p>从包含 manifest.json 的源码目录安装页面插件。</p>
+                                <button id="install-plugin" class="subtle">安装源码目录</button>
+                            </details>
+                        </section>
+                        <section id="catalog-plugins" hidden>
+                            <label for="plugin-catalog-url">插件目录地址（HTTPS JSON）</label>
+                            <div class="catalog-source">
+                                <input
+                                    id="plugin-catalog-url"
+                                    type="url"
+                                    placeholder="https://…/catalog.json"
+                                    spellcheck="false"
+                                /><button id="save-plugin-catalog" class="subtle">保存地址</button
+                                ><button id="refresh-plugin-catalog" class="subtle">刷新</button
+                                ><button id="official-plugin-catalog" class="subtle">使用官方源</button>
+                            </div>
+                            <p id="plugin-catalog-status" role="status">
+                                配置发布者的目录地址，或直接安装下载好的插件包。
+                            </p>
+                            <input
+                                id="catalog-search"
+                                type="search"
+                                placeholder="搜索插件名称或描述"
+                                aria-label="搜索可安装插件"
+                            />
+                            <div id="plugin-catalog-list"></div>
+                        </section>
+                        <p id="plugin-operation-status" role="status"></p>
+                        <p id="plugin-operation-error" class="form-error" role="alert"></p>
+                        <p id="plugin-diagnostics" class="form-error"></p>
+                    </div>
+                    <div class="settings-panel" data-panel="ai" hidden>
+                        <h3>本机 MCP 服务</h3>
+                        <p>
+                            提供已启用插件的业务能力，以及插件开发工具。连接的 AI
+                            可按你的要求生成、校验、安装和更新页面插件；可随时在插件管理中停用。开发工具不读取剪贴板历史或任意本机文件。
+                        </p>
+                        <div class="form-grid">
+                            <label>端口<input id="mcp-port" type="number" min="0" max="65535" /></label
+                            ><span id="mcp-status"></span>
+                        </div>
+                        <div class="settings-data-actions">
+                            <button id="mcp-start" class="primary">开启</button
+                            ><button id="mcp-stop" class="subtle">停用</button
+                            ><button id="mcp-copy" class="subtle">复制连接配置</button>
                         </div>
                     </div>
-                    <p id="appearance-preview-caption">主界面预览：切换配色和信息密度查看变化。</p>
-                    <div class="theme-file-actions">
-                        <button id="import-theme" class="quiet">导入主题</button>
-                        <button id="export-theme" class="quiet">导出已保存主题</button>
+                    <div class="settings-panel" data-panel="data" hidden>
+                        <h3>工作台数据</h3>
+                        <p>按插件选择导入、导出内容，包含默认插件和自有插件数据。</p>
+                        <div class="settings-data-actions">
+                            <button id="settings-export" class="primary">导出数据</button
+                            ><button id="settings-import" class="subtle">导入数据</button>
+                        </div>
+                        <p class="form-help">数据文件不包含插件程序、浏览器 Cookie、附件原文件和本机 MCP 令牌。</p>
                     </div>
-                </aside>
-            </div>
-            <p id="theme-error" class="form-error"></p>
-            <div class="dialog-actions">
-                <button id="reset-theme" class="quiet">恢复默认</button>
-                <button class="cancel-dialog subtle">取消预览</button>
-                <button id="save-theme" class="primary">保存外观</button>
+                    <section id="theme-dialog" class="settings-panel" data-panel="appearance" hidden>
+                        <h3>自定义外观</h3>
+                        <p class="dialog-intro">换一种心情，让空间更像你。所有调整均可实时预览。</p>
+                        <div class="appearance-layout">
+                            <div>
+                                <div id="theme-presets" class="theme-presets"></div>
+                                <div class="palette-controls">
+                                    <label>强调色<input id="theme-accent" type="color" /></label
+                                    ><label>内容背景<input id="theme-background" type="color" /></label
+                                    ><label>卡片底色<input id="theme-surface" type="color" /></label
+                                    ><label>侧栏底色<input id="theme-sidebar" type="color" /></label>
+                                </div>
+                                <label class="range-label"
+                                    >组件圆角
+                                    <output id="radius-value"></output>
+                                    <input id="theme-radius" type="range" min="8" max="22" step="1"
+                                /></label>
+                                <div class="form-grid">
+                                    <label
+                                        >信息密度<select id="theme-density">
+                                            <option value="comfortable">舒适</option>
+                                            <option value="compact">紧凑</option>
+                                        </select></label
+                                    ><label class="checkbox-label motion-control"
+                                        ><input id="theme-motion" type="checkbox" />轻量动效</label
+                                    >
+                                </div>
+                                <section class="glass-controls">
+                                    <h3>桌面组件材质</h3>
+                                    <div class="form-grid">
+                                        <label
+                                            >显示效果<select id="theme-widgetMaterial">
+                                                <option value="solid">清晰实色</option>
+                                                <option value="glass">毛玻璃</option>
+                                            </select></label
+                                        ><label class="range-label"
+                                            >底色浓度 <output id="glass-opacity-value"></output
+                                            ><input id="theme-glassOpacity" type="range" min="20" max="90" step="1"
+                                        /></label>
+                                    </div>
+                                    <p class="form-help">
+                                        毛玻璃使用系统透明材质。支持的 Windows 与 macOS
+                                        可模糊窗口后方；不支持时保留清晰底色。
+                                    </p>
+                                </section>
+                            </div>
+                            <aside class="theme-preview">
+                                <div class="preview-top">
+                                    <span>实时预览</span>
+                                    <div class="appearance-preview-tabs" role="tablist" aria-label="预览对象">
+                                        <button type="button" id="preview-main" role="tab" aria-selected="true">
+                                            主界面</button
+                                        ><button type="button" id="preview-widget" role="tab" aria-selected="false">
+                                            桌面组件
+                                        </button>
+                                    </div>
+                                    <div class="preview-swatches"><i></i><i></i><i></i></div>
+                                </div>
+                                <div class="glass-backdrop-controls" role="group" aria-label="预览背景">
+                                    <span>背景参照</span
+                                    ><button type="button" data-glass-backdrop="neutral" aria-pressed="true">
+                                        浅色桌面</button
+                                    ><button type="button" data-glass-backdrop="colorful" aria-pressed="false">
+                                        彩色桌面
+                                    </button>
+                                </div>
+                                <div class="widget-glass-scene" data-backdrop="neutral">
+                                    <div class="widget-glass-preview">
+                                        <span>桌面组件 · 材质预览</span><strong>今天，做一点重要的事</strong>
+                                        <div><time>09:30</time><span>整理工作安排</span></div>
+                                        <div><time>14:00</time><span>留一段专注时间</span></div>
+                                    </div>
+                                </div>
+                                <div class="preview-mini-app">
+                                    <div class="preview-sidebar">
+                                        <b>Collectify</b><span class="preview-selected">我的收藏</span
+                                        ><span>我的待办</span><span>便签</span>
+                                    </div>
+                                    <div class="preview-content">
+                                        <strong>刚刚好的秩序。</strong>
+                                        <p>把常用的放在手边，把重要的留在心上。</p>
+                                        <div class="preview-card">
+                                            <span class="preview-glyph">↗</span><b>新的灵感</b
+                                            ><small>收藏、计划与一点留白</small>
+                                            <button type="button" tabindex="-1">打开收藏 ↗</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p id="appearance-preview-caption">主界面预览：切换配色和信息密度查看变化。</p>
+                                <div class="theme-file-actions">
+                                    <button id="import-theme" class="quiet">导入主题</button>
+                                    <button id="export-theme" class="quiet">导出已保存主题</button>
+                                </div>
+                            </aside>
+                        </div>
+                        <p id="theme-error" class="form-error"></p>
+                        <div class="dialog-actions">
+                            <button id="reset-theme" class="quiet">恢复默认</button>
+                            <button id="cancel-theme" class="subtle">取消更改</button>
+                            <button id="save-theme" class="primary">保存外观</button>
+                        </div>
+                    </section>
+                    <p id="settings-error" class="form-error"></p>
+                </div>
             </div>
         </dialog>
         <dialog id="transfer-dialog">
@@ -320,6 +436,7 @@
         <script src="overlay.js"></script>
         <script src="theme.js"></script>
         <script src="renderer.js"></script>
+        <script src="distribution-ui.js"></script>
         <script src="appearance.js"></script>
         <script src="ui-components.js"></script>
     </body>

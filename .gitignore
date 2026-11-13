@@ -7,6 +7,9 @@ artifacts/
 .DS_Store
 build-tools/
 /default-config.json
+/distribution.json
+/config/distribution.json
+*.enc
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm

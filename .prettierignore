@@ -5,11 +5,13 @@ artifacts/
 build-tools/
 coverage/
 src/vendor/
+src/plugins/local-search/vendor/
 package-lock.json
 
 # Local settings, private configuration and persisted data
 .idea/
 default-config.json
+distribution.json
 *.sqlite*
 *.bak
 *.log

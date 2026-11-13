@@ -21,8 +21,10 @@ const paths = {
     bookmark: '<path d="M6 4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17l-6-4-6 4V4Z"/>',
     search: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>',
     table: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M3 15h18M9 9v12M15 9v12"/>',
-    'file-text': '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"/><path d="M14 3v6h6M8 13h8M8 17h6"/>',
-    'file-pdf': '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"/><path d="M14 3v6h6M7 17h3m-3 0v-5h2a1.5 1.5 0 0 1 0 3H7m7-3v5m0-5h3m-3 2h2"/>',
+    'file-text':
+        '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"/><path d="M14 3v6h6M8 13h8M8 17h6"/>',
+    'file-pdf':
+        '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"/><path d="M14 3v6h6M7 17h3m-3 0v-5h2a1.5 1.5 0 0 1 0 3H7m7-3v5m0-5h3m-3 2h2"/>',
     presentation: '<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M12 17v5m-5 0 5-3 5 3M8 12l3-3 3 2 3-3"/>',
     image: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.5"/><path d="m4 17 5-5 4 4 3-3 5 5"/>',
     video: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="m10 8 6 4-6 4Z"/>',
@@ -113,16 +115,12 @@ function button(label, glyph, handler, className = '') {
 
 function hideMenu() {}
 function closeDialogsForPlugin() {
-    appearanceParent = null;
     document.querySelectorAll('dialog[open]').forEach((dialog) => dialog.close());
 }
 let dialogTransitions = 0;
 function syncOverlayState() {
     // theme 的 close 事件可能晚于其他已关闭窗口的 close；返回设置的意图仍需保留遮罩。
-    return call(
-        'overlay',
-        dialogTransitions > 0 || appearanceParent !== null || !!document.querySelector('dialog[open]')
-    );
+    return call('overlay', dialogTransitions > 0 || !!document.querySelector('dialog[open]'));
 }
 async function withDialogTransition(action) {
     dialogTransitions++;
@@ -143,7 +141,7 @@ function renderShell(next) {
     $('#toggle-navigation').title = collapsed ? '展开导航' : '收起导航';
     $('#expand-navigation').setAttribute('aria-expanded', String(!collapsed));
     $('.plugin-context').inert = collapsed;
-    if (!$('#theme-dialog').open) ShiyueTheme.apply(state.settings.theme);
+    if ($('#theme-dialog').hidden) ShiyueTheme.apply(state.settings.theme);
     const enabled = state.plugins.filter((p) => p.enabled),
         query = $('#plugin-search').value.trim().toLowerCase();
     const railScroll = $('#plugin-rail').scrollTop;
@@ -407,10 +405,18 @@ $('#plugin-retry').onclick = task(() => call('plugin-reload'));
 $('#shell-home').onclick = () => void openSettings('plugins');
 $('#enable-plugins').onclick = () => void openSettings('plugins');
 function selectSettingsPanel(panel) {
+    if (!$(`#settings-dialog .settings-panel[data-panel="${panel}"]`)) panel = 'general';
+    if (!$('#theme-dialog').hidden && panel !== 'appearance') leaveAppearance();
+    const enteringAppearance = panel === 'appearance' && $('#theme-dialog').hidden;
     document.querySelectorAll('.settings-panel').forEach((n) => (n.hidden = n.dataset.panel !== panel));
-    document
-        .querySelectorAll('[data-settings-panel]')
-        .forEach((n) => n.classList.toggle('selected', n.dataset.settingsPanel === panel));
+    document.querySelectorAll('[data-settings-panel]').forEach((n) => {
+        n.classList.toggle('selected', n.dataset.settingsPanel === panel);
+        if (n.dataset.settingsPanel === panel) n.setAttribute('aria-current', 'page');
+        else n.removeAttribute('aria-current');
+    });
+    $('.settings-content').scrollTop = 0;
+    if (enteringAppearance) startAppearance();
+    window.OfficeUI?.refresh();
 }
 async function openSettings(panel = 'general') {
     return withDialogTransition(async () => {
@@ -424,14 +430,25 @@ async function openSettings(panel = 'general') {
         renderMcpStatus(info.mcp);
         catalogState = await call('plugin-catalog-status');
         renderPluginCatalog();
+        await loadDistribution();
         selectSettingsPanel(typeof panel === 'string' ? panel : 'general');
         $('#settings-error').textContent = '';
         $('#settings-dialog').showModal();
     });
 }
-document
-    .querySelectorAll('[data-settings-panel]')
-    .forEach((n) => (n.onclick = () => selectSettingsPanel(n.dataset.settingsPanel)));
+document.querySelectorAll('[data-settings-panel]').forEach((n) => {
+    const glyphs = {
+        general: 'gear',
+        appearance: 'sliders',
+        plugins: 'grid',
+        distribution: 'globe',
+        ai: 'server',
+        data: 'download'
+    };
+    const label = el('span', '', n.textContent);
+    n.replaceChildren(icon(glyphs[n.dataset.settingsPanel]), label);
+    n.onclick = () => selectSettingsPanel(n.dataset.settingsPanel);
+});
 $('#settings-button').onclick = task(() => openSettings());
 $('#collapsed-settings-button').onclick = task(() => openSettings());
 $('#expand-navigation').onclick = task(() => call('settings', { navigationCollapsed: false }));
@@ -459,7 +476,10 @@ document.querySelectorAll('[data-plugin-tab]').forEach(
         }))
 );
 $('#open-data-directory').onclick = task(() => call('open-data-directory'));
-$('#download-app').onclick = task(() => call('app-download'));
+$('#download-app').onclick = task(async () => {
+    await loadDistribution();
+    selectSettingsPanel('distribution');
+});
 $('#keep-in-tray').onchange = task(() =>
     call('settings', { ...state.settings, keepInTray: $('#keep-in-tray').checked })
 );

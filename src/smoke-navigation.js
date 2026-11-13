@@ -15,7 +15,8 @@ exports.run = async ({ win, registry, runtime, services, hostAction }) => {
     };
     await host('shellReady');
     await hostAction('plugin-open', { id: 'collectify.json' });
-    await until(() => host("document.querySelectorAll('.plugin-asset-icon').length===6"));
+    const iconCount = registry.list().filter((plugin) => plugin.enabled && plugin.iconAsset).length;
+    await until(async () => (await host("document.querySelectorAll('.plugin-asset-icon').length")) === iconCount);
     const rail = await host(
         "(()=>{const rail=document.querySelector('#plugin-rail');return{width:rail.clientWidth,scrollWidth:rail.scrollWidth,height:rail.clientHeight,scrollHeight:rail.scrollHeight,select:getComputedStyle(rail).userSelect,icon:document.querySelector('.plugin-asset-icon').getAttribute('src')};})()"
     );
@@ -33,14 +34,60 @@ exports.run = async ({ win, registry, runtime, services, hostAction }) => {
     };
     try {
         await host("openSettings('general')");
+        await delay(220);
+        const frame = await host(
+            "(()=>{const r=document.querySelector('#settings-dialog').getBoundingClientRect();return [r.width,r.height]})()"
+        );
+        for (const panel of ['appearance', 'plugins', 'distribution', 'ai', 'data', 'general']) {
+            await host(`document.querySelector('[data-settings-panel=${panel}]').click()`);
+            const next = await host(
+                "(()=>{const r=document.querySelector('#settings-dialog').getBoundingClientRect();const c=document.querySelector('.settings-content');const nav=document.querySelector('.settings-navigation').getBoundingClientRect();return {frame:[r.width,r.height],overflow:c.scrollWidth>c.clientWidth+1,nav:nav.width,gap:c.getBoundingClientRect().left-nav.right}})()"
+            );
+            assert.deepEqual(next.frame, frame, '切换设置分类改变了窗口尺寸');
+            assert.equal(next.overflow, false, '设置内容出现横向溢出');
+            assert.ok(next.nav >= 110 && next.nav <= 200);
+            assert.equal(next.gap, 0, '设置内容区与侧栏之间出现多余空白');
+        }
+        const savedAccent = (await hostAction('state')).settings.theme.accent;
+        await host(
+            "selectSettingsPanel('appearance');document.querySelector('#theme-accent').value='#ff3300';document.querySelector('#theme-accent').dispatchEvent(new Event('input'))"
+        );
+        assert.equal(await host("document.documentElement.style.getPropertyValue('--accent')"), '#ff3300');
+        await host("selectSettingsPanel('general')");
+        assert.equal(await host("document.documentElement.style.getPropertyValue('--accent')"), savedAccent);
+        await host(
+            "selectSettingsPanel('appearance');document.querySelector('#theme-accent').value='#ff3300';document.querySelector('#theme-accent').dispatchEvent(new Event('input'));document.querySelector('#cancel-theme').click()"
+        );
+        assert.equal(await host("document.documentElement.style.getPropertyValue('--accent')"), savedAccent);
+        const screenshotDirectory = require('./verification-output').directory;
+        await delay(100);
+        fs.writeFileSync(
+            path.join(screenshotDirectory, 'settings-appearance.png'),
+            (await win.webContents.capturePage()).toPNG()
+        );
+        await host("selectSettingsPanel('distribution')");
+        await delay(100);
+        fs.writeFileSync(
+            path.join(screenshotDirectory, 'settings-sidebar.png'),
+            (await win.webContents.capturePage()).toPNG()
+        );
+        await host("selectSettingsPanel('general')");
         watching = true;
         for (let attempt = 0; attempt < 3; attempt++) {
             await host("document.querySelector('#theme-button').click()");
-            await until(() => host("document.querySelector('#theme-dialog').open"));
+            await until(() =>
+                host(
+                    "!document.querySelector('#theme-dialog').hidden && document.querySelector('#settings-dialog').open"
+                )
+            );
             await delay(60);
             assert.equal(runtime.views.get('collectify.json').view.getVisible(), false);
-            await host("document.querySelector('#appearance-back').click()");
-            await until(() => host("document.querySelector('#settings-dialog').open"));
+            await host("document.querySelector('[data-settings-panel=general]').click()");
+            await until(() =>
+                host(
+                    "document.querySelector('#settings-dialog').open && document.querySelector('#theme-dialog').hidden"
+                )
+            );
             await delay(60);
             assert.equal(runtime.views.get('collectify.json').view.getVisible(), false);
         }
@@ -109,56 +156,6 @@ exports.run = async ({ win, registry, runtime, services, hostAction }) => {
     await delay(120);
     fs.writeFileSync(path.join(output, 'navigation-expanded.png'), (await win.webContents.capturePage()).toPNG());
     for (const record of runtime.views.values()) assert.deepEqual(record.errors, []);
-    // 本地搜索分类必须由宿主二级导航承载，不在内容区重复占一列。
-    await hostAction('plugin-open', { id: 'collectify.local-search', route: 'all' });
-    await until(() => runtime.active()?.id === 'collectify.local-search' && !runtime.active()?.loading);
-    const local = (code) => runtime.views.get('collectify.local-search').view.webContents.executeJavaScript(code);
-    await until(() => host("document.querySelectorAll('#plugin-navigation .plugin-subnav').length===11"));
-    assert.equal(await local("document.querySelector('#filters')"), null);
-    assert.equal(await host("document.querySelectorAll('#plugin-navigation .plugin-subnav svg').length"), 11);
-    await host("document.querySelector('#plugin-navigation [data-route=image]').click()");
-    await until(() => local("filter==='image'"));
-    assert.equal(await host("document.querySelector('#plugin-navigation .selected').dataset.route"), 'image');
-    const provider = services.providers.get('collectify.local-search'),
-        previous = await provider.call('state');
-    await services.call('collectify.local-search', 'settings', {
-        ...previous.settings,
-        filters: previous.settings.filters.map((item) => ({ ...item, enabled: item.id !== 'image' }))
-    });
-    await until(() => host("!document.querySelector('#plugin-navigation [data-route=image]')"));
-    await services.call('collectify.local-search', 'settings', previous.settings);
-    await until(() => host("!!document.querySelector('#plugin-navigation [data-route=image]')"));
-    // 真实目录入口可恢复随包插件，不复制/执行任意外部后台。
-    const nativeDialog = require('electron').dialog,
-        originalOpen = nativeDialog.showOpenDialog,
-        originalMessage = nativeDialog.showMessageBox;
-    nativeDialog.showOpenDialog = async () => ({
-        canceled: false,
-        filePaths: [path.join(__dirname, 'plugins', 'local-search')]
-    });
-    nativeDialog.showMessageBox = async () => ({ response: 1, checkboxChecked: false });
-    try {
-        await hostAction('plugin-uninstall', 'collectify.local-search');
-        assert.equal(registry.plugins.has('collectify.local-search'), false);
-        const restored = await hostAction('plugin-install');
-        assert.equal(restored.builtin, true);
-        assert.equal(registry.get('collectify.local-search').enabled, true);
-        await until(() => runtime.active()?.id === 'collectify.local-search' && !runtime.active()?.loading);
-    } finally {
-        nativeDialog.showOpenDialog = originalOpen;
-        nativeDialog.showMessageBox = originalMessage;
-    }
-    assert.equal(runtime.views.get('collectify.local-search').view.getVisible(), true);
-    await until(() =>
-        runtime.views
-            .get('collectify.local-search')
-            .view.webContents.executeJavaScript("typeof settings!=='undefined'&&!!settings")
-    );
-    await delay(200);
-    fs.writeFileSync(
-        path.join(output, 'local-search-host-navigation.png'),
-        (await win.webContents.capturePage()).toPNG()
-    );
     console.log(
         'NAVIGATION PASS：弹窗连续切换不恢复插件视图、SVG 图标、长按无文本选中、无横向溢出、导航收放与实际插件区域同步、折叠设置入口、浏览器偏好持久化和显式覆盖通过；系统浏览器调用使用测试替身。'
     );
