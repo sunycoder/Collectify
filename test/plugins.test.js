@@ -62,6 +62,8 @@ test('新增自有插件通过目录安装、更新、卸载与重装，无需�
     };
     fs.writeFileSync(path.join(source, 'manifest.json'), JSON.stringify(manifest));
     fs.writeFileSync(path.join(source, 'index.html'), '<h1>Hello</h1>');
+    fs.mkdirSync(path.dirname(path.join(source, manifest.icon)), { recursive: true });
+    fs.copyFileSync(path.resolve(__dirname, '../src/plugins/json', manifest.icon), path.join(source, manifest.icon));
     registry.install(source);
     assert.equal(registry.commands().length, 3);
     registry.storage.set(manifest.id, 'keep', 123);

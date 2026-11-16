@@ -1,0 +1,13 @@
+{
+  "provider": "ipwhois",
+  "timeoutMs": 10000,
+  "cacheMs": 300000,
+  "selfCacheMs": 60000,
+  "historyLimit": 30,
+  "cacheLimit": 50,
+  "responseLimit": 65536,
+  "providers": {
+    "ipwhois": { "label": "IPWhois", "url": "https://ipwho.is/", "requiresKey": false },
+    "ipinfo": { "label": "IPinfo Lite", "url": "https://api.ipinfo.io/lite/", "requiresKey": true }
+  }
+}

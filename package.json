@@ -1,6 +1,6 @@
 {
   "name": "collectify",
-  "version": "5.7.8",
+  "version": "5.7.9",
   "description": "Collectify · 可扩展的个人插件工作台",
   "main": "src/main.js",
   "author": "Collectify",
@@ -27,6 +27,7 @@
     "predist:mac": "npm run build:assets",
     "predist:linux": "npm run build:assets",
     "smoke:local-search": "electron test/smoke/local-search.cjs",
+    "smoke:ip-query": "electron test/smoke/ip-query.cjs",
     "test:fixtures": "node test/tools/create-local-search-fixtures.cjs"
   },
   "devDependencies": {

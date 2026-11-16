@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { randomUUID } = require('node:crypto');
 const { DatabaseSync } = require('node:sqlite');
-const { pluginId, readManifest } = require('./manifest');
+const { pluginId, readManifest, assetPath } = require('./manifest');
 const { PluginStorage, validateValues } = require('./storage');
 
 class PluginRegistry {
@@ -86,6 +86,7 @@ class PluginRegistry {
     }
     discover() {
         this.defaultManifests = null;
+        this.iconCache = new Map();
         const next = new Map(),
             diagnostics = [],
             removed = this.getSetting('removedDefaultPlugins', []);
@@ -125,6 +126,34 @@ class PluginRegistry {
         const plugin = this.plugins.get(pluginId(id));
         if (!plugin || (enabled && !plugin.enabled)) throw Error('插件未安装或已停用');
         return plugin;
+    }
+    async icon(id) {
+        const plugin = this.get(id, true);
+        if (!plugin.icon) return null;
+        if (this.iconCache.has(id)) return this.iconCache.get(id);
+        const cache = this.iconCache;
+        const pending = (async () => {
+            const file = assetPath(plugin.directory, plugin.icon);
+            // 文件可能在清单读取后改变，读取时再次限制大小；不向渲染端暴露本机路径。
+            const handle = await fs.promises.open(file, 'r');
+            try {
+                if ((await handle.stat()).size > 65536) throw Error('插件图标不能超过 64 KiB');
+                const bytes = Buffer.alloc(65537);
+                const { bytesRead } = await handle.read(bytes, 0, bytes.length, 0);
+                if (bytesRead > 65536) throw Error('插件图标不能超过 64 KiB');
+                if (this.plugins.get(id) !== plugin || !plugin.enabled) throw Error('插件已更新或停用');
+                return 'data:image/svg+xml;base64,' + bytes.subarray(0, bytesRead).toString('base64');
+            } finally {
+                await handle.close();
+            }
+        })();
+        cache.set(id, pending);
+        try {
+            return await pending;
+        } catch (error) {
+            if (cache.get(id) === pending) cache.delete(id);
+            throw error;
+        }
     }
     list() {
         return [...this.plugins.values()]

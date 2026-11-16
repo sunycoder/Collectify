@@ -1,0 +1,27 @@
+{
+  "id": "collectify.ip-query",
+  "name": "IP 地址查询",
+  "description": "查询公网 IPv4 / IPv6、归属地与网络服务商，按需联网，无常驻任务。",
+  "glyph": "IP",
+  "version": "1.0.2",
+  "icon": "icon/ip.svg",
+  "minHostVersion": "5.7.9",
+  "runtime": "native",
+  "apiVersion": 1,
+  "entry": "index.html",
+  "backend": "backend.js",
+  "permissions": ["clipboard.write", "native"],
+  "commands": [
+    {
+      "id": "open",
+      "title": "查询 IP 地址"
+    }
+  ],
+  "navigation": [
+    {
+      "id": "home",
+      "label": "IP 地址查询",
+      "icon": "globe"
+    }
+  ]
+}

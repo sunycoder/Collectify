@@ -5,15 +5,19 @@
       "source": "src/plugin-library/clipboard-history",
       "id": "collectify.clipboard-history",
       "name": "剪贴板历史",
-      "version": "2.2.4",
-      "iconAsset": "剪切板.svg"
+      "version": "2.2.5"
     },
     {
       "source": "src/plugin-library/local-search",
       "id": "collectify.local-search",
       "name": "本地搜索",
-      "version": "1.2.0",
-      "iconAsset": "本地搜索.svg"
+      "version": "1.2.1"
+    },
+    {
+      "source": "src/plugin-library/ip-query",
+      "id": "collectify.ip-query",
+      "name": "IP 地址查询",
+      "version": "1.0.2"
     }
   ]
 }

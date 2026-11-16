@@ -17,8 +17,9 @@ exports.run = async ({ win, registry, runtime, services, hostAction, withTestTra
     assert.equal(await host("!!document.querySelector('.profile')"), false);
     assert.equal(await host("getComputedStyle(document.querySelector('#collapsed-settings-button')).display"), 'grid');
     await hostAction('plugin-open', { id: 'collectify.json' });
-    const iconCount = registry.list().filter((plugin) => plugin.enabled && plugin.iconAsset).length;
+    const iconCount = registry.list().filter((plugin) => plugin.enabled && (plugin.icon || plugin.iconAsset)).length;
     await until(async () => (await host("document.querySelectorAll('.plugin-asset-icon').length")) === iconCount);
+    await until(() => host("[...document.querySelectorAll('.plugin-asset-icon')].every(image=>image.naturalWidth>0)"));
     const rail = await host(
         "(()=>{const rail=document.querySelector('#plugin-rail');return{width:rail.clientWidth,scrollWidth:rail.scrollWidth,height:rail.clientHeight,scrollHeight:rail.scrollHeight,select:getComputedStyle(rail).userSelect,icon:document.querySelector('.plugin-asset-icon').getAttribute('src')};})()"
     );

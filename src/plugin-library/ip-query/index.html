@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>IP 地址查询</title>
+        <link rel="stylesheet" href="collectify-plugin://collectify.sdk/tool.css" />
+        <link rel="stylesheet" href="style.css" />
+    </head>
+    <body>
+        <main>
+            <header>
+                <div class="heading">
+                    <span class="logo" aria-hidden="true"><img src="icon/ip.svg" alt="" /></span>
+                    <div>
+                        <h1>IP 地址查询</h1>
+                        <p>看见地址背后的网络信息</p>
+                    </div>
+                </div>
+                <button id="settings-open" type="button">数据源设置</button>
+            </header>
+            <section class="my-ip" aria-label="我的公网 IP">
+                <div>
+                    <span class="eyebrow">我的公网 IP</span>
+                    <div class="ip-line">
+                        <strong id="my-ip">尚未查询</strong><button id="copy-my" type="button" hidden>复制</button>
+                    </div>
+                    <p>显示查询服务观察到的出口地址；使用代理时可能是代理出口。</p>
+                </div>
+                <button id="refresh-my" type="button">刷新公网 IP</button>
+            </section>
+            <form id="query-form">
+                <label for="address">查询 IP 地址</label>
+                <div class="query-row">
+                    <input
+                        id="address"
+                        placeholder="输入 IPv4 或 IPv6，例如 8.8.8.8"
+                        autocomplete="off"
+                        spellcheck="false"
+                        maxlength="60"
+                    /><button id="submit" class="primary" type="submit">查询</button
+                    ><button id="cancel" type="button" hidden>取消</button>
+                </div>
+            </form>
+            <p id="status" role="status" aria-live="polite">正在准备插件…</p>
+            <section id="result" class="result" aria-label="查询结果" aria-busy="false" hidden>
+                <div class="result-heading">
+                    <div>
+                        <span id="result-type" class="badge"></span>
+                        <h2 id="result-ip"></h2>
+                    </div>
+                    <button id="copy-result" type="button">复制 IP</button>
+                </div>
+                <div id="fields" class="fields"></div>
+                <p id="result-meta" class="meta"></p>
+            </section>
+            <section class="history-section" aria-label="最近查询">
+                <div class="section-heading">
+                    <h2>最近查询</h2>
+                    <button id="clear-history" type="button">清空记录</button>
+                </div>
+                <div id="history" class="history"></div>
+                <p id="history-empty" class="muted">查询记录仅保存在本机，最多保留 30 条。</p>
+            </section>
+            <footer>
+                归属地为数据源估算，不能用于精确定位个人；未提供街道定位或风险评分。查询会把指定 IP 发送至所选数据源。
+            </footer>
+        </main>
+        <dialog id="settings-dialog">
+            <form id="settings-form">
+                <div class="section-heading">
+                    <h2>数据源设置</h2>
+                    <button id="settings-close" type="button" aria-label="关闭设置">×</button>
+                </div>
+                <label for="provider">查询服务</label
+                ><select id="provider"></select>
+                <p id="provider-note" class="muted"></p>
+                <div id="key-field" hidden>
+                    <label for="api-key">IPinfo API Key</label
+                    ><input
+                        id="api-key"
+                        type="password"
+                        autocomplete="off"
+                        placeholder="留空保留已保存的 Key"
+                        maxlength="500"
+                    />
+                    <div class="key-status-row">
+                        <p id="key-status" class="muted"></p>
+                        <button id="remove-key" type="button" hidden>移除 Key</button>
+                    </div>
+                    <p class="muted">Key 用于验证你的 IPinfo 账号。移除只清除本机保存的 Key，不会删除账号。</p>
+                </div>
+                <p class="muted">
+                    Key 仅使用系统安全存储加密保存在本机，不随插件包分发。数据源可能存在额度及套餐限制。
+                </p>
+                <p id="settings-error" role="alert"></p>
+                <div class="settings-actions"><button class="primary" type="submit">保存设置</button></div>
+            </form>
+        </dialog>
+        <script src="app.js"></script>
+    </body>
+</html>

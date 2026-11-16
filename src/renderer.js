@@ -11,6 +11,36 @@ let state = { plugins: [], settings: {} },
     transferMode = 'export';
 let catalogState = { source: '', plugins: [], loaded: false },
     pluginBusy = false;
+const pluginIcons = new Map();
+function renderPluginIcon(plugin, glyph) {
+    const key = `${plugin.id}@${plugin.version}:${plugin.icon}`;
+    const display = (source) => {
+        if (!source || !glyph.isConnected) return;
+        const image = el('img', 'plugin-asset-icon');
+        image.src = source;
+        image.alt = '';
+        image.draggable = false;
+        image.onerror = () => {
+            if (glyph.isConnected) glyph.textContent = plugin.glyph;
+        };
+        glyph.replaceChildren(image);
+    };
+    const cached = pluginIcons.get(key);
+    if (typeof cached === 'string') {
+        display(cached);
+        return;
+    }
+    const pending = cached || call('plugin-icon', { id: plugin.id });
+    pluginIcons.set(key, pending);
+    pending
+        .then((source) => {
+            pluginIcons.set(key, source);
+            display(source);
+        })
+        .catch(() => {
+            if (pluginIcons.get(key) === pending) pluginIcons.delete(key);
+        });
+}
 const paths = {
     layers: '<path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/>',
     grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
@@ -144,6 +174,8 @@ function renderShell(next) {
     if ($('#theme-dialog').hidden) ShiyueTheme.apply(state.settings.theme);
     const enabled = state.plugins.filter((p) => p.enabled),
         query = $('#plugin-search').value.trim().toLowerCase();
+    const currentIcons = new Set(state.plugins.map((p) => `${p.id}@${p.version}:${p.icon}`));
+    for (const key of pluginIcons.keys()) if (!currentIcons.has(key)) pluginIcons.delete(key);
     const railScroll = $('#plugin-rail').scrollTop;
     $('#plugin-rail').replaceChildren();
     for (const plugin of enabled.filter((p) => [p.name, p.description].some((s) => s.toLowerCase().includes(query)))) {
@@ -152,7 +184,11 @@ function renderShell(next) {
         node.classList.toggle('selected', state.active?.id === plugin.id);
         node.setAttribute('aria-pressed', String(state.active?.id === plugin.id));
         node.replaceChildren(el('span', 'plugin-glyph', plugin.glyph), el('span', 'plugin-name', plugin.name));
-        if (plugin.iconAsset) {
+        $('#plugin-rail').append(node);
+        if (plugin.icon) {
+            // 挂接到 DOM 后再展示异步图标；失败时保留清单中的文字后备图标。
+            renderPluginIcon(plugin, node.querySelector('.plugin-glyph'));
+        } else if (plugin.iconAsset) {
             const glyph = node.querySelector('.plugin-glyph');
             const image = el('img', 'plugin-asset-icon');
             image.src = `../assets/${encodeURIComponent(plugin.iconAsset)}`;
@@ -160,7 +196,6 @@ function renderShell(next) {
             image.draggable = false;
             glyph.replaceChildren(image);
         }
-        $('#plugin-rail').append(node);
     }
     $('#plugin-rail').scrollTop = railScroll;
     const active = state.plugins.find((p) => p.id === state.active?.id);

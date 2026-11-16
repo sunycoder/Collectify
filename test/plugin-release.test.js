@@ -22,7 +22,7 @@ function fixture(t, all = false) {
 test('官方目录可重现构建，程序包身份、大小和校验值完全匹配', (t) => {
     const built = fixture(t, true),
         checker = new PluginPackages(null, path.join(built.output, 'check'));
-    assert.equal(built.plugins.length, 2);
+    assert.equal(built.plugins.length, 3);
     assert.equal(built.plugins[0].id, 'collectify.clipboard-history');
     for (const item of built.plugins) {
         const filename = path.basename(new URL(item.url).pathname),
@@ -30,7 +30,7 @@ test('官方目录可重现构建，程序包身份、大小和校验值完全�
         assert.equal(data.length, item.size);
         assert.equal(sha256(data), item.sha256);
         const prepared = checker.prepare(data, item);
-        assert.ok(prepared.manifest.iconAsset.endsWith('.svg'));
+        assert.ok(prepared.manifest.icon?.endsWith('.svg'));
         checker.cleanup(prepared);
     }
     const before = fs.readFileSync(path.join(built.output, 'catalog.json'), 'utf8');

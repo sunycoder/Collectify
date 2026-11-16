@@ -41,6 +41,7 @@ function reference(templates) {
             minHostVersion: '可选最低主程序版本，例如 5.6.0；新 SDK 能力应声明要求',
             platforms: '可选系统列表：win32、darwin、linux；省略表示不限制',
             entry: '包内 .html 文件',
+            icon: '可选包内 SVG 相对路径，例如 icon/icon.svg；最大 64 KiB，需主程序 5.7.9；图标随插件分发，glyph 为加载失败时的文字后备',
             commands: [{ id: 'open', title: '打开插件' }],
             navigation: [{ id: 'home', label: '主页' }],
             backend: '页面插件不能声明 Node.js 后台入口',

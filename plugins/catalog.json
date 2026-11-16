@@ -3,27 +3,38 @@
   "version": 1,
   "plugins": [
     {
-      "minHostVersion": "5.7.6",
+      "minHostVersion": "5.7.9",
       "platforms": ["win32", "darwin", "linux"],
       "id": "collectify.clipboard-history",
       "name": "剪贴板历史",
       "description": "后台记录文本、图片和文件，支持搜索、收藏、预览与一键复制。",
-      "version": "2.2.4",
+      "version": "2.2.5",
       "apiVersion": 1,
-      "size": 55858,
-      "sha256": "4c2290f8f5472eb4c8932ab0434ced623c889b58d17dc95934731ffafcda6efa",
-      "url": "https://github.com/sunycoder/Collectify/releases/download/plugin-collectify.clipboard-history-v2.2.4/collectify.clipboard-history-2.2.4.collectify-plugin"
+      "size": 58872,
+      "sha256": "1abbcdf8abf7c52fcf15ceb04a3816db37474260561aff95efa0ec901a0bae1e",
+      "url": "https://github.com/sunycoder/Collectify/releases/download/plugin-collectify.clipboard-history-v2.2.5/collectify.clipboard-history-2.2.5.collectify-plugin"
     },
     {
-      "minHostVersion": "5.7.1",
+      "minHostVersion": "5.7.9",
       "id": "collectify.local-search",
       "name": "本地搜索",
       "description": "Everything 文件搜索、分类筛选与本地文件预览",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "apiVersion": 1,
-      "size": 14461978,
-      "sha256": "99da404f9d7f1cd436f8b89cf0fbb5313ee89472dc7cc734bff762fd191677e3",
-      "url": "https://github.com/sunycoder/Collectify/releases/download/plugin-collectify.local-search-v1.2.0/collectify.local-search-1.2.0.collectify-plugin"
+      "size": 14462557,
+      "sha256": "da142fbabd0d2373314017469309e6829e685f74c0bb871ee00f271e62dcffa7",
+      "url": "https://github.com/sunycoder/Collectify/releases/download/plugin-collectify.local-search-v1.2.1/collectify.local-search-1.2.1.collectify-plugin"
+    },
+    {
+      "minHostVersion": "5.7.9",
+      "id": "collectify.ip-query",
+      "name": "IP 地址查询",
+      "description": "查询公网 IPv4 / IPv6、归属地与网络服务商，按需联网，无常驻任务。",
+      "version": "1.0.2",
+      "apiVersion": 1,
+      "size": 37134,
+      "sha256": "b4993a78676841384e626cecc2fa0e906c0019df190c6a5684a217d61b43ccfa",
+      "url": "https://github.com/sunycoder/Collectify/releases/download/plugin-collectify.ip-query-v1.0.2/collectify.ip-query-1.0.2.collectify-plugin"
     }
   ]
 }

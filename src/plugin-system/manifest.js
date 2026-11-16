@@ -122,6 +122,11 @@ function readManifest(root, { builtin = false } = {}) {
             !fs.existsSync(path.join(__dirname, '..', '..', 'assets', input.iconAsset)))
     )
         throw Error('插件图标必须引用 assets 中已有的 SVG');
+    // 独立插件的入口图标随自己的包分发；这里只校验路径与大小，展示时才读取内容。
+    if (input.icon !== undefined) {
+        if (typeof input.icon !== 'string' || !input.icon.endsWith('.svg')) throw Error('插件自有图标必须为 SVG');
+        if (fs.statSync(assetPath(root, input.icon)).size > 65536) throw Error('插件图标不能超过 64 KiB');
+    }
     const navigation = input.navigation || [{ id: 'home', label: input.name }];
     if (
         !Array.isArray(navigation) ||
@@ -142,6 +147,7 @@ function readManifest(root, { builtin = false } = {}) {
         ...(input.runtime === 'native' ? { runtime: 'native', publisher } : {}),
         ...(input.background ? { background: input.background } : {}),
         ...(input.iconAsset ? { iconAsset: input.iconAsset } : {}),
+        ...(input.icon ? { icon: input.icon } : {}),
         id: input.id,
         name: input.name.trim(),
         description: input.description.trim(),

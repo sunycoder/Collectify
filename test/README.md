@@ -13,6 +13,8 @@
 
 完整冒烟：`npm run smoke`。指定场景可追加参数，例如 `npm run smoke -- --smoke-fullscreen`、`npm run smoke -- --smoke-shutdown`。本地搜索预览验证用 `npm run smoke:local-search`，需要已准备好插件依赖与 `fixtures/local-search/` 样例。
 
+IP 可选插件独立验证使用 `npm run smoke:ip-query`，包含签名安装、真实页面与 IPC、取消与热插拔；默认使用隔离响应。追加 `-- --live-network` 可查询供应商的公共 IPv4 / IPv6 测试地址，不读取用户保存的 Key。三系统 CI 运行隔离冒烟。
+
 验证打包版时，测试脚本仍由源码检出目录提供，必须显式指定绝对路径：
 
 ```powershell

@@ -33,12 +33,19 @@ exports.run = async ({ win, registry, runtime, services, pluginCatalog, hostActi
                         version,
                         apiVersion: 1,
                         entry: 'index.html',
+                        icon: 'icon/icon.svg',
                         permissions: ['storage'],
                         commands: [{ id: 'open', title: '打开' }]
                     })
                 )
             },
-            { name: 'index.html', data: Buffer.from('<!doctype html><meta charset="UTF-8"><h1>插件分发验证</h1>') }
+            { name: 'index.html', data: Buffer.from('<!doctype html><meta charset="UTF-8"><h1>插件分发验证</h1>') },
+            {
+                name: 'icon/icon.svg',
+                data: Buffer.from(
+                    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#526fe8"/></svg>'
+                )
+            }
         ]);
     try {
         dialog.showMessageBox = async () => ({ response: confirmed ? 1 : 0, checkboxChecked: deleteData });
@@ -77,6 +84,20 @@ exports.run = async ({ win, registry, runtime, services, pluginCatalog, hostActi
         assert.ok(!registry.plugins.has('example.downloaded'));
         confirmed = true;
         await hostAction('plugin-catalog-install', 'example.downloaded');
+        for (let attempt = 0; attempt < 80; attempt++) {
+            if (await host('document.querySelector(\'[data-plugin-id="example.downloaded"] img\')?.naturalWidth>0'))
+                break;
+            await delay(30);
+        }
+        const image = await host(
+            "document.querySelector('[data-plugin-id=\"example.downloaded\"] img')?.getAttribute('src')"
+        );
+        assert.equal(
+            image,
+            await hostAction('plugin-icon', { id: 'example.downloaded' }),
+            '侧栏图标必须来自插件自己的包'
+        );
+        assert.match(image, /^data:image\/svg\+xml;base64,/);
         registry.storage.set('example.downloaded', 'retained', '保持用户数据');
         await hostAction('plugin-enable', { id: 'example.downloaded', enabled: false });
         version = '1.1.0';
