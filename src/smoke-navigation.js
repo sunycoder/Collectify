@@ -161,6 +161,11 @@ exports.run = async ({ win, registry, runtime, services, hostAction }) => {
         );
         assert.ok(back.top >= 0 && back.bottom <= 120);
         assert.equal(back.scroll, 0);
+        const currentTab = [...services.providers.get('collectify.bookmarks').browser.tabs.values()][0];
+        const countBeforeToolbar = opened.length;
+        await bookmarks.executeJavaScript("document.querySelector('#external').click()");
+        await until(() => opened.length === countBeforeToolbar + 1);
+        assert.equal(opened.at(-1), currentTab.url, '工具栏应使用当前标签页地址打开系统浏览器');
     } finally {
         shell.openExternal = original;
     }

@@ -26,46 +26,93 @@ button {
     width: 40px;
     height: 40px;
     padding: 0;
-    border: 1px solid #ffffffb8;
-    border-radius: 14px;
-    background: linear-gradient(145deg, #7b9bff 0%, #426ced 48%, #6546d8 100%);
+    border: 1px solid #ffffffc9;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #ffffffef, #e9eef4db);
+    backdrop-filter: blur(16px) saturate(130%);
+    box-shadow:
+        inset 0 1px 1px #ffffff,
+        inset 0 -1px 2px #bac6d333,
+        0 1px 3px #00000026;
     cursor: grab;
     touch-action: none;
-    box-shadow:
-        inset 0 1px 1px #ffffff87,
-        0 2px 4px #16397438;
     transition:
-        filter 0.15s,
-        box-shadow 0.15s;
-    isolation: isolate;
-    overflow: hidden;
+        background 0.2s,
+        box-shadow 0.2s;
+    overflow: visible;
 }
-button:before {
+button::before {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    padding: 2px;
+    background: conic-gradient(
+        from 0deg,
+        #75d7e8 0deg,
+        #75d7e826 70deg,
+        #aba0e8 140deg,
+        #efb4ce 210deg,
+        #efb4ce26 280deg,
+        #75d7e8 360deg
+    );
+    mask:
+        linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+    animation: energy-orbit 2.4s linear infinite;
+    animation-play-state: paused;
+}
+button::after {
     content: '';
     position: absolute;
     inset: 1px;
-    border-radius: 12px;
-    background: linear-gradient(145deg, #ffffff45, transparent 52%);
-    z-index: -1;
+    border-radius: 50%;
+    background: linear-gradient(150deg, #ffffff6b, transparent 55%);
+    pointer-events: none;
 }
-button:hover {
-    filter: brightness(1.1);
+.drag-ring:hover button,
+button:focus-visible {
+    background: linear-gradient(145deg, #fffffff5, #edf3f9e6);
     box-shadow:
-        inset 0 1px 1px #ffffffb0,
-        0 2px 5px #16397455;
+        inset 0 1px 1px #ffffff,
+        0 0 4px #90cfdf66;
+}
+.drag-ring:hover button::before,
+button:focus-visible::before {
+    opacity: 1;
+    animation-play-state: running;
 }
 button.dragging {
     cursor: grabbing;
-    filter: brightness(0.96);
+    background: linear-gradient(145deg, #f7faffed, #e2eaf2e6);
 }
 button:focus-visible {
-    outline: 2px solid #ffffff;
+    outline: 2px solid #333333;
     outline-offset: -4px;
 }
 img {
-    width: 23px;
-    height: 23px;
-    filter: brightness(0) invert(1);
+    position: relative;
+    z-index: 1;
+    width: 32px;
+    height: 32px;
     pointer-events: none;
     user-select: none;
+}
+@keyframes energy-orbit {
+    to {
+        transform: rotate(360deg);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    button::before {
+        animation: none;
+    }
+    button,
+    button::before {
+        transition: none;
+    }
 }

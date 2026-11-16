@@ -1,4 +1,4 @@
-const { WebContentsView, session } = require('electron');
+const { WebContentsView, session, shell } = require('electron');
 const { validUrl } = require('../../plugin-system/urls');
 const credentials = require('./credentials');
 const { LoginHelper } = require('./login-helper');
