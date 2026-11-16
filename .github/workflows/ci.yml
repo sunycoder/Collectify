@@ -28,4 +28,8 @@ jobs:
         run: npm run smoke
       - name: Linux 桌面回归检查
         if: runner.os == 'Linux'
-        run: xvfb-run -a npm run smoke
+        run: |
+          npx install-electron --no
+          sudo chown root:root node_modules/electron/dist/chrome-sandbox
+          sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
+          xvfb-run -a npm run smoke

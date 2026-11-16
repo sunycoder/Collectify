@@ -122,7 +122,7 @@ exports.run = async ({ win, registry, runtime, hostAction }) => {
         );
         assert.equal(await page("document.querySelector('#context-menu').matches(':popover-open')"), true);
         assert.ok((await page("document.querySelector('#context-menu').textContent")).includes('执行粘贴'));
-        if (process.platform === 'win32') {
+        if (['win32', 'darwin'].includes(process.platform)) {
             await page("document.querySelector('#context-menu button[aria-label=执行粘贴]').click()");
             await until(() => pasteCalls === 1);
         } else {
