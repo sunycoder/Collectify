@@ -29,7 +29,7 @@ exports.run = async ({ win, store, desktopWidget }) => {
         if (process.platform !== 'win32') return;
         const hwnd = desktopWidget.win.getNativeWindowHandle().readBigUInt64LE().toString();
         // PowerShell 不能直接读取 app.asar 内的虚拟路径，测试时写到独立临时目录。
-        const probe = path.join(require('./verification-output').directory, 'native-region-check.ps1');
+        const probe = path.join(require('../support/verification-output').directory, 'native-region-check.ps1');
         fs.writeFileSync(probe, fs.readFileSync(path.join(__dirname, 'native-region-check.ps1')));
         // 原生窗口查询可能向窗口线程发消息，不能同步阻塞 Electron 的主线程。
         const { stdout } = await execFile(
@@ -92,7 +92,10 @@ exports.run = async ({ win, store, desktopWidget }) => {
             "parseFloat(getComputedStyle(document.querySelector('.widget-task strong')||document.querySelector('h1')).fontSize)>=14"
         )
     );
-    fs.writeFileSync(path.join(require('./verification-output').directory, 'widget-corners-v13.png'), image.toPNG());
+    fs.writeFileSync(
+        path.join(require('../support/verification-output').directory, 'widget-corners-v13.png'),
+        image.toPNG()
+    );
     desktopWidget.hide();
     console.log(
         desktopWidget.systemCorners

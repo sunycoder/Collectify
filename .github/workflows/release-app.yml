@@ -46,7 +46,8 @@ jobs:
         if: matrix.platform == 'windows'
         shell: pwsh
         run: |
-          $process = Start-Process -FilePath dist/win-unpacked/Collectify.exe -ArgumentList '--smoke-test','--smoke-startup' -WindowStyle Hidden -PassThru -Wait
+          $runner = (Resolve-Path test/smoke/runner.js).Path
+          $process = Start-Process -FilePath dist/win-unpacked/Collectify.exe -ArgumentList '--smoke-test','--smoke-startup',"--smoke-runner=`"$runner`"" -WindowStyle Hidden -PassThru -Wait
           if ($process.ExitCode -ne 0) { exit 1 }
       - uses: actions/upload-artifact@v4
         with:

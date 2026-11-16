@@ -1,9 +1,9 @@
 const assert = require('node:assert/strict');
 const { dialog } = require('electron');
 const { createHash } = require('node:crypto');
-const { encodeZip } = require('./plugin-system/package');
-const { validateNote } = require('./plugins/tasks/model');
-const { CALLBACK } = require('./distribution/config');
+const { encodeZip } = require('../support/host').requireHost('./plugin-system/package');
+const { validateNote } = require('../support/host').requireHost('./plugins/tasks/model');
+const { CALLBACK } = require('../support/host').requireHost('./distribution/config');
 const sha = (bytes) => createHash('sha256').update(bytes).digest('hex');
 exports.deployment = async ({ win, distribution }) => {
     await win.webContents.executeJavaScript("shellReady.then(()=>openSettings('distribution'))");

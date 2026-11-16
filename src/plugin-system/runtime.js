@@ -15,6 +15,7 @@ const { pasteToPreviousApplication } = require('./desktop-paste');
 const { randomUUID } = require('node:crypto');
 const { captureClipboard, writeSnapshot } = require('./clipboard-formats');
 const { assetPath, pluginUrl } = require('./manifest');
+const { layoutView } = require('../window-lifecycle');
 const { tokens, validate } = require('../theme');
 const { readPluginClipboard } = require('./clipboard-access');
 const MIME = {
@@ -339,7 +340,9 @@ class PluginRuntime {
     async open(id, commandId, route, payload) {
         const plugin = this.registry.get(id, true),
             generation = ++this.generation;
-        await this.startBackground(id);
+        // 后台与前台并行加载；后台能力调用自身仍等待后台就绪，不跳过错误检查。
+        const backgroundReady = this.startBackground(id);
+        void backgroundReady.catch(() => {});
         if (this.services?.errors.has(id)) throw Error(`插件后台加载失败：${this.services.errors.get(id)}`);
         if (commandId && !plugin.commands.some((c) => c.id === commandId)) throw Error('插件命令不存在');
         this.activeId = id;
@@ -405,7 +408,9 @@ class PluginRuntime {
         }
         this.changed();
         await record.ready;
-        if (generation !== this.generation || !this.views.has(id)) return;
+        await backgroundReady;
+        if (generation !== this.generation || this.views.get(id) !== record || record.view.webContents.isDestroyed())
+            return;
         if (!record.error) record.view.webContents.send('plugin-command', { id: commandId || plugin.commands[0].id });
         if (!record.error) {
             record.route = typeof route === 'string' ? route : record.route || plugin.navigation[0]?.id || 'home';
@@ -462,9 +467,10 @@ class PluginRuntime {
         window.on('closed', () => this.popouts.delete(key));
         try {
             await window.loadURL(this.url(plugin));
+            if (window.isDestroyed()) return;
             window.webContents.send('plugin-navigate', { route: plugin.navigation[0]?.id, payload });
         } catch (error) {
-            window.destroy();
+            if (!window.isDestroyed()) window.destroy();
             throw error;
         }
     }
@@ -555,6 +561,7 @@ class PluginRuntime {
         });
         try {
             await window.loadURL(this.url({ ...plugin, entry: plugin.shortcut }));
+            if (window.isDestroyed() || this.popouts.get(key) !== record) return;
             if (!this.registry.plugins.get(plugin.id)?.enabled) {
                 window.destroy();
                 return;
@@ -599,9 +606,11 @@ class PluginRuntime {
         view.webContents.on('console-message', (event) => {
             if (event.level === 3) record.errors.push(String(event.message).slice(0, 300));
         });
-        view.webContents.on('render-process-gone', () => this.stopBackground(id));
+        view.webContents.on('render-process-gone', () => {
+            if (this.backgrounds.get(id) === record) this.stopBackground(id);
+        });
         record.ready = view.webContents.loadURL(this.url({ ...plugin, entry: plugin.background })).catch((error) => {
-            this.stopBackground(id);
+            if (this.backgrounds.get(id) === record) this.stopBackground(id);
             throw Error(`插件后台加载失败：${error.message}`);
         });
         return record.ready;
@@ -639,8 +648,7 @@ class PluginRuntime {
     layout(visible) {
         for (const [id, record] of this.views) {
             const show = !!visible && id === this.activeId && !record.loading && !record.error;
-            record.view.setVisible(show);
-            if (show) record.view.setBounds(this.bounds);
+            layoutView(record.view, show, this.bounds);
         }
     }
     close(id) {

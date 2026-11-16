@@ -3,9 +3,10 @@ const fs = require('node:fs'),
     path = require('node:path'),
     os = require('node:os'),
     assert = require('node:assert/strict');
-const { PluginRegistry } = require('../src/plugin-system/registry');
-const { PluginRuntime } = require('../src/plugin-system/runtime');
-const { PluginServices } = require('../src/plugin-system/services');
+const { PluginRegistry } = require('../../src/plugin-system/registry');
+const { PluginRuntime } = require('../../src/plugin-system/runtime');
+const { PluginServices } = require('../../src/plugin-system/services');
+const { PluginPackages, encodeZip, collectFiles } = require('../../src/plugin-system/package');
 protocol.registerSchemesAsPrivileged([
     {
         scheme: 'collectify-plugin',
@@ -20,7 +21,7 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 app.whenReady().then(async () => {
     let runtime, services, win;
     try {
-        const root = path.resolve(__dirname, '..'),
+        const root = path.resolve(__dirname, '../..'),
             fixtures = path.join(temporary, 'fixtures');
         // 被搜索的文件在真实磁盘上；ASAR 内只存插件程序，不把打包资源当成本地用户文件。
         fs.mkdirSync(fixtures, { recursive: true });
@@ -33,8 +34,18 @@ app.whenReady().then(async () => {
             dataRoot: path.join(temporary, 'data'),
             hostFile: path.join(temporary, 'host.sqlite')
         });
+        // 市场插件独立安装到隔离目录，不能依赖宿主默认携带插件。
+        const packages = new PluginPackages(registry, path.join(temporary, 'staging'));
+        const prepared = packages.prepare(
+            encodeZip(collectFiles(path.join(root, 'src/plugin-library/local-search')), { native: true })
+        );
+        try {
+            registry.install(prepared.directory);
+        } finally {
+            packages.cleanup(prepared);
+        }
         win = new BrowserWindow({ show: false, width: 1280, height: 900, webPreferences: { offscreen: true } });
-        const theme = require('../src/theme').validate({ preset: 'office' });
+        const theme = require('../../src/theme').validate({ preset: 'office' });
         runtime = new PluginRuntime({
             registry,
             getWindow: () => win,

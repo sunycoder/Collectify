@@ -18,7 +18,7 @@ async function until(fn) {
 
 exports.run = async ({ win, store, tabs, openEntry, closeTab }) => {
     const js = (script) => win.webContents.executeJavaScript(script);
-    const artifacts = require('./verification-output').directory;
+    const artifacts = require('../support/verification-output').directory;
     const errors = [];
     win.webContents.on('console-message', (event) => {
         if (event.level === 3) errors.push(event.message);

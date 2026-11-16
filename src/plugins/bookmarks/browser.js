@@ -2,6 +2,7 @@ const { WebContentsView, session, shell } = require('electron');
 const { validUrl } = require('../../plugin-system/urls');
 const credentials = require('./credentials');
 const { LoginHelper } = require('./login-helper');
+const { layoutView } = require('../../window-lifecycle');
 module.exports.create = function (context, store) {
     let active = null,
         dashboard = true,
@@ -11,7 +12,7 @@ module.exports.create = function (context, store) {
         bounds = { x: 300, y: 64, width: 800, height: 600 };
     const tabs = new Map(),
         prepared = new Set();
-    const loginHelper = new LoginHelper(context.getWindow, context.smoke);
+    const loginHelper = new LoginHelper(context.getWindow, context.smoke, () => visible && !dashboard && !overlay);
     function getEntry(id) {
         const entry = store.entries.find((e) => e.id === id);
         if (!entry) throw new Error('入口不存在');
@@ -42,17 +43,15 @@ module.exports.create = function (context, store) {
 
     function layout() {
         // 隐藏主窗口仅收起资料卡；回到收藏列表才撤销自动恢复资格。
-        loginHelper.hide(dashboard);
+        if (!visible || dashboard || overlay) loginHelper.hide(dashboard);
         for (const tab of tabs.values()) {
             const show = visible && !dashboard && !overlay && active === tab.id && !tab.error;
-            tab.view.setVisible(show);
-            if (show)
-                tab.view.setBounds({
-                    x: bounds.x,
-                    y: bounds.y + browserTop,
-                    width: bounds.width,
-                    height: Math.max(1, bounds.height - browserTop)
-                });
+            layoutView(tab.view, show, {
+                x: bounds.x,
+                y: bounds.y + browserTop,
+                width: bounds.width,
+                height: Math.max(1, bounds.height - browserTop)
+            });
         }
         if (visible && !dashboard && !overlay) loginHelper.resume(tabs.get(active)?.entry);
     }

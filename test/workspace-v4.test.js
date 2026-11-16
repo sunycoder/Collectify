@@ -24,7 +24,15 @@ test('五类资源保存重启，非网页不强制 URL；文本保持原始空�
     assert.equal(reopened.entries.find((e) => e.type === 'text').content, content);
     assert.throws(() => s.save({ type: 'file', name: '无路径' }));
     assert.throws(() => s.save({ type: 'text', name: '空白', content: '   ' }));
-    assert.throws(() => s.save({ type: 'credential', name: '账号', url: 'javascript:bad' }));
+    const account = s.save({
+        type: 'credential',
+        name: 'SVN 账号',
+        url: 'svn://svn.example.com/project-svn',
+        username: 'tester',
+        password: 'saved'
+    });
+    assert.equal(new Store(file).entries.find((e) => e.id === account.id).url, account.url);
+    assert.throws(() => s.save({ type: 'web', name: '网页', url: 'svn://svn.example.com/project-svn' }));
 });
 test('无网址资源导入不互相覆盖；原网页 ID 保持', (t) => {
     const s = new Store(fixture(t).file),

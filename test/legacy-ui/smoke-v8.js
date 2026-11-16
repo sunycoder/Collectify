@@ -58,7 +58,7 @@ exports.run = async ({ win, store }) => {
     assert.ok(await js("document.querySelector('.task-column.todo .task-column-body').scrollTop>0"));
     await js("document.querySelector('.task-column.todo .task-column-body').scrollTop=0");
     fs.writeFileSync(
-        path.join(require('./verification-output').directory, 'collectify-board.png'),
+        path.join(require('../support/verification-output').directory, 'collectify-board.png'),
         (await win.webContents.capturePage()).toPNG()
     );
     // 点击标题进入详情仍可编辑，弹层继续沿用统一组件。

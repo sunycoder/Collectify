@@ -3,8 +3,31 @@ let officeCalendar = null,
     calendarTasks = [],
     calendarFrame = 0;
 
+let calendarLibrary = null;
 function renderOfficeCalendar(tasks) {
     calendarTasks = tasks;
+    if (!window.FullCalendar) {
+        if (!calendarLibrary)
+            calendarLibrary = new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'collectify-plugin://collectify.sdk/vendor/fullcalendar.js';
+                script.onload = resolve;
+                script.onerror = () => {
+                    script.remove();
+                    reject(Error('日历组件加载失败，请重新打开日历'));
+                };
+                document.head.append(script);
+            });
+        void calendarLibrary
+            .then(() => {
+                if (!document.querySelector('#task-calendar').hidden) renderOfficeCalendar(calendarTasks);
+            })
+            .catch((error) => {
+                calendarLibrary = null;
+                toast(error.message);
+            });
+        return;
+    }
     if (!officeCalendar) {
         officeCalendar = new FullCalendar.Calendar(document.querySelector('#calendar-grid'), {
             initialView: 'timeGridWeek',

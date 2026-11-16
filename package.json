@@ -1,6 +1,6 @@
 {
   "name": "collectify",
-  "version": "5.7.6",
+  "version": "5.7.7",
   "description": "Collectify · 可扩展的个人插件工作台",
   "main": "src/main.js",
   "author": "Collectify",
@@ -25,7 +25,9 @@
     "predist": "npm run build:assets",
     "predist:win": "npm run build:assets",
     "predist:mac": "npm run build:assets",
-    "predist:linux": "npm run build:assets"
+    "predist:linux": "npm run build:assets",
+    "smoke:local-search": "electron test/smoke/local-search.cjs",
+    "test:fixtures": "node test/tools/create-local-search-fixtures.cjs"
   },
   "devDependencies": {
     "@floating-ui/dom": "1.7.4",
@@ -55,7 +57,10 @@
       "assets/**/*",
       "package.json",
       "config/**/*",
-      "!config/local.json"
+      "!config/local.json",
+      "!**/smoke*.js",
+      "!**/*.test.js",
+      "!**/verification-output.js"
     ],
     "win": {
       "target": [

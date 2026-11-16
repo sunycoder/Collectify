@@ -27,12 +27,22 @@ const { Distribution } = require('./distribution/manager');
 const { CredentialStore } = require('./distribution/credentials');
 const { webUrl } = require('./distribution/config');
 const Theme = require('./theme');
-const { LocalMcpService, z } = require('./vendor/mcp-service.cjs');
+const { LazyMcpService } = require('./lazy-mcp-service');
 const { copyText } = require('./clipboard-service');
-const { revealWindow, stayResident, bindTray } = require('./window-lifecycle');
+const { revealWindow, stayResident, bindTray, bindStableLayout } = require('./window-lifecycle');
 const defaults = require('./app-defaults');
-const revealMain = () =>
-    revealWindow(() => win, createWindow).catch((error) => dialog.showErrorBox('无法打开 Collectify', error.message));
+const loginItem = require('./login-item').createLoginItem(app);
+let bootReady = false,
+    revealAfterBoot = false;
+const revealMain = async () => {
+    if (!bootReady) {
+        revealAfterBoot = true;
+        return;
+    }
+    return revealWindow(() => win, createWindow).catch((error) =>
+        dialog.showErrorBox('无法打开 Collectify', error.message)
+    );
+};
 protocol.registerSchemesAsPrivileged([
     {
         scheme: 'collectify-plugin',
@@ -43,6 +53,13 @@ app.setPath('userData', path.join(app.getPath('appData'), 'Collectify'));
 app.setPath('sessionData', app.getPath('userData'));
 app.setName('Collectify');
 const smoke = process.argv.includes('--smoke-test');
+const startupMarks = {};
+function startupMark(name) {
+    if (startupMarks[name] !== undefined) return;
+    startupMarks[name] = Math.round(process.uptime() * 1000);
+    if (process.argv.includes('--startup-metrics')) console.log('STARTUP', name, startupMarks[name] + 'ms');
+}
+startupMark('main-imports-ready');
 if (smoke) {
     app.disableHardwareAcceleration();
     app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
@@ -66,6 +83,7 @@ let win,
     distribution,
     pluginOperation = false,
     overlay = false,
+    fullscreenTransition = false,
     quitting = false,
     importDraft;
 let pluginTransfer = null;
@@ -74,28 +92,25 @@ function sendPluginTransfer(value) {
 }
 const rendererUrl = pathToFileURL(path.join(__dirname, 'index.html')).href;
 function settings() {
+    const saved = registry.readSettings(defaults.settings);
     return {
-        theme: Theme.validate(registry.getSetting('theme') || defaults.settings.theme),
-        keepInTray: registry.getSetting('keepInTray', defaults.settings.keepInTray) === true,
-        navigationCollapsed: registry.getSetting('navigationCollapsed', defaults.settings.navigationCollapsed) === true,
-        browserOpenMode:
-            registry.getSetting('browserOpenMode', defaults.settings.browserOpenMode) === 'external'
-                ? 'external'
-                : 'internal'
+        theme: Theme.validate(saved.theme || defaults.settings.theme),
+        keepInTray: saved.keepInTray === true,
+        navigationCollapsed: saved.navigationCollapsed === true,
+        browserOpenMode: saved.browserOpenMode === 'external' ? 'external' : 'internal'
     };
 }
 function setSettings(input, validateOnly = false) {
     if (!input || typeof input !== 'object') throw Error('工作台设置不正确');
+    const previous = settings();
     const clean = {
-        theme: Theme.validate(input.theme || settings().theme),
-        keepInTray: input.keepInTray === undefined ? settings().keepInTray : input.keepInTray === true,
+        theme: Theme.validate(input.theme || previous.theme),
+        keepInTray: input.keepInTray === undefined ? previous.keepInTray : input.keepInTray === true,
         navigationCollapsed:
-            input.navigationCollapsed === undefined
-                ? settings().navigationCollapsed
-                : input.navigationCollapsed === true,
+            input.navigationCollapsed === undefined ? previous.navigationCollapsed : input.navigationCollapsed === true,
         browserOpenMode:
             input.browserOpenMode === undefined
-                ? settings().browserOpenMode
+                ? previous.browserOpenMode
                 : input.browserOpenMode === 'external'
                   ? 'external'
                   : 'internal'
@@ -134,8 +149,14 @@ function catalog() {
         settings: settings()
     };
 }
+let publishPending = false;
 function publish() {
-    if (win && !win.isDestroyed()) win.webContents.send('shell-state', catalog());
+    if (publishPending || !win || win.isDestroyed()) return;
+    publishPending = true;
+    setImmediate(() => {
+        publishPending = false;
+        if (win && !win.isDestroyed()) win.webContents.send('shell-state', catalog());
+    });
 }
 async function installPrepared(prepared, sourceLabel, signal) {
     const { manifest } = prepared,
@@ -341,7 +362,11 @@ async function pluginManagement(action, payload) {
 function layout() {
     if (!win || win.isDestroyed()) return;
     runtime.layout(!overlay);
-    services.layout(runtime.bounds, runtime.activeId, overlay || !win.isVisible() || win.isMinimized());
+    services.layout(
+        runtime.bounds,
+        runtime.activeId,
+        overlay || fullscreenTransition || !win.isVisible() || win.isMinimized()
+    );
 }
 function pluginRuntimeStatus(id) {
     const plugin = registry.get(id),
@@ -369,6 +394,7 @@ async function openPlugin(id, route, payload) {
     registry.get(id, true);
     registry.setSetting('lastPlugin', id);
     await runtime.open(id, undefined, route, payload);
+    startupMark('first-plugin-ready');
     layout();
     publish();
 }
@@ -435,6 +461,7 @@ async function pluginEnabled(id, enabled) {
     publish();
 }
 async function hostAction(action, payload) {
+    if (action === 'login-item-set') return loginItem.set(payload);
     if (action === 'plugin-download-status') return pluginTransfer?.status || null;
     if (action === 'plugin-download-cancel') {
         pluginTransfer?.controller.abort(Error('已取消下载'));
@@ -559,7 +586,8 @@ async function hostAction(action, payload) {
                 directory: app.getPath('userData'),
                 file: registry.hostFile,
                 version: app.getVersion(),
-                mcp: mcp.status()
+                mcp: mcp.status(),
+                loginItem: loginItem.status()
             };
         case 'open-data-directory': {
             const error = await shell.openPath(app.getPath('userData'));
@@ -684,7 +712,10 @@ async function createWindow() {
         win.webContents.on('console-message', (event) => {
             if (event.level === 3) console.error('Shell renderer:', event.message);
         });
-    win.on('resize', layout);
+    fullscreenTransition = false;
+    bindStableLayout(win, layout, (value) => {
+        fullscreenTransition = value;
+    });
     win.on('hide', () => services.layout(runtime.bounds, runtime.activeId, true));
     win.on('minimize', () => services.layout(runtime.bounds, runtime.activeId, true));
     win.on('show', layout);
@@ -710,6 +741,19 @@ async function createWindow() {
         runtime.destroy();
         win = null;
     });
+    // 首个插件与宿主 HTML 并行加载，避免宿主完成后再串行创建插件进程。
+    if (!runtime.activeId) {
+        const enabled = registry.list().filter((plugin) => plugin.enabled);
+        const initial = enabled.find((plugin) => plugin.id === registry.getSetting('lastPlugin')) || enabled[0];
+        if (initial) {
+            void runtime
+                .open(initial.id)
+                .then(() => startupMark('first-plugin-ready'))
+                .catch((error) => {
+                    console.error('首个插件预加载失败：', error.message);
+                });
+        }
+    }
     await win.loadFile(path.join(__dirname, 'index.html'));
     publish();
 }
@@ -722,12 +766,24 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
     void revealMain();
 });
-app.on('before-quit', () => {
+let cleanupFinished = false,
+    cleanupTask;
+app.on('before-quit', (event) => {
+    if (cleanupFinished) return;
+    event.preventDefault();
+    if (cleanupTask) return;
     quitting = true;
     distribution?.dispose();
     runtime?.destroy();
-    void services?.dispose();
-    void mcp?.stop(false);
+    cleanupTask = Promise.allSettled([services?.dispose(), mcp?.stop(false)])
+        .then((results) => {
+            for (const result of results)
+                if (result.status === 'rejected') console.error('退出清理失败：', result.reason);
+        })
+        .finally(() => {
+            cleanupFinished = true;
+            app.quit();
+        });
 });
 app.whenReady()
     .then(async () => {
@@ -739,6 +795,7 @@ app.whenReady()
             hostFile: path.join(dataDirectory, 'host.sqlite')
         });
         packages = new PluginPackages(registry, path.join(dataDirectory, 'plugin-staging'));
+        startupMark('registry-ready');
         if (registry.getSetting('personalSettingKeys') === null) {
             const existing =
                 registry.getSetting('theme') !== null || fs.existsSync(path.join(dataDirectory, 'collectify.sqlite'));
@@ -799,6 +856,7 @@ app.whenReady()
             publish();
         });
         await services.load({ activate: false });
+        startupMark('services-ready');
         backup = new WorkspaceBackup(registry, settings, setSettings);
         backup.recover();
         const sourceCredentials = new CredentialStore(path.join(dataDirectory, 'source-credentials.enc'), safeStorage);
@@ -844,7 +902,7 @@ app.whenReady()
                 return { opened: open, runtime: pluginRuntimeStatus(id) };
             }
         });
-        mcp = new LocalMcpService(registry, publish, () => [
+        mcp = new LazyMcpService(registry, publish, (z) => [
             {
                 name: 'workspace_summary',
                 description: '查询已启用插件的概况',
@@ -862,7 +920,15 @@ app.whenReady()
             ...development.tools(z)
         ]);
         await createWindow();
+        if (quitting) return;
+        bootReady = true;
+        if (revealAfterBoot) {
+            revealAfterBoot = false;
+            void revealMain();
+        }
+        startupMark('shell-ready');
         await services.activateEnabled();
+        if (quitting) return;
         await runtime.startBackgrounds();
         if (!smoke) {
             distribution.start();
@@ -880,59 +946,33 @@ app.whenReady()
         }
         if (smoke) {
             try {
-                const verification = require('./smoke-shell'),
-                    context = {
-                        win,
-                        registry,
-                        runtime,
-                        services,
-                        backup,
-                        mcp,
-                        development,
-                        packages,
-                        pluginCatalog,
-                        distribution,
-                        hostAction,
-                        withTestTray: async (action) => {
-                            const previous = tray;
-                            let menu;
-                            tray = {
-                                setContextMenu(value) {
-                                    menu = value;
-                                }
-                            };
-                            updateTray();
-                            try {
-                                await action(menu);
-                            } finally {
-                                tray = previous;
-                            }
-                        }
-                    };
-                if (process.argv.includes('--smoke-market')) await require('./smoke-market').run(context);
-                else if (process.argv.includes('--smoke-deployment'))
-                    await require('./smoke-distribution').deployment(context);
-                else if (process.argv.includes('--smoke-distribution'))
-                    await require('./smoke-distribution').run(context);
-                else if (process.argv.includes('--smoke-clipboard')) await require('./smoke-clipboard').run(context);
-                else if (process.argv.includes('--smoke-official')) await require('./smoke-official').run(context);
-                else if (process.argv.includes('--smoke-tools')) await require('./smoke-tools').run(context);
-                else if (process.argv.includes('--smoke-navigation')) await require('./smoke-navigation').run(context);
-                else if (process.argv.includes('--smoke-startup')) {
-                    await verification.startup(context);
-                    await require('./smoke-packages').run(context);
-                    await require('./smoke-navigation').run(context);
-                    await require('./smoke-tools').run(context);
-                    await require('./smoke-distribution').run(context);
-                } else {
-                    await verification.run(context);
-                    await require('./smoke-development').run(context);
-                    await require('./smoke-packages').run(context);
-                    await require('./smoke-navigation').run(context);
-                    await require('./smoke-tools').run(context);
-                    await require('./smoke-clipboard').run(context);
-                    await require('./smoke-distribution').run(context);
-                }
+                const runnerArgument = process.argv.find((value) => value.startsWith('--smoke-runner='));
+                // 验证代码由源码检出目录提供，不随正式安装包分发。
+                if (app.isPackaged && !runnerArgument) throw Error('打包版验证需要指定 --smoke-runner 的绝对路径');
+                const runnerFile = runnerArgument
+                    ? path.resolve(runnerArgument.slice('--smoke-runner='.length))
+                    : path.join(__dirname, '../test/smoke/runner.js');
+                const completed = await require(runnerFile).run({
+                    win,
+                    registry,
+                    runtime,
+                    services,
+                    backup,
+                    mcp,
+                    development,
+                    packages,
+                    pluginCatalog,
+                    distribution,
+                    hostAction,
+                    trayAccess: {
+                        get: () => tray,
+                        set: (value) => {
+                            tray = value;
+                        },
+                        update: updateTray
+                    }
+                });
+                if (completed === false) return;
                 await services.dispose();
                 app.exit(0);
             } catch (error) {

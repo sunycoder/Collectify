@@ -2,8 +2,8 @@ const fs = require('node:fs'),
     path = require('node:path'),
     zlib = require('node:zlib'),
     { execFileSync } = require('node:child_process');
-const { zipSync } = require('../build-tools/local-search-deps/node_modules/fflate');
-const output = path.resolve(__dirname, '../test/fixtures/local-search');
+const { zipSync } = require('../../build-tools/local-search-deps/node_modules/fflate');
+const output = path.resolve(__dirname, '../fixtures/local-search');
 fs.mkdirSync(output, { recursive: true });
 const zip = (files) =>
     Buffer.from(
@@ -42,7 +42,7 @@ fs.writeFileSync(
             '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>文档预览测试</w:t></w:r></w:p></w:body></w:document>'
     })
 );
-const XLSX = require('../build-tools/sheetjs/package/xlsx.js'),
+const XLSX = require('../../build-tools/sheetjs/package/xlsx.js'),
     book = XLSX.utils.book_new();
 XLSX.utils.book_append_sheet(
     book,
@@ -116,7 +116,7 @@ pdf +=
     `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
 fs.writeFileSync(path.join(output, 'sample.pdf'), pdf);
 fs.writeFileSync(path.join(output, 'sample.ai'), pdf);
-const seven = path.resolve(__dirname, '../src/plugin-library/local-search/vendor/native/7z.exe');
+const seven = path.resolve(__dirname, '../../src/plugin-library/local-search/vendor/native/7z.exe');
 if (process.platform === 'win32')
     execFileSync(seven, ['a', path.join(output, 'sample.7z'), path.join(output, 'readme.txt')], {
         windowsHide: true,

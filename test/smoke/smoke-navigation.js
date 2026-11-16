@@ -65,7 +65,7 @@ exports.run = async ({ win, registry, runtime, services, hostAction, withTestTra
             "selectSettingsPanel('appearance');document.querySelector('#theme-accent').value='#ff3300';document.querySelector('#theme-accent').dispatchEvent(new Event('input'));document.querySelector('#cancel-theme').click()"
         );
         assert.equal(await host("document.documentElement.style.getPropertyValue('--accent')"), savedAccent);
-        const screenshotDirectory = require('./verification-output').directory;
+        const screenshotDirectory = require('../support/verification-output').directory;
         await host("selectSettingsPanel('general')");
         await delay(100);
         fs.writeFileSync(
@@ -77,6 +77,12 @@ exports.run = async ({ win, registry, runtime, services, hostAction, withTestTra
         const beforeMenu = await host("document.querySelector('.plugin-manager-row').getBoundingClientRect().height");
         await host("document.querySelector('.plugin-more').click()");
         assert.equal(await host("document.querySelector('.plugin-action-menu').matches(':popover-open')"), true);
+        await host('renderShell(state)');
+        assert.equal(
+            await host("document.querySelector('.plugin-action-menu').matches(':popover-open')"),
+            true,
+            '无关状态刷新不能销毁已打开的插件菜单'
+        );
         assert.equal(
             await host("document.querySelector('.plugin-manager-row').getBoundingClientRect().height"),
             beforeMenu,
@@ -208,7 +214,7 @@ exports.run = async ({ win, registry, runtime, services, hostAction, withTestTra
         assert.ok(helper.win && !helper.win.isDestroyed());
         win.hide();
         assert.equal(helper.win.isVisible(), false, '主窗口隐藏时资料卡必须一起隐藏');
-        const { revealWindow } = require('./window-lifecycle');
+        const { revealWindow } = require('../support/host').requireHost('./window-lifecycle');
         await revealWindow(
             () => win,
             async () => {
@@ -238,7 +244,7 @@ exports.run = async ({ win, registry, runtime, services, hostAction, withTestTra
     );
     await until(() => runtime.bounds.x === 300);
     assert.equal(registry.getSetting('navigationCollapsed'), false);
-    const output = require('./verification-output').directory;
+    const output = require('../support/verification-output').directory;
     await until(() => runtime.active() && !runtime.active().loading);
     await hostAction('plugin-open', { id: 'collectify.json' });
     await delay(120);

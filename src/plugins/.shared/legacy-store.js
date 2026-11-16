@@ -25,7 +25,7 @@ function text(input, key, max, required = false) {
 function validateEntry(input) {
     const type = ['web', 'file', 'folder', 'text', 'credential'].includes(input?.type) ? input.type : 'web';
     let parsed;
-    if (type === 'web' || (type === 'credential' && input.url)) {
+    if (type === 'web') {
         try {
             parsed = new URL(text(input, 'url', 2048, type === 'web'));
         } catch {
@@ -45,7 +45,8 @@ function validateEntry(input) {
         localPath: ['file', 'folder'].includes(type) ? localPath : '',
         content: type === 'text' ? content : '',
         name: text(input, 'name', 80, true),
-        url: parsed?.href || '',
+        // 账号资料的地址只作参考和复制，不交给网页加载器或系统执行。
+        url: parsed?.href || (type === 'credential' ? text(input, 'url', 2048) : ''),
         categoryId: text(input, 'categoryId', 80) || 'inbox',
         environment: text(input, 'environment', 60),
         note: text(input, 'note', 5000),
@@ -352,7 +353,9 @@ class Store {
                         e.type === entry.type &&
                         (entry.type === 'web'
                             ? e.url === entry.url
-                            : e.name === entry.name && e.localPath === entry.localPath && e.content === entry.content)
+                            : entry.type === 'credential'
+                              ? e.name === entry.name && e.url === entry.url && e.username === entry.username
+                              : e.name === entry.name && e.localPath === entry.localPath && e.content === entry.content)
                 );
                 return {
                     ...entry,
@@ -393,7 +396,9 @@ class Store {
                     e.type === entry.type &&
                     (entry.type === 'web'
                         ? e.url === entry.url
-                        : e.name === entry.name && e.localPath === entry.localPath && e.content === entry.content)
+                        : entry.type === 'credential'
+                          ? e.name === entry.name && e.url === entry.url && e.username === entry.username
+                          : e.name === entry.name && e.localPath === entry.localPath && e.content === entry.content)
             );
             if (oldIndex >= 0) {
                 if (options.override)

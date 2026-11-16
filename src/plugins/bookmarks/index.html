@@ -133,7 +133,7 @@
                         <option value="credential">账号资料</option>
                     </select></label
                 ><label id="resource-url-label"
-                    >网址 <em>*</em
+                    ><span id="resource-address-title">网页地址 *</span
                     ><input
                         name="url"
                         type="url"
@@ -269,6 +269,15 @@
             </div>
             <h2>登录资料</h2>
             <p id="credential-name" class="dialog-intro"></p>
+            <label id="credential-reference-row" hidden
+                >关联地址<input id="credential-reference" readonly /><button
+                    id="copy-credential-reference"
+                    class="subtle"
+                    type="button"
+                >
+                    复制关联地址
+                </button></label
+            >
             <label>账号<input id="credential-username" readonly /></label
             ><label>密码<input id="credential-password" type="password" readonly placeholder="未保存密码" /></label>
             <div class="credential-actions">

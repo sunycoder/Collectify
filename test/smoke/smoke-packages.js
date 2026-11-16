@@ -2,8 +2,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs'),
     path = require('node:path'),
     os = require('node:os');
-const { PluginRegistry } = require('./plugin-system/registry');
-const { encodeZip, sha256 } = require('./plugin-system/package');
+const { PluginRegistry } = require('../support/host').requireHost('./plugin-system/registry');
+const { encodeZip, sha256 } = require('../support/host').requireHost('./plugin-system/package');
 const { dialog } = require('electron');
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -138,7 +138,7 @@ exports.run = async ({ win, registry, runtime, services, pluginCatalog, hostActi
             await host("document.querySelectorAll('#plugin-manager .plugin-manager-row').length"),
             registry.list().length
         );
-        const verification = require('./verification-output').directory;
+        const verification = require('../support/verification-output').directory;
         await host("document.querySelector('[data-plugin-tab=installed]').click()");
         await delay(250);
         fs.writeFileSync(path.join(verification, 'plugin-manager.png'), (await win.webContents.capturePage()).toPNG());

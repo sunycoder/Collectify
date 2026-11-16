@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs'),
     path = require('node:path');
 const { ClipboardItem, nativeImage } = require('electron');
-const { encodeZip, collectFiles, PluginPackages } = require('./plugin-system/package');
+const { encodeZip, collectFiles, PluginPackages } = require('../support/host').requireHost('./plugin-system/package');
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 exports.run = async ({ win, registry, runtime, hostAction }) => {
     const original = runtime.clipboard,
@@ -44,7 +44,15 @@ exports.run = async ({ win, registry, runtime, hostAction }) => {
     try {
         await win.webContents.executeJavaScript('shellReady');
         const prepared = packages.prepare(
-            encodeZip(collectFiles(path.join(__dirname, 'plugin-library', 'clipboard-history')))
+            encodeZip(
+                collectFiles(
+                    path.dirname(
+                        require('../support/host').requireHost.resolve(
+                            './plugin-library/clipboard-history/manifest.json'
+                        )
+                    )
+                )
+            )
         );
         registry.install(prepared.directory);
         packages.cleanup(prepared);
@@ -185,7 +193,7 @@ exports.run = async ({ win, registry, runtime, hostAction }) => {
         assert.equal(await page("clipScrollBefore===document.querySelector('#history').scrollTop"), true);
         await page('copyObserver.disconnect();void 0;');
         fs.writeFileSync(
-            path.join(require('./verification-output').directory, 'clipboard-manager.png'),
+            path.join(require('../support/verification-output').directory, 'clipboard-manager.png'),
             (await runtime.views.get(id).view.webContents.capturePage()).toPNG()
         );
         // 采集中删除当前剪贴板对应的图片，不能在下一次轮询时复活。

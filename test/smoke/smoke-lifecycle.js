@@ -1,0 +1,20 @@
+const assert = require('node:assert/strict');
+exports.run = async ({ win, registry, runtime, services }) => {
+    await win.webContents.executeJavaScript('shellReady');
+    const pending = runtime.open('collectify.tasks');
+    const newest = runtime.open('collectify.notes');
+    await Promise.all([pending, newest]);
+    assert.equal(runtime.activeId, 'collectify.notes', '较早的插件加载不能夺回当前插件');
+    const widget = services.providers.get('collectify.tasks').widget;
+    await Promise.all([widget.open('floating'), widget.open('desktop')]);
+    assert.equal(widget.store.data.settings.widget.mode, 'desktop');
+    assert.equal(widget.win.isDestroyed(), false);
+    const opening = widget.open('floating');
+    widget.hide();
+    await opening;
+    assert.equal(widget.win.isVisible(), false, '加载中隐藏后不能被旧请求重新显示');
+    widget.destroy();
+    const saved = registry.readSettings({ keepInTray: false, browserOpenMode: 'internal' });
+    assert.equal(typeof saved.keepInTray, 'boolean');
+    console.log('LIFECYCLE PASS：快速插件切换、并发桌面组件打开、加载中隐藏、批量设置读取通过。');
+};

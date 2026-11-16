@@ -38,6 +38,7 @@ test('新包未完成不清理，完成后仅清理 dist 顶层旧包', async (t
 test('辅助页加载失败保持隐藏，准备完成才恢复显示资格', async () => {
     const calls = [],
         fake = {
+            isDestroyed: () => false,
             setOpacity: (v) => calls.push(['opacity', v]),
             hide: () => calls.push(['hide']),
             loadFile: async () => {
@@ -54,4 +55,19 @@ test('辅助页加载失败保持隐藏，准备完成才恢复显示资格', as
         ['opacity', 0],
         ['opacity', 1]
     ]);
+});
+test('辅助窗口在加载期间被关闭，不再操作失效原生窗口', async () => {
+    let destroyed = false,
+        opacity = 0;
+    await loadAuxiliary(
+        {
+            isDestroyed: () => destroyed,
+            setOpacity: () => opacity++,
+            loadFile: async () => {
+                destroyed = true;
+            }
+        },
+        'closed'
+    );
+    assert.equal(opacity, 1);
 });

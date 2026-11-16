@@ -225,7 +225,26 @@ function renderShell(next) {
     renderPluginManager();
     requestAnimationFrame(reportBounds);
 }
+let pluginManagerSignature = '';
 function renderPluginManager() {
+    const signature = JSON.stringify({
+        plugins: state.plugins.map(({ id, name, description, version, enabled, builtin, distributable }) => ({
+            id,
+            name,
+            description,
+            version,
+            enabled,
+            builtin,
+            distributable
+        })),
+        restorable: state.restorableDefaults,
+        diagnostics: state.diagnostics
+    });
+    if (signature === pluginManagerSignature) {
+        renderPluginCatalog();
+        return;
+    }
+    pluginManagerSignature = signature;
     $('#plugin-manager').replaceChildren();
     for (const plugin of state.plugins) {
         const row = el('div', 'plugin-manager-row'),
@@ -471,6 +490,9 @@ async function openSettings(panel = 'general') {
         $('#data-file').textContent = info.file;
         $('#data-directory').textContent = info.directory;
         $('#keep-in-tray').checked = state.settings.keepInTray;
+        $('#open-at-login').checked = info.loginItem.enabled;
+        $('#open-at-login').disabled = !info.loginItem.supported;
+        $('#login-item-help').textContent = info.loginItem.message;
         $('#browser-open-mode').value = state.settings.browserOpenMode || 'internal';
         $('#mcp-port').value = info.mcp.port;
         renderMcpStatus(info.mcp);
@@ -533,6 +555,20 @@ $('#download-app').onclick = task(async () => {
 $('#keep-in-tray').onchange = task(() =>
     call('settings', { ...state.settings, keepInTray: $('#keep-in-tray').checked })
 );
+$('#open-at-login').onchange = task(async () => {
+    const input = $('#open-at-login');
+    const previous = !input.checked;
+    input.disabled = true;
+    try {
+        const next = await call('login-item-set', input.checked);
+        input.checked = next.enabled;
+    } catch (error) {
+        input.checked = previous;
+        throw error;
+    } finally {
+        input.disabled = false;
+    }
+});
 function renderMcpStatus(status) {
     $('#mcp-status').textContent = status.enabled ? '已开启 · ' + status.url : '未开启';
     $('#mcp-start').disabled = status.enabled;
@@ -624,9 +660,9 @@ document.addEventListener(
             try {
                 await refresh();
                 const enabled = state.plugins.filter((p) => p.enabled);
-                if (!state.active && enabled.length)
+                if ((!state.active || state.active.loading) && enabled.length)
                     await call('plugin-open', {
-                        id: enabled.find((p) => p.id === state.lastPlugin)?.id || enabled[0].id
+                        id: state.active?.id || enabled.find((p) => p.id === state.lastPlugin)?.id || enabled[0].id
                     });
             } finally {
                 resolveShellReady();

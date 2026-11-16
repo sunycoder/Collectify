@@ -213,10 +213,10 @@ function card(entry) {
         entry.localPath ||
         entry.username ||
         (entry.type === 'text' ? entry.content.replace(/\s+/g, ' ').slice(0, 70) : '');
-    if (entry.url) {
+    if (entry.url && (entry.type === 'web' || !entry.type)) {
         const display = new URL(entry.url);
         displayText = display.host + (display.pathname === '/' ? '' : display.pathname) + display.search + display.hash;
-    }
+    } else if (entry.url) displayText = entry.url;
     address.append(
         icon(
             {
@@ -255,7 +255,13 @@ function card(entry) {
             `icon-button${entry.favorite ? ' pinned' : ''}`
         ),
         button(
-            entry.type === 'text' ? '复制内容' : ['file', 'folder'].includes(entry.type) ? '复制路径' : '复制网址',
+            entry.type === 'text'
+                ? '复制内容'
+                : ['file', 'folder'].includes(entry.type)
+                  ? '复制路径'
+                  : entry.type === 'credential'
+                    ? '复制关联地址'
+                    : '复制网址',
             'copy',
             async () => {
                 await call('copy', entry.id);
@@ -385,7 +391,7 @@ function entryMenu(anchor, entry) {
                 })
         }
     ];
-    if (entry.type === 'web' || entry.type === 'credential')
+    if (entry.type === 'web' || entry.type === 'credential' || entry.username || entry.hasPassword)
         items.splice(1, 0, {
             label: '查看登录资料',
             icon: 'lock',
@@ -533,6 +539,9 @@ function updateResourceFields() {
         local = ['file', 'folder'].includes(type);
     $('#resource-url-label').hidden = !web && !account;
     form.elements.url.required = web;
+    form.elements.url.type = web ? 'url' : 'text';
+    form.elements.url.placeholder = web ? 'https:// 或 http://' : '可选：svn://、ssh://、服务器地址或其他关联信息';
+    $('#resource-address-title').textContent = web ? '网页地址 *' : '关联地址（可选，仅保存和复制）';
     form.elements.url.disabled = !web && !account;
     $('#resource-path-label').hidden = !local;
     form.elements.localPath.required = local;
@@ -540,7 +549,8 @@ function updateResourceFields() {
     $('#resource-content-label').hidden = type !== 'text';
     form.elements.content.required = type === 'text';
     form.elements.content.disabled = type !== 'text';
-    $('.credential-editor').hidden = !web && !account;
+    $('.credential-editor').hidden = false;
+    form.elements.authMode.closest('label').hidden = !web;
     if (account) $('#entry-details').open = true;
 }
 
@@ -753,6 +763,8 @@ async function showCredentials(entry) {
     await call('overlay', true);
     credentialEntry = entry;
     $('#credential-name').textContent = entry.name;
+    $('#credential-reference-row').hidden = !entry.url;
+    $('#credential-reference').value = entry.url || '';
     $('#credential-username').value = entry.username || '';
     $('#credential-password').type = 'text';
     $('#credential-password').value = entry.password || (entry.hasPassword ? await call('password', entry.id) : '');
@@ -768,6 +780,10 @@ $('#credential-dialog').addEventListener('close', () => {
 $('#copy-username').onclick = task(async () => {
     await call('copy-credential', { id: credentialEntry.id, field: 'username' });
     toast('账号已复制');
+});
+$('#copy-credential-reference').onclick = task(async () => {
+    await call('copy', credentialEntry.id);
+    toast('关联地址已复制');
 });
 $('#copy-password').onclick = task(async () => {
     await call('copy-credential', { id: credentialEntry.id, field: 'password' });

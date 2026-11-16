@@ -20,8 +20,9 @@ build:windows:
     - node scripts/configure-source.cjs --ci
     - npm.cmd run dist:win -- --x64 --publish never
     - node scripts/release-files.cjs verify
-    - '& dist/win-unpacked/Collectify.exe --smoke-test --smoke-startup'
-    - 'if ($LASTEXITCODE -ne 0) { exit 1 }'
+    - '$runner = (Resolve-Path test/smoke/runner.js).Path'
+    - '$process = Start-Process -FilePath dist/win-unpacked/Collectify.exe -ArgumentList "--smoke-test", "--smoke-startup", "--smoke-runner=`"$runner`"" -WindowStyle Hidden -PassThru -Wait'
+    - 'if ($process.ExitCode -ne 0) { exit 1 }'
   artifacts:
     paths: [dist/Collectify-*.exe]
     expire_in: 7 days

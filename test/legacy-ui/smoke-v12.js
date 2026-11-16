@@ -104,7 +104,7 @@ exports.run = async ({ win, store, desktopWidget }) => {
     assert.equal(paint.header, 'rgba(0, 0, 0, 0)');
     assert.equal(paint.section, 'rgba(0, 0, 0, 0)');
     assert.notEqual(paint.body, 'rgba(0, 0, 0, 0)');
-    const directory = require('./verification-output').directory;
+    const directory = require('../support/verification-output').directory;
     desktopWidget.win.setBackgroundColor('#00000000');
     await wjs("render({...data,material:'acrylic'})");
     await delay(350);

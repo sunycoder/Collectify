@@ -18,7 +18,7 @@ exports.run = async ({ win, store, desktopWidget }) => {
                 console.error('V5 step:', code);
                 throw e;
             }),
-        artifacts = require('./verification-output').directory;
+        artifacts = require('../support/verification-output').directory;
     const errors = [];
     win.webContents.on('console-message', (event) => {
         if (event.level === 3) errors.push(event.message);

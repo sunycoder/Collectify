@@ -3,6 +3,7 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { loadAuxiliary } = require('../../auxiliary-window');
 const { applyWidgetMaterial, roundedWindowShape, nativeMaterial } = require('./widget-material');
+const { visibleBounds } = require('../../window-lifecycle');
 
 class DesktopWidget {
     constructor(store, onChange, openMain, smoke = false) {
@@ -11,6 +12,7 @@ class DesktopWidget {
         this.openMain = openMain;
         this.smoke = smoke;
         this.win = null;
+        this.generation = 0;
         // Windows 11 的系统背板必须交给 DWM 合成；透明分层窗口与 HRGN 叠加会留下矩形背板。
         this.systemCorners =
             process.platform === 'win32' &&
@@ -106,12 +108,13 @@ class DesktopWidget {
     }
 
     async open(mode = 'floating') {
+        const generation = ++this.generation;
         this.persist({ mode, visible: true });
         if (!this.win) {
             const available = screen.getPrimaryDisplay().workArea;
             const saved = this.store.data.settings.widget.bounds;
             // 显示器断开后把窗口放回可见屏幕，保留大小。
-            const bounds =
+            const desired =
                 saved &&
                 screen
                     .getAllDisplays()
@@ -124,8 +127,10 @@ class DesktopWidget {
                     )
                     ? saved
                     : { x: available.x + available.width - 385, y: available.y + 70, width: 350, height: 520 };
+            const bounds = visibleBounds(desired, screen.getDisplayMatching(desired).workArea);
             this.win = new BrowserWindow({
                 ...bounds,
+                fullscreenable: false,
                 minWidth: 300,
                 minHeight: 300,
                 frame: false,
@@ -167,12 +172,20 @@ class DesktopWidget {
             });
             // 首次 state 请求发出前就设置材质，避免旧的实色状态覆盖后来的玻璃更新。
             this.updateMaterial();
-            await loadAuxiliary(this.win, path.join(__dirname, 'widget.html'));
+            const window = this.win;
+            this.loading = loadAuxiliary(window, path.join(__dirname, 'widget.html'));
         }
+        try {
+            await this.loading;
+        } catch (error) {
+            if (generation === this.generation && this.win && !this.win.isDestroyed()) this.win.destroy();
+            throw error;
+        }
+        if (generation !== this.generation || !this.win || this.win.isDestroyed()) return;
         this.win.setSkipTaskbar(mode === 'floating');
         this.materialKey = null;
         this.shapeKey = null;
-        if (!this.smoke) this.win.showInactive();
+        if (!this.smoke && !this.win.isVisible()) this.win.showInactive();
         // Windows 修改任务栏样式可能重建 HWND；最后再设置置顶，避免样式更新撤销置顶。
         this.win.setAlwaysOnTop(mode === 'floating', 'floating');
         this.update();
@@ -180,12 +193,14 @@ class DesktopWidget {
     }
 
     hide() {
+        this.generation++;
         if (this.win) this.win.hide();
         this.persist({ visible: false });
         this.onChange();
     }
 
     destroy() {
+        this.generation++;
         if (this.win) this.win.destroy();
     }
     dispose() {

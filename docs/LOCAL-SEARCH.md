@@ -51,7 +51,7 @@ macOS/Linux 不包含 Everything 实现，使用文件夹搜索；本次实测�
 ```powershell
 node --test test/local-search.test.js
 node scripts/check-local-search-native.cjs
-.\node_modules\electron\dist\electron.exe scripts/smoke-local-search.cjs
+.\node_modules\electron\dist\electron.exe test/smoke/local-search.cjs
 ```
 
 Everything 原生检查使用独立实例和人工生成的 EFU 文件列表，不扫描用户真实全盘。Electron 检查使用 `test/fixtures/local-search`，验证实际表格、正文、图像、PDF、音频和压缩目录预览。RAR、所有媒体编码和其他平台没有逐一实机覆盖。

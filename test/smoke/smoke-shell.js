@@ -261,7 +261,7 @@ exports.run = async ({ win, registry, runtime, services, backup, mcp, hostAction
         dialog.showOpenDialog = originalOpen;
         dialog.showMessageBox = originalMessage;
     }
-    const directory = require('./verification-output').directory;
+    const directory = require('../support/verification-output').directory;
     await hostAction('plugin-open', { id: 'collectify.bookmarks', route: 'all' });
     await delay(150);
     fs.writeFileSync(path.join(directory, 'shell-navigation.png'), (await win.webContents.capturePage()).toPNG());

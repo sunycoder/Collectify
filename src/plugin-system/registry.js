@@ -47,18 +47,37 @@ class PluginRegistry {
     readMcpConfig() {
         return this.getSetting('mcp');
     }
+    readSettings(fallbacks) {
+        return this.database((db) => {
+            const keys = Object.keys(fallbacks);
+            if (!keys.length) return {};
+            const values = Object.fromEntries(
+                db
+                    .prepare(`SELECT key,value_json FROM host_settings WHERE key IN (${keys.map(() => '?').join(',')})`)
+                    .all(...keys)
+                    .map((row) => [row.key, JSON.parse(row.value_json)])
+            );
+            return Object.fromEntries(
+                Object.entries(fallbacks).map(([key, fallback]) => [
+                    key,
+                    Object.hasOwn(values, key) ? values[key] : fallback
+                ])
+            );
+        });
+    }
     saveMcpConfig(value) {
         this.setSetting('mcp', value);
     }
     defaults() {
+        if (this.defaultManifests) return this.defaultManifests;
         if (!fs.existsSync(this.builtinRoot)) return [];
-        return fs
+        return (this.defaultManifests = fs
             .readdirSync(this.builtinRoot, { withFileTypes: true })
             .filter((d) => d.isDirectory() && !d.isSymbolicLink() && !d.name.startsWith('.'))
             .map((d) => ({
                 ...readManifest(path.join(this.builtinRoot, d.name), { builtin: true }),
                 directory: path.join(this.builtinRoot, d.name)
-            }));
+            })));
     }
     availableDefaults() {
         return this.defaults()
@@ -66,6 +85,7 @@ class PluginRegistry {
             .map(({ directory, backend, entry, ...p }) => p);
     }
     discover() {
+        this.defaultManifests = null;
         const next = new Map(),
             diagnostics = [],
             removed = this.getSetting('removedDefaultPlugins', []);

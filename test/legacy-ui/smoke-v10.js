@@ -122,7 +122,7 @@ exports.run = async ({ win, store }) => {
     await js("document.querySelector('#new-task').click()");
     await delay(400);
     fs.writeFileSync(
-        path.join(require('./verification-output').directory, 'modal-ui-v10.png'),
+        path.join(require('../support/verification-output').directory, 'modal-ui-v10.png'),
         (await win.webContents.capturePage()).toPNG()
     );
     await point(20, 100);

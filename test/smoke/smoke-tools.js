@@ -55,7 +55,7 @@ exports.run = async ({ win, registry, runtime, hostAction }) => {
     await p("document.querySelector('#single-tab').click()");
     await delay(150);
     fs.writeFileSync(
-        path.join(require('./verification-output').directory, 'timestamp-tools.png'),
+        path.join(require('../support/verification-output').directory, 'timestamp-tools.png'),
         (await runtime.views.get('collectify.timestamp').view.webContents.capturePage()).toPNG()
     );
     for (const record of runtime.views.values()) assert.deepEqual(record.errors, []);

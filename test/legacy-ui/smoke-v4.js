@@ -22,7 +22,7 @@ exports.run = async ({ win, store, tabs, openEntry, closeTab, desktopWidget }) =
                 console.error('V4 failed step:', script);
                 throw error;
             }),
-        artifacts = require('./verification-output').directory;
+        artifacts = require('../support/verification-output').directory;
     const errors = [];
     win.webContents.on('console-message', (e) => {
         if (e.level === 3) {

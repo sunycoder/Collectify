@@ -1,4 +1,5 @@
-const { BrowserWindow, ipcMain } = require('electron');
+const { BrowserWindow, ipcMain, screen } = require('electron');
+const { visibleBounds } = require('../../window-lifecycle');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const credentials = require('../../credentials');
@@ -6,9 +7,10 @@ const { copyText } = require('../../clipboard-service');
 const { loadAuxiliary } = require('../../auxiliary-window');
 
 class LoginHelper {
-    constructor(getParent, smoke) {
+    constructor(getParent, smoke, canShow = () => true) {
         this.getParent = getParent;
         this.smoke = smoke;
+        this.canShow = canShow;
         this.win = null;
         this.entry = null;
         this.allowed = false;
@@ -56,10 +58,12 @@ class LoginHelper {
                 p = parent.getBounds();
             this.win = new BrowserWindow({
                 parent,
-                width: 330,
-                height: 250,
-                x: Math.max(p.x + 20, p.x + p.width - 350),
-                y: p.y + 190,
+                ...(process.platform === 'darwin' ? { type: 'panel' } : {}),
+                fullscreenable: false,
+                ...visibleBounds(
+                    { width: 330, height: 250, x: Math.max(p.x + 20, p.x + p.width - 350), y: p.y + 190 },
+                    screen.getDisplayMatching(p).workArea
+                ),
                 frame: false,
                 resizable: false,
                 skipTaskbar: true,
@@ -83,7 +87,7 @@ class LoginHelper {
             this.loading = loadAuxiliary(this.win, path.join(__dirname, 'login-helper.html'));
         }
         await this.loading;
-        if (!this.allowed || this.entry?.id !== entry.id || !this.win) return;
+        if (!this.allowed || this.entry?.id !== entry.id || !this.win || this.win.isDestroyed()) return;
         const password = await credentials.passwordOf(entry);
         if (!this.win || this.win.isDestroyed() || !this.allowed || this.entry?.id !== entry.id) return;
         await this.win.webContents.executeJavaScript(
@@ -95,17 +99,26 @@ class LoginHelper {
             })})`
         );
         // 远程页面仍处于活动标签时才由调用方显示；加载中切回首页会撤销 allowed。
-        if (this.allowed && this.parentVisible() && !this.smoke) this.win.showInactive();
+        if (
+            this.allowed &&
+            this.entry?.id === entry.id &&
+            this.parentVisible() &&
+            !this.smoke &&
+            this.win &&
+            !this.win.isDestroyed() &&
+            !this.win.isVisible()
+        )
+            this.win.showInactive();
     }
 
     parentVisible() {
         const parent = this.getParent();
-        return !!parent && !parent.isDestroyed() && parent.isVisible() && !parent.isMinimized();
+        return this.canShow() && !!parent && !parent.isDestroyed() && parent.isVisible() && !parent.isMinimized();
     }
 
     hide(dismiss = false) {
         if (dismiss) this.allowed = false;
-        if (this.win && !this.win.isDestroyed()) this.win.hide();
+        if (this.win && !this.win.isDestroyed() && this.win.isVisible()) this.win.hide();
     }
 
     resume(entry) {
@@ -116,6 +129,7 @@ class LoginHelper {
             this.win &&
             !this.win.isDestroyed() &&
             this.parentVisible() &&
+            !this.win.isVisible() &&
             !this.smoke
         )
             this.win.showInactive();

@@ -216,9 +216,11 @@ exports.create = async (context) => {
                         e.type === source.type &&
                         (e.type === 'web'
                             ? e.url === source.url
-                            : e.name === source.name &&
-                              e.localPath === source.localPath &&
-                              e.content === source.content)
+                            : e.type === 'credential'
+                              ? e.name === source.name && e.url === source.url && e.username === source.username
+                              : e.name === source.name &&
+                                e.localPath === source.localPath &&
+                                e.content === source.content)
                 );
                 if (target) referenceMap[source.id] = target.id;
             }

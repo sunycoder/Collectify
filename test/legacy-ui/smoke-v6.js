@@ -23,7 +23,7 @@ exports.run = async ({ win, store, tabs, openEntry, closeTab, loginHelper }) => 
                 console.error('V6 script:', code);
                 throw e;
             }),
-        artifacts = require('./verification-output').directory;
+        artifacts = require('../support/verification-output').directory;
     const errors = [];
     win.webContents.on('console-message', (event) => {
         if (event.level === 3) errors.push(event.message);

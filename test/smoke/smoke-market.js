@@ -8,11 +8,11 @@ exports.run = async ({ registry, services, runtime, hostAction, pluginCatalog })
         registry.defaults().some((p) => p.id === 'collectify.local-search'),
         false
     );
-    const catalog = JSON.parse(fs.readFileSync(path.join(__dirname, '../plugins/catalog.json'), 'utf8'));
+    const catalog = JSON.parse(fs.readFileSync(path.join(__dirname, '../../plugins/catalog.json'), 'utf8'));
     const item = catalog.plugins.find((p) => p.id === 'collectify.local-search');
     assert.ok(item, '市场缺少本地搜索');
     const bytes = fs.readFileSync(
-        path.join(__dirname, `../.plugin-release/${item.id}-${item.version}.collectify-plugin`)
+        path.join(__dirname, `../../.plugin-release/${item.id}-${item.version}.collectify-plugin`)
     );
     const original = pluginCatalog.options.download,
         answer = dialog.showMessageBox;

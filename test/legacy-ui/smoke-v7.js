@@ -14,7 +14,7 @@ async function until(fn) {
 
 exports.run = async ({ win, store, loginHelper, desktopWidget, localMcp }) => {
     const js = (code) => win.webContents.executeJavaScript(code),
-        artifacts = require('./verification-output').directory;
+        artifacts = require('../support/verification-output').directory;
     await js("document.querySelector('dialog[open]')?.close();document.querySelector('#all-nav').click()");
     assert.equal(loginHelper.win?.isVisible() || false, false);
     assert.equal(await js("document.querySelectorAll('.kicker,.sidebar-note,.title-dot').length"), 0);

@@ -56,7 +56,7 @@ exports.run = async ({ win, store, desktopWidget }) => {
         "document.querySelector('#theme-widgetMaterial').tomselect.setValue('glass');document.querySelector('#theme-widgetMaterial').dispatchEvent(new Event('input'));document.querySelector('#theme-glassOpacity').value=68;document.querySelector('#theme-glassOpacity').dispatchEvent(new Event('input'))"
     );
     assert.equal(await js('document.documentElement.dataset.widgetMaterial'), 'glass');
-    const directory = require('./verification-output').directory;
+    const directory = require('../support/verification-output').directory;
     await delay(230);
     fs.writeFileSync(path.join(directory, 'custom-appearance-v11.png'), (await win.webContents.capturePage()).toPNG());
     await js("document.querySelector('#save-theme').click()");

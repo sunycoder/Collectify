@@ -15,7 +15,7 @@ async function until(fn) {
 }
 
 exports.run = async ({ win, store, tabs, openEntry, closeTab, home }) => {
-    const artifacts = require('./verification-output').directory;
+    const artifacts = require('../support/verification-output').directory;
     fs.mkdirSync(artifacts, { recursive: true });
     const js = (script) => win.webContents.executeJavaScript(script);
     const errors = [];

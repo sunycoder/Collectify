@@ -34948,7 +34948,7 @@ var require_package = __commonJS({
   "package.json"(exports2, module2) {
     module2.exports = {
       name: "collectify",
-      version: "5.7.6",
+      version: "5.7.7",
       description: "Collectify \xB7 \u53EF\u6269\u5C55\u7684\u4E2A\u4EBA\u63D2\u4EF6\u5DE5\u4F5C\u53F0",
       main: "src/main.js",
       author: "Collectify",
@@ -34973,7 +34973,9 @@ var require_package = __commonJS({
         predist: "npm run build:assets",
         "predist:win": "npm run build:assets",
         "predist:mac": "npm run build:assets",
-        "predist:linux": "npm run build:assets"
+        "predist:linux": "npm run build:assets",
+        "smoke:local-search": "electron test/smoke/local-search.cjs",
+        "test:fixtures": "node test/tools/create-local-search-fixtures.cjs"
       },
       devDependencies: {
         "@floating-ui/dom": "1.7.4",
@@ -35003,7 +35005,10 @@ var require_package = __commonJS({
           "assets/**/*",
           "package.json",
           "config/**/*",
-          "!config/local.json"
+          "!config/local.json",
+          "!**/smoke*.js",
+          "!**/*.test.js",
+          "!**/verification-output.js"
         ],
         win: {
           target: [

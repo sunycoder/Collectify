@@ -25,6 +25,15 @@ for (const relative of [...files('src'), ...files('assets'), ...files('config')]
         `发布文件与源码不同：${relative}`
     );
 }
+assert.equal(
+    asar
+        .listPackage(archive)
+        .some((file) =>
+            /[\\/](?:test|tests)[\\/]|[\\/](?:smoke[^\\/]*\.js|verification-output\.js|[^\\/]+\.test\.js)$/.test(file)
+        ),
+    false,
+    '测试场景与验证辅助代码不能进入安装包'
+);
 const pkg = JSON.parse(asar.extractFile(archive, 'package.json'));
 assert.equal(
     asar.listPackage(archive).some((file) => /[\\/]config[\\/]local\.json$/.test(file)),

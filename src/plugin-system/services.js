@@ -13,6 +13,7 @@ class PluginServices extends EventEmitter {
         this.errors = new Map();
         this.stopping = new Set();
         this.pending = new Map();
+        this.activating = new Map();
     }
     async load({ activate = true } = {}) {
         // 保留数据的默认插件仍需提供领域备份处理器，但不激活页面、提醒或 MCP。
@@ -58,11 +59,20 @@ class PluginServices extends EventEmitter {
         if (this.errors.has(id)) return;
         const p = this.providers.get(id);
         if (p && !this.active.has(id)) {
-            await p.activate?.();
-            this.active.add(id);
+            if (this.activating.has(id)) return this.activating.get(id);
+            const task = Promise.resolve()
+                .then(() => p.activate?.())
+                .then(() => this.active.add(id));
+            this.activating.set(id, task);
+            try {
+                await task;
+            } finally {
+                this.activating.delete(id);
+            }
         }
     }
     async disable(id) {
+        await this.activating.get(id);
         const p = this.providers.get(id);
         if (p && this.active.has(id)) {
             this.active.delete(id);
@@ -130,8 +140,25 @@ class PluginServices extends EventEmitter {
             );
     }
     async dispose() {
-        for (const id of [...this.active]) await this.disable(id);
-        for (const p of this.providers.values()) await p.dispose?.();
+        const ids = [...this.providers.keys()];
+        for (const id of ids) this.stopping.add(id);
+        const failures = [];
+        for (const id of [...this.active])
+            try {
+                await this.disable(id);
+            } catch (error) {
+                failures.push(error);
+            }
+        await Promise.allSettled([...this.pending.values()].flatMap((jobs) => [...jobs]));
+        for (const p of this.providers.values())
+            try {
+                await p.dispose?.();
+            } catch (error) {
+                failures.push(error);
+            }
+        this.active.clear();
+        this.providers.clear();
+        if (failures.length) throw new AggregateError(failures, '部分插件退出失败');
     }
 }
 module.exports = { PluginServices };

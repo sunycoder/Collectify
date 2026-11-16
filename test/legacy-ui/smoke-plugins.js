@@ -56,7 +56,7 @@ exports.run = async ({ win, store, pluginRegistry, pluginRuntime }) => {
     await pluginJs(
         'document.querySelector(\'#input\').value=\'{"plugins":["timestamp","json"]}\';document.querySelector(\'#format\').click()'
     );
-    const directory = require('./verification-output').directory;
+    const directory = require('../support/verification-output').directory;
     fs.writeFileSync(
         path.join(directory, 'plugin-json.png'),
         (await pluginRuntime.views.get('collectify.json').view.webContents.capturePage()).toPNG()
