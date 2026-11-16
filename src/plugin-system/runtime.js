@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const {
+    app,
     BrowserWindow,
     WebContentsView,
     session,
@@ -158,6 +159,8 @@ class PluginRuntime {
             )
                 throw Error('请在当前插件窗口主动执行粘贴');
             return this.pasteAdapter({
+                hideApplication: () => app.hide(),
+                restoreApplication: () => app.show(),
                 windows: [
                     this.getWindow(),
                     ...[...this.popouts.values()]

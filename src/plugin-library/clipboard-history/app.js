@@ -143,7 +143,7 @@ function showContext(event, item) {
         button.setAttribute('role', 'menuitem');
         button.append(symbol(glyph), node('span', '', label), node('small', '', shortcut));
         if (glyph === 'trash') button.classList.add('danger');
-        if (glyph === 'paste' && platform !== 'win32') {
+        if (glyph === 'paste' && !['win32', 'darwin'].includes(platform)) {
             button.disabled = true;
             button.title = '当前平台请复制后手动粘贴';
         }

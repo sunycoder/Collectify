@@ -85,6 +85,7 @@ class LoginHelper {
         await this.loading;
         if (!this.allowed || this.entry?.id !== entry.id || !this.win) return;
         const password = await credentials.passwordOf(entry);
+        if (!this.win || this.win.isDestroyed() || !this.allowed || this.entry?.id !== entry.id) return;
         await this.win.webContents.executeJavaScript(
             `window.renderLoginCard(${JSON.stringify({
                 name: entry.name,
@@ -94,16 +95,30 @@ class LoginHelper {
             })})`
         );
         // 远程页面仍处于活动标签时才由调用方显示；加载中切回首页会撤销 allowed。
-        if (this.allowed && !this.smoke) this.win.showInactive();
+        if (this.allowed && this.parentVisible() && !this.smoke) this.win.showInactive();
+    }
+
+    parentVisible() {
+        const parent = this.getParent();
+        return !!parent && !parent.isDestroyed() && parent.isVisible() && !parent.isMinimized();
     }
 
     hide(dismiss = false) {
         if (dismiss) this.allowed = false;
-        this.win?.hide();
+        if (this.win && !this.win.isDestroyed()) this.win.hide();
     }
 
     resume(entry) {
-        if (this.allowed && entry && entry.id === this.entry?.id && this.win && !this.smoke) this.win.showInactive();
+        if (
+            this.allowed &&
+            entry &&
+            entry.id === this.entry?.id &&
+            this.win &&
+            !this.win.isDestroyed() &&
+            this.parentVisible() &&
+            !this.smoke
+        )
+            this.win.showInactive();
     }
 
     destroy() {

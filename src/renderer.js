@@ -251,7 +251,9 @@ function renderPluginManager() {
                 input.disabled = false;
             }
         });
-        label.append(input, document.createTextNode('启用'));
+        input.setAttribute('role', 'switch');
+        input.setAttribute('aria-label', plugin.name + ' 启用状态');
+        label.append(input, document.createTextNode(plugin.enabled ? '已启用' : '已停用'));
         row.append(copy, label);
         const actions = el('div', 'plugin-row-actions');
         actions.append(
@@ -262,13 +264,54 @@ function renderPluginManager() {
                     closeDialogsForPlugin();
                     return call('plugin-open', { id: plugin.id });
                 },
-                'quiet'
+                'subtle'
             )
         );
         actions.firstChild.disabled = !plugin.enabled;
-        if (plugin.distributable)
-            actions.append(button('导出插件包', null, () => managePlugin('plugin-package-export', plugin.id), 'quiet'));
-        actions.append(button('卸载', null, () => managePlugin('plugin-uninstall', plugin.id), 'quiet'));
+        const menu = el('div', 'plugin-action-menu');
+        menu.setAttribute('popover', 'auto');
+        menu.setAttribute('role', 'menu');
+        const more = button(
+            '更多操作',
+            'more',
+            () => {
+                if (menu.matches(':popover-open')) {
+                    menu.hidePopover();
+                    return;
+                }
+                menu.showPopover();
+                const anchor = more.getBoundingClientRect();
+                const bounds = menu.getBoundingClientRect();
+                menu.style.left =
+                    Math.max(8, Math.min(anchor.right - bounds.width, innerWidth - bounds.width - 8)) + 'px';
+                menu.style.top =
+                    (anchor.bottom + bounds.height + 8 < innerHeight
+                        ? anchor.bottom + 6
+                        : anchor.top - bounds.height - 6) + 'px';
+            },
+            'icon-button plugin-more'
+        );
+        more.setAttribute('aria-haspopup', 'menu');
+        more.setAttribute('aria-expanded', 'false');
+        menu.addEventListener('toggle', () =>
+            more.setAttribute('aria-expanded', String(menu.matches(':popover-open')))
+        );
+        const menuAction = (label, glyph, action, danger = false) => {
+            const item = button(
+                label,
+                glyph,
+                () => {
+                    menu.hidePopover();
+                    return managePlugin(action, plugin.id);
+                },
+                danger ? 'plugin-remove' : ''
+            );
+            item.setAttribute('role', 'menuitem');
+            menu.append(item);
+        };
+        if (plugin.distributable) menuAction('导出插件包', 'download', 'plugin-package-export');
+        menuAction('卸载插件', 'trash', 'plugin-uninstall', true);
+        actions.append(more, menu);
         row.append(actions);
         $('#plugin-manager').append(row);
     }
@@ -457,7 +500,6 @@ document.querySelectorAll('[data-settings-panel]').forEach((n) => {
     n.replaceChildren(icon(glyphs[n.dataset.settingsPanel]), label);
     n.onclick = () => selectSettingsPanel(n.dataset.settingsPanel);
 });
-$('#settings-button').onclick = task(() => openSettings());
 $('#collapsed-settings-button').onclick = task(() => openSettings());
 $('#expand-navigation').onclick = task(() => call('settings', { navigationCollapsed: false }));
 $('#toggle-navigation').onclick = task(() =>

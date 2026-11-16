@@ -35,14 +35,18 @@
 .plugin-manager-row .plugin-row-actions {
     flex: 0 0 auto;
     display: flex;
-    gap: 3px;
-    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
     justify-content: flex-end;
     max-width: 210px;
 }
 .plugin-row-actions button {
     font-size: 12px;
     padding: 6px 8px;
+    min-height: 32px;
+    height: 32px;
+    flex: 0 0 auto;
 }
 .plugin-advanced {
     margin-top: 20px;
@@ -180,7 +184,8 @@ body {
     pointer-events: none;
 }
 #collapsed-settings-button {
-    display: none;
+    display: grid;
+    place-items: center;
     flex-shrink: 0;
     align-self: center;
 }
@@ -321,7 +326,7 @@ body.navigation-collapsed {
     display: flex;
     gap: 7px;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     width: 100%;
     padding: 12px 13px;
     text-align: left;
@@ -333,8 +338,96 @@ body.navigation-collapsed {
     margin-bottom: 4px;
 }
 .plugin-subnav small {
+    margin-left: auto;
     font-size: 11px;
     color: var(--subtle);
+}
+.plugin-subnav .subnav-label {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+}
+.plugin-subnav i {
+    flex: 0 0 18px;
+    width: 18px;
+    height: 18px;
+}
+.plugin-more {
+    width: 32px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+}
+.plugin-more:hover {
+    background: var(--paper);
+    color: var(--ink);
+}
+.plugin-action-menu {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    padding: 5px;
+    min-width: 152px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow:
+        0 8px 28px #0000001f,
+        0 2px 6px #0000000a;
+}
+.plugin-action-menu button {
+    display: flex;
+    justify-content: flex-start;
+    gap: 9px;
+    width: 100%;
+    height: 34px;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    font-size: 12px;
+    text-align: left;
+}
+.plugin-action-menu button:hover {
+    background: var(--paper);
+}
+.plugin-action-menu i {
+    width: 15px;
+    height: 15px;
+}
+.plugin-action-menu .plugin-remove {
+    color: #b83b43;
+}
+.plugin-manager-row .plugin-switch {
+    min-width: 76px;
+}
+.plugin-manager-row .plugin-switch input {
+    appearance: none;
+    width: 32px;
+    height: 19px;
+    border-radius: 12px;
+    background: var(--line);
+    position: relative;
+    cursor: pointer;
+}
+.plugin-manager-row .plugin-switch input::after {
+    content: '';
+    position: absolute;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: #fff;
+    left: 2px;
+    top: 2px;
+    transition: transform 0.15s;
+}
+.plugin-manager-row .plugin-switch input:checked {
+    background: var(--accent);
+}
+.plugin-manager-row .plugin-switch input:checked::after {
+    transform: translateX(13px);
 }
 .plugin-subnav:hover {
     background: var(--paper);

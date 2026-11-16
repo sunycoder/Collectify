@@ -195,6 +195,7 @@ class PluginRegistry {
         } finally {
             if (fs.existsSync(staging)) fs.rmSync(staging, { recursive: true });
         }
+        if (!previous) this.setEnabled(manifest.id, true);
         return manifest.id;
     }
     uninstall(id, { deleteData = false } = {}) {

@@ -11,6 +11,7 @@ function files(directory) {
         fs
             .readdirSync(path.join(root, directory), { withFileTypes: true })
             .filter((item) => path.join(directory, item.name) !== path.join('src', 'plugin-library'))
+            .filter((item) => path.join(directory, item.name) !== path.join('config', 'local.json'))
             // 构建器不打包 Git 元数据；其余业务源码、第三方库和原生组件仍逐字节核对。
             .filter((item) => !['.gitignore', '.gitattributes', '.gitkeep'].includes(item.name))
             .flatMap((item) =>
@@ -25,6 +26,11 @@ for (const relative of [...files('src'), ...files('assets'), ...files('config')]
     );
 }
 const pkg = JSON.parse(asar.extractFile(archive, 'package.json'));
+assert.equal(
+    asar.listPackage(archive).some((file) => /[\\/]config[\\/]local\.json$/.test(file)),
+    false,
+    '本机私有覆盖不能进入安装包'
+);
 assert.equal(
     asar.listPackage(archive).some((file) => /[\\/]plugin-library[\\/]/.test(file)),
     false,

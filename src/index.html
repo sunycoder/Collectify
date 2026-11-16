@@ -59,13 +59,6 @@
                     <p id="navigation-description">选择一个插件开始</p>
                 </header>
                 <nav id="plugin-navigation" aria-label="当前插件导航"></nav>
-                <div class="profile">
-                    <span class="avatar">我</span>
-                    <div>个人工作空间<small>Collectify</small></div>
-                    <button id="settings-button" class="icon-button profile-settings" title="设置" aria-label="设置">
-                        <span class="settings-svg"></span>
-                    </button>
-                </div>
             </div>
         </aside>
         <header class="shell-topbar">
@@ -100,25 +93,36 @@
                 </nav>
                 <div class="settings-content" role="region" aria-label="设置内容">
                     <div class="settings-panel" data-panel="general">
-                        <h3>本机数据</h3>
-                        <p>宿主设置与插件启停记录：</p>
-                        <code id="data-file"></code>
-                        <p>各插件使用独立的数据目录与数据库，停用插件不会删除数据。</p>
-                        <small id="data-directory"></small>
-                        <div class="settings-data-actions">
-                            <button id="open-data-directory" class="subtle">打开数据文件夹</button>
-                            <button id="download-app" class="subtle">下载与更新</button>
-                        </div>
-                        <label class="checkbox-label"
-                            ><input id="keep-in-tray" type="checkbox" />关闭主窗口后驻留托盘</label
-                        >
-                        <label class="browser-mode-label"
-                            >网页默认打开方式<select id="browser-open-mode">
-                                <option value="internal">内置浏览器</option>
-                                <option value="external">系统默认浏览器</option>
-                            </select></label
-                        >
-                        <p>外部打开使用系统已设置的默认浏览器；收藏菜单仍可临时选择另一种方式。</p>
+                        <h3>通用</h3>
+                        <section class="general-section">
+                            <h4>窗口与浏览</h4>
+                            <label class="general-setting-row"
+                                ><span
+                                    ><strong>关闭后继续运行</strong
+                                    ><small>关闭主窗口后驻留托盘，保留后台任务。</small></span
+                                ><input id="keep-in-tray" type="checkbox"
+                            /></label>
+                            <label class="general-setting-row"
+                                ><span
+                                    ><strong>网页默认打开方式</strong
+                                    ><small>收藏菜单仍可临时选择另一种打开方式。</small></span
+                                ><select id="browser-open-mode">
+                                    <option value="internal">内置浏览器</option>
+                                    <option value="external">系统默认浏览器</option>
+                                </select></label
+                            >
+                        </section>
+                        <section class="general-section">
+                            <h4>本机数据</h4>
+                            <p>宿主设置与插件启停记录：</p>
+                            <code id="data-file"></code>
+                            <p>各插件使用独立的数据目录与数据库，停用插件不会删除数据。</p>
+                            <small id="data-directory"></small>
+                            <div class="settings-data-actions">
+                                <button id="open-data-directory" class="subtle">打开数据文件夹</button>
+                                <button id="download-app" class="subtle">下载与更新</button>
+                            </div>
+                        </section>
                     </div>
                     <div class="settings-panel" data-panel="distribution" hidden>
                         <h3>账号与发布源</h3>

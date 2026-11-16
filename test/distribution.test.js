@@ -14,6 +14,47 @@ const { supplement } = require('../src/distribution/profiles');
 const { selectUpdate, downloadUpdate, verifyInstaller } = require('../src/distribution/updates');
 const { Distribution } = require('../src/distribution/manager');
 const { PluginRegistry } = require('../src/plugin-system/registry');
+test('空的已保存 ID 继承同源默认值，非空个人 ID 和其他服务仓库不被覆盖', () => {
+    const { inheritClientId, sourcePresets } = require('../src/distribution/config');
+    const preset = validateConfig({ provider: 'github', project: 'example/project', clientId: 'configured-id' });
+    assert.equal(inheritClientId({ ...preset, clientId: '' }, preset).clientId, 'configured-id');
+    assert.equal(inheritClientId({ ...preset, clientId: 'personal-id' }, preset).clientId, 'personal-id');
+    assert.equal(inheritClientId({ ...preset, project: 'other/repo', clientId: '' }, preset).clientId, '');
+    assert.equal(
+        inheritClientId({ ...preset, baseUrl: 'https://other.example.com', clientId: '' }, preset).clientId,
+        ''
+    );
+    const publicPreset = sourcePresets().github;
+    const saved = { ...publicPreset, clientId: '', ref: 'personal-branch' };
+    const values = new Map([
+        ['distributionSource', saved],
+        ['distributionSources', { github: saved }]
+    ]);
+    const registry = {
+        getSetting: (key, fallback = null) => (values.has(key) ? values.get(key) : fallback),
+        setSetting: (key, value) => values.set(key, value)
+    };
+    const manager = new Distribution({
+        registry,
+        credentials: memoryCredentials(),
+        version: '5.7.5',
+        deployment: {
+            provider: 'gitlab',
+            baseUrl: 'https://gitlab.example.com',
+            project: 'company/app',
+            clientId: 'gitlab-id'
+        }
+    });
+    try {
+        assert.equal(manager.config.provider, 'github');
+        assert.equal(manager.config.clientId, publicPreset.clientId);
+        assert.equal(manager.status().sources.github.clientId, publicPreset.clientId);
+        assert.equal(manager.config.ref, 'personal-branch');
+        assert.equal(values.get('distributionSource').clientId, '', '不修改已保存的原始记录');
+    } finally {
+        manager.dispose();
+    }
+});
 const { WorkspaceBackup } = require('../src/plugin-system/backup');
 const config = validateConfig({
     provider: 'gitlab',

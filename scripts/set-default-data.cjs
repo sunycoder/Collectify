@@ -70,11 +70,10 @@ add('time-backend', '时间测试服后台', 'gm', 'web', backend[1], {
 const ip = source.match(/个人IP\s*\n([^\n]+)\n([^\n]+)/);
 if (!ip) throw Error('附件网络信息不完整');
 add('personal-ip', `${ip[1].trim()} · 个人 IP`, 'network', 'text', ip[2].trim(), { note: '局域网地址。' });
-fs.writeFileSync(
-    path.join(__dirname, '..', 'default-config.json'),
-    JSON.stringify({ version: 2, initializeExamples: true, categories, entries }, null, 2) + '\n',
-    'utf8'
-);
+const configFile = path.join(__dirname, '..', 'config', 'local.json');
+const local = fs.existsSync(configFile) ? JSON.parse(fs.readFileSync(configFile, 'utf8')) : {};
+local.initialData = { version: 2, initializeExamples: true, categories, entries };
+fs.writeFileSync(configFile, JSON.stringify(local, null, 2) + '\n', 'utf8');
 console.log(
-    `Local default configuration written to ignored default-config.json: ${entries.length} resources in ${categories.length} categories.`
+    `Initial data written to ignored config/local.json: ${entries.length} resources in ${categories.length} categories.`
 );

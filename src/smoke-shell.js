@@ -115,7 +115,7 @@ exports.run = async ({ win, registry, runtime, services, backup, mcp, hostAction
             await remote.view.webContents.executeJavaScript("typeof require+':'+typeof collectify"),
             'undefined:undefined'
         );
-        await host("document.querySelector('#settings-button').click()");
+        await host("document.querySelector('#collapsed-settings-button').click()");
         await until(() => host("document.querySelector('#settings-dialog').open"));
         assert.equal(remote.view.getVisible(), false);
         await host("document.querySelector('#settings-dialog').close()");
@@ -164,7 +164,7 @@ exports.run = async ({ win, registry, runtime, services, backup, mcp, hostAction
         '插件便签'
     );
     await page('collectify.tasks', "document.querySelector('#task-dialog').close()");
-    await host("document.querySelector('#settings-button').click()");
+    await host("document.querySelector('#collapsed-settings-button').click()");
     await until(() => host("document.querySelector('#settings-dialog').open"));
     assert.equal(runtime.views.get('collectify.tasks').view.getVisible(), false);
     await host("document.querySelector('#settings-dialog').close()");

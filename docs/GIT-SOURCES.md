@@ -6,9 +6,9 @@ Collectify 使用 GitLab 或 GitHub 提供的身份、文件和发布 API。客�
 
 1. 在 GitLab 个人设置的 Applications 中注册 OAuth 应用；实际菜单名称可能随公司版本不同。
 2. Redirect URI 填 `http://127.0.0.1:19287/oauth/callback`，取消 Confidential，勾选 `read_api`。客户端通过公共客户端 PKCE 完成授权，不需要 Client Secret。页面不可用时由管理员登记。
-3. 复制 `config/distribution.example.json` 为根目录 `distribution.json`，填写服务地址、项目完整路径及公开 Application ID。公司目前只有 HTTP 的内网 IP 时，将 `allowInsecureHttp` 明确设为 true；HTTP 不加密令牌与下载流量。不会为 HTTPS 跳过证书校验。
-4. 在公司 GitLab 对应的工作副本中执行 `node scripts/configure-source.cjs distribution.json`。命令更新 `plugins/definitions.json` 的发布目标、生成 `plugins/catalog.json`，并生成已忽略的 `config/distribution.json`。核对并将 definitions/catalog 提交到公司仓库；公司地址和配置不要提交到公开 GitHub 仓库。
-5. 为公司 CI 设置公开变量 `COLLECTIFY_OAUTH_CLIENT_ID`。标签构建会生成部署配置并放进公司安装包，用户无需重复填地址。开发运行或已安装客户端也会读取安装目录旁的 `distribution.json`，仅首次初始化发布源，之后尊重用户设置。
+3. 在公司工作副本的 `config/app-defaults.json` 中修改 `distribution`，填写服务地址、项目完整路径及公开 Application ID。公司目前只有 HTTP 的内网 IP 时，将 `allowInsecureHttp` 明确设为 true；HTTP 不加密令牌与下载流量。不会为 HTTPS 跳过证书校验。只做本机调试时写入忽略的 `config/local.json`，不改变公开默认源。
+4. 在公司 GitLab 对应的工作副本中执行 `node scripts/configure-source.cjs`。命令从统一默认配置同步 `plugins/definitions.json` 的发布目标并生成 `plugins/catalog.json`，不再生成其他运行配置。核对并提交到公司仓库；公司地址和配置不要提交到公开 GitHub 仓库。
+5. CI 可通过公开变量 `COLLECTIFY_OAUTH_CLIENT_ID`、`COLLECTIFY_CONFIG_REF` 覆盖本次构建的默认 ID 和分支。标签构建直接更新统一默认配置并打包，用户无需重复填地址；已有个人设置继续保留。安装目录旁的旧 `distribution.json` 不再读取，配置入口见 [程序默认配置](APP-DEFAULTS.md)。
 
 普通用户打开“设置 → 账号与更新”，在已配置的公司服务下直接点击登录，在系统浏览器完成 GitLab 授权，无需自己注册 OAuth 应用。服务地址、项目路径和 Application ID 收进默认折叠的“高级设置 · 维护者配置”；只有更换源时才需要修改。令牌由 Electron 系统安全存储加密，授权过期时刷新；退出登录清除本地授权。同一 GitLab OAuth 应用切换项目不需要更改认证实现，切换服务地址需要重新登录。
 

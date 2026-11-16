@@ -44,7 +44,7 @@ test('无焦点和不支持的平台拒绝执行，失败恢复窗口', async ()
         /主动/
     );
     await assert.rejects(
-        () => pasteToPreviousApplication({ windows: [windowFixture()], platform: 'darwin' }),
+        () => pasteToPreviousApplication({ windows: [windowFixture()], platform: 'linux' }),
         /手动粘贴/
     );
     const window = windowFixture();
@@ -58,6 +58,29 @@ test('无焦点和不支持的平台拒绝执行，失败恢复窗口', async ()
                 }
             }),
         /拒绝/
+    );
+    assert.equal(window.shown, true);
+});
+test('macOS 隐藏窗口后发送 Command V，拒绝权限时恢复窗口并提示辅助功能', async () => {
+    const window = windowFixture();
+    await pasteToPreviousApplication({
+        windows: [window],
+        platform: 'darwin',
+        run: async (file, args) => {
+            assert.equal(window.hidden, true);
+            assert.equal(file, '/usr/bin/osascript');
+            assert.match(args[1], /command down/);
+        }
+    });
+    await assert.rejects(
+        pasteToPreviousApplication({
+            windows: [window],
+            platform: 'darwin',
+            run: async () => {
+                throw Error('denied');
+            }
+        }),
+        /辅助功能/
     );
     assert.equal(window.shown, true);
 });

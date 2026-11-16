@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { createHash, randomUUID } = require('node:crypto');
-const { validateConfig, sourceKey, CALLBACK, sourcePresets } = require('./config');
+const { validateConfig, sourceKey, CALLBACK, sourcePresets, inheritClientId } = require('./config');
 const { SourceClient } = require('./client');
 const { json } = require('./transport');
 const { validateProfiles, defaultPlan } = require('./profiles');
@@ -38,7 +38,8 @@ class Distribution {
         for (const [provider, value] of Object.entries(registry.getSetting('distributionSources', {}) || {})) {
             if (!['gitlab', 'github'].includes(provider)) continue;
             try {
-                this.sources[provider] = validateConfig({ ...value, provider });
+                const saved = validateConfig({ ...value, provider });
+                this.sources[provider] = validateConfig(inheritClientId(saved, this.presets[provider]));
             } catch {
                 /* 坏的历史配置保留在原存储中，界面使用部署预设恢复。 */
             }
@@ -51,11 +52,10 @@ class Distribution {
             previous.baseUrl === deployed.baseUrl &&
             previous.project === deployed.project;
         try {
-            this.config = validateConfig(
-                sameDeployment && !previous.clientId
-                    ? { ...previous, clientId: deployed.clientId }
-                    : previous || deployment || this.presets.github
+            const saved = validateConfig(
+                previous || deployment || this.presets[require('../app-defaults').distribution.provider]
             );
+            this.config = validateConfig(inheritClientId(saved, this.presets[saved.provider]));
         } catch {
             // 恢复已知部署源的应用 ID，同时保留用户选择的分支及目录路径。
             if (sameDeployment) {
@@ -64,7 +64,10 @@ class Distribution {
                 } catch {
                     this.config = validateConfig(deployed);
                 }
-            } else this.config = validateConfig(deployment || this.presets.github);
+            } else
+                this.config = validateConfig(
+                    deployment || this.presets[require('../app-defaults').distribution.provider]
+                );
         }
         this.sources[this.config.provider] = this.config;
         if (deployment && !registry.getSetting('distributionSource'))
@@ -418,7 +421,7 @@ class Distribution {
                 this.changed();
             }
         };
-        this.timer = setInterval(check, 60 * 60 * 1000);
+        this.timer = setInterval(check, require('../app-defaults').network.updateIntervalMs);
         this.timer.unref();
         check();
     }

@@ -89,7 +89,8 @@ function renderDistribution(next) {
     TransferUI.render($('#app-download-progress'), next.progress, () => void distributionAction('cancel'));
     const updates = update?.available || next.pluginUpdates > 0 || next.profiles.some((profile) => profile.available);
     for (const id of ['settings-button', 'collapsed-settings-button']) {
-        $('#' + id).classList.toggle('has-update', !!updates);
+        if (!$('#' + id)) continue;
+        $('#' + id)?.classList.toggle('has-update', !!updates);
         $('#' + id).title = updates ? '设置 · 有可用更新或团队配置' : '设置';
     }
     $('#download-app').textContent = update?.available ? '有新版本 · ' + update.version : '下载与更新';

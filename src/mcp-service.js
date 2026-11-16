@@ -14,7 +14,7 @@ class LocalMcpService {
         this.port = null;
         this.config = repository.readMcpConfig() || {
             enabled: false,
-            port: 17863,
+            port: require('./app-defaults').network.mcpPort,
             token: randomBytes(32).toString('hex')
         };
         if (!/^[a-f0-9]{64}$/.test(this.config.token)) this.config.token = randomBytes(32).toString('hex');
@@ -43,7 +43,10 @@ class LocalMcpService {
         };
     }
     server() {
-        const server = new McpServer({ name: 'collectify', version: '5.5.3' }, { instructions: SERVER_INSTRUCTIONS });
+        const server = new McpServer(
+            { name: 'collectify', version: require('../package.json').version },
+            { instructions: SERVER_INSTRUCTIONS }
+        );
         for (const tool of this.getTools())
             server.registerTool(
                 tool.name,

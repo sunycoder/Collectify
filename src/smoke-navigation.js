@@ -4,7 +4,7 @@ const path = require('node:path');
 const { shell } = require('electron');
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-exports.run = async ({ win, registry, runtime, services, hostAction }) => {
+exports.run = async ({ win, registry, runtime, services, hostAction, withTestTray }) => {
     const host = (code) => win.webContents.executeJavaScript(code);
     const until = async (predicate) => {
         for (let i = 0; i < 60; i++) {
@@ -14,6 +14,8 @@ exports.run = async ({ win, registry, runtime, services, hostAction }) => {
         throw Error('导航界面更新超时');
     };
     await host('shellReady');
+    assert.equal(await host("!!document.querySelector('.profile')"), false);
+    assert.equal(await host("getComputedStyle(document.querySelector('#collapsed-settings-button')).display"), 'grid');
     await hostAction('plugin-open', { id: 'collectify.json' });
     const iconCount = registry.list().filter((plugin) => plugin.enabled && plugin.iconAsset).length;
     await until(async () => (await host("document.querySelectorAll('.plugin-asset-icon').length")) === iconCount);
@@ -38,6 +40,10 @@ exports.run = async ({ win, registry, runtime, services, hostAction }) => {
         const frame = await host(
             "(()=>{const r=document.querySelector('#settings-dialog').getBoundingClientRect();return [r.width,r.height]})()"
         );
+        assert.equal(
+            await host("getComputedStyle(document.querySelector('.settings-navigation button')).justifyContent"),
+            'flex-start'
+        );
         for (const panel of ['appearance', 'plugins', 'distribution', 'ai', 'data', 'general']) {
             await host(`document.querySelector('[data-settings-panel=${panel}]').click()`);
             const next = await host(
@@ -60,6 +66,37 @@ exports.run = async ({ win, registry, runtime, services, hostAction }) => {
         );
         assert.equal(await host("document.documentElement.style.getPropertyValue('--accent')"), savedAccent);
         const screenshotDirectory = require('./verification-output').directory;
+        await host("selectSettingsPanel('general')");
+        await delay(100);
+        fs.writeFileSync(
+            path.join(screenshotDirectory, 'settings-general.png'),
+            (await win.webContents.capturePage()).toPNG()
+        );
+        await host("selectSettingsPanel('plugins')");
+        await host("document.querySelector('[data-plugin-tab=installed]').click()");
+        const beforeMenu = await host("document.querySelector('.plugin-manager-row').getBoundingClientRect().height");
+        await host("document.querySelector('.plugin-more').click()");
+        assert.equal(await host("document.querySelector('.plugin-action-menu').matches(':popover-open')"), true);
+        assert.equal(
+            await host("document.querySelector('.plugin-manager-row').getBoundingClientRect().height"),
+            beforeMenu,
+            '更多菜单不得撑高插件行'
+        );
+        assert.equal(await host("document.querySelector('.plugin-more').getAttribute('aria-expanded')"), 'true');
+        await host("document.querySelector('.plugin-action-menu').hidePopover()");
+        await delay(100);
+        fs.writeFileSync(
+            path.join(screenshotDirectory, 'settings-plugin-manager.png'),
+            (await win.webContents.capturePage()).toPNG()
+        );
+        await host("document.querySelector('.plugin-more').click()");
+        await delay(100);
+        fs.writeFileSync(
+            path.join(screenshotDirectory, 'settings-plugin-menu.png'),
+            (await win.webContents.capturePage()).toPNG()
+        );
+        await host("document.querySelector('.plugin-action-menu').hidePopover()");
+        await host("selectSettingsPanel('appearance')");
         await delay(100);
         fs.writeFileSync(
             path.join(screenshotDirectory, 'settings-appearance.png'),
@@ -166,6 +203,33 @@ exports.run = async ({ win, registry, runtime, services, hostAction }) => {
         await bookmarks.executeJavaScript("document.querySelector('#external').click()");
         await until(() => opened.length === countBeforeToolbar + 1);
         assert.equal(opened.at(-1), currentTab.url, '工具栏应使用当前标签页地址打开系统浏览器');
+        const helper = services.providers.get('collectify.bookmarks').browser.loginHelper;
+        await helper.show({ ...entry, username: 'smoke-user', password: 'smoke-password' });
+        assert.ok(helper.win && !helper.win.isDestroyed());
+        win.hide();
+        assert.equal(helper.win.isVisible(), false, '主窗口隐藏时资料卡必须一起隐藏');
+        const { revealWindow } = require('./window-lifecycle');
+        await revealWindow(
+            () => win,
+            async () => {
+                throw Error('不应重建');
+            }
+        );
+        assert.equal(win.isVisible(), true);
+        assert.equal(win.isDestroyed(), false);
+        helper.hide(true);
+        await hostAction('settings', { keepInTray: true });
+        await withTestTray(async (menu) => {
+            win.show();
+            win.close();
+            assert.equal(win.isDestroyed(), false, '关闭到托盘不能销毁主窗口');
+            assert.equal(win.isVisible(), false);
+            assert.equal(helper.win.isVisible(), false);
+            menu.items[0].click();
+            await until(() => win.isVisible());
+            assert.equal(win.isDestroyed(), false, '托盘打开不得退出后台');
+        });
+        await hostAction('settings', { keepInTray: false });
     } finally {
         shell.openExternal = original;
     }

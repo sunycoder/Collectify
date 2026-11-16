@@ -62,6 +62,7 @@ test('插件包导入、更新、停用保持、导出与重装保留数据，�
             }
         };
     install(archive());
+    assert.equal(registry.get('example.package').enabled, true, '新安装默认启用');
     registry.storage.set('example.package', 'private', '用户隐私');
     registry.setEnabled('example.package', false);
     install(archive({ version: '1.1.0' }));
@@ -72,6 +73,7 @@ test('插件包导入、更新、停用保持、导出与重装保留数据，�
     assert.ok(!exported.includes(Buffer.from('用户隐私')));
     registry.uninstall('example.package');
     install(exported);
+    assert.equal(registry.get('example.package').enabled, true, '卸载后重新安装默认启用');
     assert.equal(registry.storage.get('example.package', 'private'), '用户隐私');
     assert.deepEqual(fs.readdirSync(packages.root), []);
 });

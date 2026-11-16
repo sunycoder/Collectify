@@ -35,7 +35,7 @@ fix(calendar): 修复日期选择器超出窗口边界
 
 ## 本机配置
 
-仓库内 `config/default-config.json` 和 `config/example-import.json` 仅放演示资源，不包含实际账号密码。真实默认配置放在项目根目录的 `default-config.json`，该文件已忽略，由程序优先读取。
+程序默认配置统一放在 `config/app-defaults.json`，其中 `initialData` 仅放演示资源。真实初始数据及本机覆盖放在已忽略且排除打包的 `config/local.json`。导入示例放在 `examples/bookmarks-import.json`，不参与启动。详见 `docs/APP-DEFAULTS.md`。
 
 不要提交数据库、导出备份、日志、IDE 个人配置、安装产物、令牌和真实登录资料。本机离线打包缓存保留于已忽略的 build-tools 目录。
 

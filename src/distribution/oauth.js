@@ -84,8 +84,9 @@ async function gitlabLogin(config, provider, { openExternal, fetcher, signal }) 
         });
         const timer = setTimeout(() => finish(Error('登录超时，请重试')), 5 * 60 * 1000);
         signal.addEventListener('abort', abort, { once: true });
-        server.on('error', () => finish(Error('无法监听登录回调端口 19287，请检查端口占用')));
-        server.listen(19287, '127.0.0.1', async () => {
+        const callback = new URL(CALLBACK);
+        server.on('error', () => finish(Error(`无法监听登录回调端口 ${callback.port}，请检查端口占用`)));
+        server.listen(Number(callback.port), callback.hostname, async () => {
             if (signal.aborted) return abort();
             const url = new URL(provider.authUrl);
             url.search = new URLSearchParams({

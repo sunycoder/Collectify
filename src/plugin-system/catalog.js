@@ -1,7 +1,11 @@
 const { pluginId } = require('./manifest');
 const { ARCHIVE_LIMIT } = require('./package');
 const { compatibility, validateCompatibility } = require('./compatibility');
-const DEFAULT_CATALOG_URL = 'https://raw.githubusercontent.com/sunycoder/Collectify/main/plugins/catalog.json';
+const sourceDefaults = require('../app-defaults').distribution;
+const DEFAULT_CATALOG_URL =
+    sourceDefaults.provider === 'github'
+        ? `https://raw.githubusercontent.com/${sourceDefaults.project}/${sourceDefaults.ref}/${sourceDefaults.catalogPath}`
+        : `${sourceDefaults.baseUrl}/api/v4/projects/${encodeURIComponent(sourceDefaults.project)}/repository/files/${encodeURIComponent(sourceDefaults.catalogPath)}/raw?ref=${encodeURIComponent(sourceDefaults.ref)}`;
 
 function compareVersion(a, b) {
     const left = a.split('.').map(BigInt),

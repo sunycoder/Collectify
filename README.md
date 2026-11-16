@@ -4,14 +4,14 @@
 
 ## 下载
 
-当前主程序版本 **5.7.5**。下载后直接安装，无需 Git、Node.js 或数据库环境。
+当前主程序版本 **5.7.6**。下载后直接安装，无需 Git、Node.js 或数据库环境。
 
 | 系统                | 安装包                                                                                                                                                                                                                         | 状态         |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------ |
-| Windows 10/11 x64   | [下载安装包](https://github.com/sunycoder/Collectify/releases/download/v5.7.5/Collectify-5.7.5-windows-x64-setup.exe)                                                                                                          | 已做桌面验证 |
-| macOS Apple Silicon | [下载 DMG](https://github.com/sunycoder/Collectify/releases/download/v5.7.5/Collectify-5.7.5-macos-arm64.dmg)                                                                                                                  | 试用         |
-| macOS Intel         | [下载 DMG](https://github.com/sunycoder/Collectify/releases/download/v5.7.5/Collectify-5.7.5-macos-x64.dmg)                                                                                                                    | 试用         |
-| Linux x64           | [AppImage](https://github.com/sunycoder/Collectify/releases/download/v5.7.5/Collectify-5.7.5-linux-x86_64.AppImage) / [deb](https://github.com/sunycoder/Collectify/releases/download/v5.7.5/Collectify-5.7.5-linux-amd64.deb) | 试用         |
+| Windows 10/11 x64   | [下载安装包](https://github.com/sunycoder/Collectify/releases/download/v5.7.6/Collectify-5.7.6-windows-x64-setup.exe)                                                                                                          | 已做桌面验证 |
+| macOS Apple Silicon | [下载 DMG](https://github.com/sunycoder/Collectify/releases/download/v5.7.6/Collectify-5.7.6-macos-arm64.dmg)                                                                                                                  | 试用         |
+| macOS Intel         | [下载 DMG](https://github.com/sunycoder/Collectify/releases/download/v5.7.6/Collectify-5.7.6-macos-x64.dmg)                                                                                                                    | 试用         |
+| Linux x64           | [AppImage](https://github.com/sunycoder/Collectify/releases/download/v5.7.6/Collectify-5.7.6-linux-x86_64.AppImage) / [deb](https://github.com/sunycoder/Collectify/releases/download/v5.7.6/Collectify-5.7.6-linux-amd64.deb) | 试用         |
 
 [全部版本与发布说明](https://github.com/sunycoder/Collectify/releases) · [安装、更新与备份](docs/USER-GUIDE.md) · [更新记录](CHANGELOG.md) · [反馈问题](https://github.com/sunycoder/Collectify/issues/new/choose)
 
@@ -40,7 +40,7 @@ npm run build:assets
 npm start
 ```
 
-使用 Node.js 24.22 或更高版本。常用检查为 `npm test`、`npm run smoke` 和 `npm run format:check`。用户数据与安装产物不提交仓库，个人默认配置放在已忽略的根目录 `default-config.json`。
+使用 Node.js 24.22 或更高版本。常用检查为 `npm test`、`npm run smoke` 和 `npm run format:check`。用户数据与安装产物不提交仓库；统一默认配置为 `config/app-defaults.json`，私人初始数据和本机覆盖为已忽略且排除打包的 `config/local.json`。详见 [配置说明](docs/APP-DEFAULTS.md)。
 
 - [贡献约定](CONTRIBUTING.md) · [构建与发布](docs/PACKAGING.md)
 - [插件架构](docs/plugin-system.md) · [官方插件发布](plugins/README.md)

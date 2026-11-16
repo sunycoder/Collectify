@@ -3,16 +3,16 @@
   "version": 1,
   "plugins": [
     {
-      "minHostVersion": "5.7.3",
+      "minHostVersion": "5.7.6",
       "platforms": ["win32", "darwin", "linux"],
       "id": "collectify.clipboard-history",
       "name": "剪贴板历史",
       "description": "后台记录文本、图片和文件，支持搜索、收藏、预览与一键复制。",
-      "version": "2.2.3",
+      "version": "2.2.4",
       "apiVersion": 1,
-      "size": 55839,
-      "sha256": "dccc09b94603fc45c2c8e1f4206815a08d65311a559ace80e9d059fd213a0896",
-      "url": "https://github.com/sunycoder/Collectify/releases/download/plugin-collectify.clipboard-history-v2.2.3/collectify.clipboard-history-2.2.3.collectify-plugin"
+      "size": 55858,
+      "sha256": "4c2290f8f5472eb4c8932ab0434ced623c889b58d17dc95934731ffafcda6efa",
+      "url": "https://github.com/sunycoder/Collectify/releases/download/plugin-collectify.clipboard-history-v2.2.4/collectify.clipboard-history-2.2.4.collectify-plugin"
     },
     {
       "minHostVersion": "5.7.1",

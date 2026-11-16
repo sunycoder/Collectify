@@ -41,7 +41,8 @@ module.exports.create = function (context, store) {
     }
 
     function layout() {
-        loginHelper.hide(!visible || dashboard);
+        // 隐藏主窗口仅收起资料卡；回到收藏列表才撤销自动恢复资格。
+        loginHelper.hide(dashboard);
         for (const tab of tabs.values()) {
             const show = visible && !dashboard && !overlay && active === tab.id && !tab.error;
             tab.view.setVisible(show);

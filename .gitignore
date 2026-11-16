@@ -9,6 +9,7 @@ build-tools/
 /default-config.json
 /distribution.json
 /config/distribution.json
+/config/local.json
 *.enc
 *.sqlite
 *.sqlite-wal

@@ -34943,6 +34943,108 @@ var require_streamableHttp = __commonJS({
   }
 });
 
+// package.json
+var require_package = __commonJS({
+  "package.json"(exports2, module2) {
+    module2.exports = {
+      name: "collectify",
+      version: "5.7.6",
+      description: "Collectify \xB7 \u53EF\u6269\u5C55\u7684\u4E2A\u4EBA\u63D2\u4EF6\u5DE5\u4F5C\u53F0",
+      main: "src/main.js",
+      author: "Collectify",
+      license: "UNLICENSED",
+      scripts: {
+        format: "prettier --write .",
+        "format:check": "prettier --check .",
+        start: "electron .",
+        test: "node --test test/*.test.js",
+        smoke: "electron . --smoke-test",
+        "plugins:build": "node scripts/build-plugin-catalog.cjs",
+        "plugins:check": "node scripts/build-plugin-catalog.cjs --check",
+        "plugins:publish": "node scripts/publish-plugins.cjs",
+        "profiles:build": "node scripts/build-team-profiles.cjs",
+        "source:configure": "node scripts/configure-source.cjs",
+        dist: "electron-builder --win nsis",
+        "dist:mac": "electron-builder --mac dmg --x64 --arm64",
+        "dist:linux": "electron-builder --linux AppImage deb --x64",
+        "dist:win": "electron-builder --win nsis",
+        "vendor:ui": "node scripts/vendor-ui.js",
+        "build:assets": "node scripts/vendor-ui.js && node scripts/bundle-mcp.cjs",
+        predist: "npm run build:assets",
+        "predist:win": "npm run build:assets",
+        "predist:mac": "npm run build:assets",
+        "predist:linux": "npm run build:assets"
+      },
+      devDependencies: {
+        "@floating-ui/dom": "1.7.4",
+        "@modelcontextprotocol/sdk": "1.32.2",
+        electron: "45.2.3",
+        "electron-builder": "26.18.0",
+        esbuild: "0.25.12",
+        flatpickr: "4.6.13",
+        fullcalendar: "6.1.19",
+        prettier: "3.10.1",
+        "tom-select": "2.4.3",
+        zod: "3.25.76"
+      },
+      build: {
+        asarUnpack: [
+          "src/plugin-system/paste-windows.ps1"
+        ],
+        appId: "com.collectify.desktop",
+        productName: "Collectify",
+        directories: {
+          output: "dist"
+        },
+        files: [
+          "src/**/*",
+          "src/plugins/.shared/**/*",
+          "!src/plugin-library/**/*",
+          "assets/**/*",
+          "package.json",
+          "config/**/*",
+          "!config/local.json"
+        ],
+        win: {
+          target: [
+            "nsis"
+          ],
+          icon: "assets/icon.ico",
+          signExecutable: false
+        },
+        mac: {
+          target: "dmg",
+          category: "public.app-category.developer-tools",
+          icon: "assets/icon.icns",
+          artifactName: "Collectify-${version}-macos-${arch}.${ext}"
+        },
+        linux: {
+          target: [
+            "AppImage",
+            "deb"
+          ],
+          category: "Development",
+          maintainer: "sunycoder <sunycoder@users.noreply.github.com>",
+          artifactName: "Collectify-${version}-linux-${arch}.${ext}",
+          icon: "assets/icon.png"
+        },
+        nsis: {
+          oneClick: false,
+          allowToChangeInstallationDirectory: true,
+          createDesktopShortcut: true,
+          createStartMenuShortcut: true,
+          shortcutName: "Collectify",
+          artifactName: "Collectify-${version}-windows-${arch}-setup.${ext}",
+          deleteAppDataOnUninstall: false,
+          perMachine: false
+        },
+        afterAllArtifactBuild: "scripts/release-cleanup.cjs",
+        artifactName: "Collectify-${version}-${arch}.${ext}"
+      }
+    };
+  }
+});
+
 // src/mcp-service.js
 var http = require("node:http");
 var { randomBytes, timingSafeEqual } = require("node:crypto");
@@ -34959,7 +35061,7 @@ var LocalMcpService = class {
     this.port = null;
     this.config = repository.readMcpConfig() || {
       enabled: false,
-      port: 17863,
+      port: require("../app-defaults").network.mcpPort,
       token: randomBytes(32).toString("hex")
     };
     if (!/^[a-f0-9]{64}$/.test(this.config.token)) this.config.token = randomBytes(32).toString("hex");
@@ -34988,7 +35090,10 @@ var LocalMcpService = class {
     };
   }
   server() {
-    const server = new McpServer({ name: "collectify", version: "5.5.3" }, { instructions: SERVER_INSTRUCTIONS });
+    const server = new McpServer(
+      { name: "collectify", version: require_package().version },
+      { instructions: SERVER_INSTRUCTIONS }
+    );
     for (const tool of this.getTools())
       server.registerTool(
         tool.name,

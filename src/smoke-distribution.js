@@ -303,6 +303,21 @@ exports.run = async ({ win, distribution, registry, services, hostAction, plugin
         assert.match((await pluginJob).message, /取消/);
         assert.equal(registry.get(manifest().id).version, '1.1.0');
         assert.equal((await hostAction('plugin-download-status')).phase, 'cancelled');
+        await win.webContents.executeJavaScript(
+            "document.querySelector('#plugin-download-progress .transfer-close').click()"
+        );
+        assert.equal(
+            await win.webContents.executeJavaScript("document.querySelector('#plugin-download-progress').hidden"),
+            true
+        );
+        await win.webContents.executeJavaScript(
+            "TransferUI.render(document.querySelector('#plugin-download-progress'),{phase:'cancelled',received:10,total:100})"
+        );
+        assert.equal(
+            await win.webContents.executeJavaScript("document.querySelector('#plugin-download-progress').hidden"),
+            true,
+            '取消后的面板关闭后不应重现'
+        );
         const appJob = hostAction('distribution-download').catch((error) => error);
         await wait(
             () => distribution.progress?.received > 0 && distribution.progress.received < distribution.progress.total

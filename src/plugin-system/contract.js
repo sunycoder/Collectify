@@ -71,7 +71,7 @@ function reference(templates) {
             'collectify.windows.drag({phase,x,y})':
                 '仅 shortcut 页面且有 window 权限；phase 为 start/move/end，x/y 为指针屏幕坐标。只移动本插件自己的快捷按钮，位置约束在显示器可用区域。',
             'collectify.desktop.paste()':
-                '需要 desktop.paste；仅前台插件主动调用，Windows 隐藏本应用后向恢复焦点的外部应用发送 Ctrl+V；其他平台明确报错',
+                '需要 desktop.paste；仅前台插件主动调用，隐藏本应用后向恢复焦点的外部应用发送粘贴快捷键。Windows 为 Ctrl+V，macOS 为 Command+V 且需辅助功能权限；Linux 提示手动粘贴。',
             'collectify.clipboard.readText()':
                 '需要 clipboard.read；仅当前插件显示、主窗口可见且未最小化时允许；最多 64 KB 文本。采集应由用户在插件中主动开启，离开页面时暂停；不要把文本写入日志。',
             'collectify.clipboard.writeText(text)': '需要 clipboard.write；复制文本',

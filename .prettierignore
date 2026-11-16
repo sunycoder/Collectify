@@ -13,6 +13,7 @@ package-lock.json
 .idea/
 default-config.json
 distribution.json
+config/local.json
 *.sqlite*
 *.bak
 *.log

@@ -17,6 +17,12 @@
     };
     window.TransferUI = {
         render(container, state, cancel) {
+            if (state?.phase === 'connecting' && container.lastPhase !== 'connecting') container.dismissed = false;
+            container.lastPhase = state?.phase;
+            if (state && container.dismissed) {
+                container.hidden = true;
+                return;
+            }
             container.hidden = !state;
             if (!state) return;
             if (!container.querySelector('progress')) {
@@ -31,8 +37,19 @@
                 button.textContent = '取消下载';
                 bar.setAttribute('aria-label', '下载进度');
                 bar.max = 100;
-                container.append(heading, bar, details, button);
+                const close = document.createElement('button');
+                close.type = 'button';
+                close.className = 'transfer-close';
+                close.textContent = '×';
+                close.setAttribute('aria-label', '关闭下载进度');
+                close.title = '关闭下载进度（继续在后台下载）';
+                close.onclick = () => {
+                    container.dismissed = true;
+                    container.hidden = true;
+                };
+                container.append(heading, bar, details, button, close);
             }
+            container.transferState = state;
             container.querySelector('strong').textContent =
                 (state.label ? state.label + ' · ' : '') + (phases[state.phase] || '正在处理');
             const bar = container.querySelector('progress');
@@ -48,7 +65,7 @@
                 .filter(Boolean)
                 .join(' · ');
             container.querySelector('span').textContent = state.error || text;
-            const button = container.querySelector('button');
+            const button = container.querySelector('button.subtle');
             button.hidden = !['connecting', 'downloading'].includes(state.phase);
             button.onclick = cancel;
         }

@@ -1,5 +1,6 @@
 const { createHash } = require('node:crypto');
-const CALLBACK = 'http://127.0.0.1:19287/oauth/callback';
+const defaults = require('../app-defaults');
+const CALLBACK = `http://127.0.0.1:${defaults.network.oauthCallbackPort}/oauth/callback`;
 function privateHost(host) {
     return /^(localhost|127\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)$/.test(
         host
@@ -34,9 +35,9 @@ function validateConfig(input = {}) {
             .trim()
             .replace(/\/+$/, ''),
         project: cleanPath(input.project?.trim(), '项目路径'),
-        ref: cleanPath(input.ref?.trim() || 'main', '分支'),
-        catalogPath: cleanPath(input.catalogPath?.trim() || 'plugins/catalog.json', '插件目录路径'),
-        profilesPath: cleanPath(input.profilesPath?.trim() || 'profiles/index.json', '团队配置索引路径'),
+        ref: cleanPath(input.ref?.trim() || defaults.distribution.ref, '分支'),
+        catalogPath: cleanPath(input.catalogPath?.trim() || defaults.distribution.catalogPath, '插件目录路径'),
+        profilesPath: cleanPath(input.profilesPath?.trim() || defaults.distribution.profilesPath, '团队配置索引路径'),
         clientId: String(input.clientId || '').trim(),
         allowInsecureHttp: input.allowInsecureHttp === true,
         automaticChecks: input.automaticChecks !== false
@@ -58,20 +59,44 @@ function sourceKey(config) {
 function authKey(config) {
     return sourceKey({ provider: config.provider, baseUrl: config.baseUrl, clientId: config.clientId });
 }
+// 仅为同一服务、同一仓库补齐缺失 ID；不覆盖个人 ID，也不把授权配置套到其他源。
+function inheritClientId(input, preset) {
+    const sameSource =
+        preset &&
+        input.provider === preset.provider &&
+        String(input.baseUrl || '').replace(/\/+$/, '') === String(preset.baseUrl || '').replace(/\/+$/, '') &&
+        input.project === preset.project;
+    return sameSource && !String(input.clientId || '').trim() && preset.clientId
+        ? { ...input, clientId: preset.clientId }
+        : input;
+}
 function sourcePresets(deployment) {
     const shared = {
-        ref: 'main',
-        catalogPath: 'plugins/catalog.json',
-        profilesPath: 'profiles/index.json',
+        ref: defaults.distribution.ref,
+        catalogPath: defaults.distribution.catalogPath,
+        profilesPath: defaults.distribution.profilesPath,
         clientId: '',
         allowInsecureHttp: false,
         automaticChecks: true
     };
     const presets = {
         gitlab: { ...shared, provider: 'gitlab', baseUrl: '', project: '' },
-        github: { ...shared, provider: 'github', baseUrl: 'https://github.com', project: 'sunycoder/Collectify' }
+        github: {
+            ...shared,
+            provider: 'github',
+            baseUrl: 'https://github.com',
+            project: defaults.distribution.provider === 'github' ? defaults.distribution.project : ''
+        }
     };
-    if (deployment) presets[deployment.provider] = validateConfig(deployment);
+    presets[defaults.distribution.provider] = { ...shared, ...defaults.distribution };
+    for (const [provider, source] of Object.entries(defaults.sources || {})) {
+        if (!['github', 'gitlab'].includes(provider) || provider === defaults.distribution.provider) continue;
+        presets[provider] = validateConfig({ ...shared, ...source, provider });
+    }
+    if (deployment)
+        presets[deployment.provider] = validateConfig(
+            inheritClientId(validateConfig(deployment), presets[deployment.provider])
+        );
     return presets;
 }
-module.exports = { CALLBACK, validateConfig, webUrl, cleanPath, sourceKey, authKey, sourcePresets };
+module.exports = { CALLBACK, validateConfig, webUrl, cleanPath, sourceKey, authKey, sourcePresets, inheritClientId };

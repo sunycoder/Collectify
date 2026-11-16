@@ -49,15 +49,13 @@ function seed(context, definition) {
             db.close();
         }
     }
-    const raw = context.smoke
-        ? { version: 2, categories: [], entries: [] }
-        : JSON.parse(fs.readFileSync(context.defaultsFile, 'utf8').replace(/^\uFEFF/, ''));
+    const raw = context.smoke ? { version: 2, categories: [], entries: [] } : context.initialData;
     const defaults = withInitialExamples(raw);
     return {
         ...Object.fromEntries(Object.keys(definition.tables).map((key) => [key, defaults[key] || []])),
         settings: defaults.settings || {},
         configSource: 'default',
-        sourceName: path.basename(context.defaultsFile)
+        sourceName: '初始数据'
     };
 }
 module.exports = { seed };

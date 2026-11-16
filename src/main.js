@@ -1,4 +1,15 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, protocol, safeStorage } = require('electron');
+const {
+    app,
+    BrowserWindow,
+    ipcMain,
+    dialog,
+    shell,
+    Tray,
+    Menu,
+    protocol,
+    safeStorage,
+    nativeImage
+} = require('electron');
 const fs = require('node:fs'),
     path = require('node:path'),
     os = require('node:os');
@@ -18,6 +29,10 @@ const { webUrl } = require('./distribution/config');
 const Theme = require('./theme');
 const { LocalMcpService, z } = require('./vendor/mcp-service.cjs');
 const { copyText } = require('./clipboard-service');
+const { revealWindow, stayResident, bindTray } = require('./window-lifecycle');
+const defaults = require('./app-defaults');
+const revealMain = () =>
+    revealWindow(() => win, createWindow).catch((error) => dialog.showErrorBox('无法打开 Collectify', error.message));
 protocol.registerSchemesAsPrivileged([
     {
         scheme: 'collectify-plugin',
@@ -60,10 +75,13 @@ function sendPluginTransfer(value) {
 const rendererUrl = pathToFileURL(path.join(__dirname, 'index.html')).href;
 function settings() {
     return {
-        theme: Theme.validate(registry.getSetting('theme') || {}),
-        keepInTray: registry.getSetting('keepInTray', false) === true,
-        navigationCollapsed: registry.getSetting('navigationCollapsed', false) === true,
-        browserOpenMode: registry.getSetting('browserOpenMode', 'internal') === 'external' ? 'external' : 'internal'
+        theme: Theme.validate(registry.getSetting('theme') || defaults.settings.theme),
+        keepInTray: registry.getSetting('keepInTray', defaults.settings.keepInTray) === true,
+        navigationCollapsed: registry.getSetting('navigationCollapsed', defaults.settings.navigationCollapsed) === true,
+        browserOpenMode:
+            registry.getSetting('browserOpenMode', defaults.settings.browserOpenMode) === 'external'
+                ? 'external'
+                : 'internal'
     };
 }
 function setSettings(input, validateOnly = false) {
@@ -321,9 +339,9 @@ async function pluginManagement(action, payload) {
     }
 }
 function layout() {
-    if (!win) return;
+    if (!win || win.isDestroyed()) return;
     runtime.layout(!overlay);
-    services.layout(runtime.bounds, runtime.activeId, overlay);
+    services.layout(runtime.bounds, runtime.activeId, overlay || !win.isVisible() || win.isMinimized());
 }
 function pluginRuntimeStatus(id) {
     const plugin = registry.get(id),
@@ -366,8 +384,7 @@ function updateTray() {
             {
                 label: '打开 Collectify',
                 click: () => {
-                    win?.show();
-                    win?.focus();
+                    void revealMain();
                 }
             },
             ...registry
@@ -549,9 +566,13 @@ async function hostAction(action, payload) {
             if (error) throw Error(error);
             return;
         }
-        case 'app-download':
-            await shell.openExternal('https://github.com/sunycoder/Collectify/releases/latest');
+        case 'app-download': {
+            const source = distribution.config;
+            await shell.openExternal(
+                `${source.baseUrl}/${source.project}/${source.provider === 'github' ? 'releases/latest' : '-/releases'}`
+            );
             return;
+        }
         case 'settings':
             return setSettings(payload);
         case 'theme-save':
@@ -643,10 +664,7 @@ ipcMain.handle('workbench', async (event, action, payload) => {
 });
 async function createWindow() {
     win = new BrowserWindow({
-        width: 1440,
-        height: 960,
-        minWidth: 1080,
-        minHeight: 720,
+        ...defaults.window,
         title: 'Collectify · 插件工作台',
         backgroundColor: settings().theme.background,
         icon: path.join(__dirname, '..', 'assets', 'icon.png'),
@@ -667,14 +685,22 @@ async function createWindow() {
             if (event.level === 3) console.error('Shell renderer:', event.message);
         });
     win.on('resize', layout);
+    win.on('hide', () => services.layout(runtime.bounds, runtime.activeId, true));
+    win.on('minimize', () => services.layout(runtime.bounds, runtime.activeId, true));
+    win.on('show', layout);
+    win.on('restore', layout);
     win.on('close', (event) => {
         if (
-            !quitting &&
-            tray &&
-            (settings().keepInTray ||
-                runtime.popouts.size > 0 ||
-                runtime.backgroundActivity.size > 0 ||
-                [...services.providers.values()].some((p) => p.keepAlive?.()))
+            stayResident({
+                quitting,
+                platform: process.platform,
+                trayAvailable: !!tray,
+                keepInTray: settings().keepInTray,
+                background:
+                    runtime.popouts.size > 0 ||
+                    runtime.backgroundActivity.size > 0 ||
+                    [...services.providers.values()].some((p) => p.keepAlive?.())
+            })
         ) {
             event.preventDefault();
             win.hide();
@@ -688,14 +714,13 @@ async function createWindow() {
     publish();
 }
 app.on('second-instance', () => {
-    win?.show();
-    win?.focus();
+    void revealMain();
 });
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
 });
 app.on('activate', () => {
-    if (!win) void createWindow();
+    void revealMain();
 });
 app.on('before-quit', () => {
     quitting = true;
@@ -742,20 +767,9 @@ app.whenReady()
                 db.close();
             }
         }
-        const externalDefault = path.join(
-            app.isPackaged ? path.dirname(app.getPath('exe')) : path.join(__dirname, '..'),
-            'default-config.json'
-        );
-        const defaultsFile = fs.existsSync(externalDefault)
-            ? externalDefault
-            : path.join(__dirname, '..', 'config', 'default-config.json');
         if (registry.getSetting('theme') === null) {
-            const initial =
-                !smoke && fs.existsSync(defaultsFile)
-                    ? JSON.parse(fs.readFileSync(defaultsFile, 'utf8').replace(/^\uFEFF/, '')).settings || {}
-                    : {};
-            registry.setSetting('theme', Theme.validate(initial.theme || {}));
-            registry.setSetting('keepInTray', initial.keepInTray === true);
+            registry.setSetting('theme', Theme.validate(defaults.settings.theme));
+            registry.setSetting('keepInTray', defaults.settings.keepInTray === true);
         }
         runtime = new PluginRuntime({
             registry,
@@ -773,7 +787,7 @@ app.whenReady()
             getSettings: settings,
             setSettings,
             dataDirectory,
-            defaultsFile,
+            initialData: defaults.initialData,
             smoke,
             pick,
             openPlugin
@@ -787,13 +801,6 @@ app.whenReady()
         await services.load({ activate: false });
         backup = new WorkspaceBackup(registry, settings, setSettings);
         backup.recover();
-        const deploymentFile = [
-            path.join(
-                app.isPackaged ? path.dirname(app.getPath('exe')) : path.join(__dirname, '..'),
-                'distribution.json'
-            ),
-            path.join(__dirname, '..', 'config', 'distribution.json')
-        ].find((file) => fs.existsSync(file));
         const sourceCredentials = new CredentialStore(path.join(dataDirectory, 'source-credentials.enc'), safeStorage);
         await sourceCredentials.initialize();
         distribution = new Distribution({
@@ -809,10 +816,7 @@ app.whenReady()
                 const result = await pluginManagement('plugin-catalog-refresh');
                 return { updates: result.plugins.filter((plugin) => plugin.updateAvailable).length };
             },
-            deployment:
-                (!smoke || process.argv.includes('--smoke-deployment')) && deploymentFile
-                    ? JSON.parse(fs.readFileSync(deploymentFile, 'utf8').replace(/^\uFEFF/, ''))
-                    : undefined,
+            deployment: !smoke || process.argv.includes('--smoke-deployment') ? defaults.distribution : undefined,
             changed: () => {
                 if (win && !win.isDestroyed()) win.webContents.send('distribution-state', distribution.status());
             }
@@ -862,8 +866,10 @@ app.whenReady()
         await runtime.startBackgrounds();
         if (!smoke) {
             distribution.start();
-            tray = new Tray(path.join(__dirname, '..', 'assets', 'icon.png'));
+            const trayIcon = nativeImage.createFromPath(path.join(__dirname, '..', 'assets', 'icon.png'));
+            tray = new Tray(process.platform === 'darwin' ? trayIcon.resize({ width: 18, height: 18 }) : trayIcon);
             tray.setToolTip('Collectify');
+            bindTray(tray, () => void revealMain());
             updateTray();
             if (mcp.config.enabled)
                 try {
@@ -886,7 +892,22 @@ app.whenReady()
                         packages,
                         pluginCatalog,
                         distribution,
-                        hostAction
+                        hostAction,
+                        withTestTray: async (action) => {
+                            const previous = tray;
+                            let menu;
+                            tray = {
+                                setContextMenu(value) {
+                                    menu = value;
+                                }
+                            };
+                            updateTray();
+                            try {
+                                await action(menu);
+                            } finally {
+                                tray = previous;
+                            }
+                        }
                     };
                 if (process.argv.includes('--smoke-market')) await require('./smoke-market').run(context);
                 else if (process.argv.includes('--smoke-deployment'))
