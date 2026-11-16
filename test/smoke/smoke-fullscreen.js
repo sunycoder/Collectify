@@ -39,7 +39,20 @@ exports.run = async ({ win, services, hostAction, runtime }) => {
         await wait(250);
         helper = browser.loginHelper;
         helper.smoke = false;
+        // macOS 的可见状态先更新，原生 show 事件可能稍后到达；先等首次展示完成再统计布局事件。
+        const displayed = new Promise((resolve, reject) => {
+            const timer = setTimeout(() => {
+                helper.win.removeListener('show', onShow);
+                reject(Error('资料卡首次展示超时'));
+            }, 10000);
+            const onShow = () => {
+                clearTimeout(timer);
+                resolve();
+            };
+            helper.win.once('show', onShow);
+        });
         await helper.show(entry);
+        await displayed;
         assert.equal(helper.win.isVisible(), true, '全屏回归必须实际显示资料卡，不能仅检查隐藏窗口');
         let hidden = 0,
             shown = 0;
