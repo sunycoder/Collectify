@@ -131,9 +131,19 @@ app.whenReady().then(async () => {
         await until(() => js("document.querySelector('#settings-dialog').open"));
         assert.equal(await js("document.querySelector('#provider').options.length"), 2);
         const click = async (selector) => {
+            // 原生弹窗重新打开后，等待控件刷新与居中布局完成；Mac 的布局/输入提交可能跨帧。
+            await js('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
             const point = await js(
                 `(()=>{const r=document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect();return {x:Math.round(r.left+r.width/2),y:Math.round(r.top+r.height/2)}})()`
             );
+            assert.equal(
+                await js(
+                    `(()=>{const target=document.querySelector(${JSON.stringify(selector)});return target.contains(document.elementFromPoint(${point.x},${point.y}))})()`
+                ),
+                true,
+                `点击目标被遮挡：${selector}`
+            );
+            wc.sendInputEvent({ type: 'mouseMove', ...point });
             wc.sendInputEvent({ type: 'mouseDown', button: 'left', clickCount: 1, ...point });
             wc.sendInputEvent({ type: 'mouseUp', button: 'left', clickCount: 1, ...point });
             await wait(60);
@@ -152,10 +162,10 @@ app.whenReady().then(async () => {
         await js("document.querySelector('#settings-open').click()");
         await until(() => js("document.querySelector('#settings-dialog').open"));
         await click('#remove-key');
-        assert.equal(await js("document.querySelector('#api-key').disabled"), true);
+        await until(() => js("document.querySelector('#api-key').disabled"));
         assert.equal((await services.call(id, 'state')).settings.hasKey, true, '移除需保存后生效');
         await click('#remove-key');
-        assert.equal(await js("document.querySelector('#api-key').disabled"), false, '可撤销移除');
+        await until(() => js("!document.querySelector('#api-key').disabled"));
         await click('#remove-key');
         fs.writeFileSync(path.join(root, 'dist', 'ip-query-settings-preview.png'), (await wc.capturePage()).toPNG());
         wc.sendInputEvent({ type: 'mouseDown', button: 'left', clickCount: 1, x: 10, y: 10 });
