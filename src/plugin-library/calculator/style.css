@@ -97,6 +97,35 @@ body {
     font-size: 11px;
     color: var(--muted);
 }
+#keyboard-target {
+    max-width: 45%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+#keyboard-formula {
+    margin: 0 0 10px;
+    max-height: 48px;
+    overflow: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font:
+        13px/1.6 ui-monospace,
+        Consolas,
+        monospace;
+    color: var(--muted);
+    -webkit-app-region: no-drag;
+    cursor: text;
+    user-select: text;
+}
+.keyboard-actions {
+    grid-template-rows: repeat(5, minmax(26px, 1fr));
+}
+@media (max-width: 560px) {
+    #keyboard-target {
+        max-width: 55%;
+    }
+}
 .keyboard-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 110px;
@@ -367,6 +396,20 @@ kbd {
     border-radius: 6px;
     background: var(--surface);
     color: var(--ink);
+}
+.toolbar .precision-control > .ts-wrapper {
+    width: 150px;
+    min-width: 130px;
+    margin: 0;
+}
+.precision-control .ts-control {
+    text-align: left;
+}
+.precision-control .ts-wrapper.single .ts-control,
+.precision-control .ts-wrapper.single.input-active .ts-control {
+    background: var(--surface) !important;
+    color: var(--ink);
+    border-color: var(--line);
 }
 .row-tools .add-note {
     border: 0;
@@ -709,4 +752,25 @@ dialog p {
     .toolbar-actions {
         gap: 6px;
     }
+}
+
+.keyboard-actions {
+    grid-template-rows: repeat(5, minmax(26px, 1fr));
+}
+@media (max-width: 560px) {
+    .keyboard-actions {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-rows: auto;
+    }
+}
+.keyboard-only #keyboard-target {
+    max-width: 55%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.expression,
+.result-button {
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }

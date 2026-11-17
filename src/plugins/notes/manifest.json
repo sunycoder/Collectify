@@ -4,7 +4,7 @@
   "description": "记录想法、整理便签并转为待办",
   "glyph": "记",
   "order": 30,
-  "version": "1.0.1",
+  "version": "1.0.2",
   "apiVersion": 1,
   "entry": "index.html",
   "backend": "backend.js",

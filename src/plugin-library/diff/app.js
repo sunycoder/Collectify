@@ -709,7 +709,7 @@ const App = (window.DiffApp = {
                 ...report,
                 title: '文件夹差异报告',
                 roots: this.folders.snapshot.roots,
-                rows: this.folders.snapshot.rows.filter((r) => r.state !== 'same' || r.differences),
+                rows: this.folders.snapshot.rows,
                 warnings: this.folders.snapshot.warnings
             };
         if (this.content === 'image')
@@ -1050,6 +1050,64 @@ $('#cancel').onclick = () =>
         await App.documents.dispose();
         App.status('任务已取消');
     });
+let preparedExport = null,
+    preparingExport = false;
+function exportSignature(report) {
+    const { createdAt, ...content } = report;
+    return JSON.stringify(content);
+}
+async function prepareExport() {
+    if (preparingExport) return false;
+    preparingExport = true;
+    $('#confirm-export').disabled = true;
+    try {
+        const report = await App.report(),
+            scope = $('#export-scope').value;
+        const signature = exportSignature(report);
+        const rules = [
+            App.settings.ignoreWhitespace ? '忽略行首尾空白' : '保留空白',
+            App.settings.ignoreQuotes ? '统一引号' : '',
+            App.settings.ignoreDashes ? '统一破折号' : '',
+            ...(App.settings.ignoreRules || []).map((rule) => '忽略：' + rule)
+        ].filter(Boolean);
+        report.scope = scope;
+        report.note += ` 范围：${scope === 'differences' ? '仅差异' : '包含上下文'}。规则：${rules.join('；')}。`;
+        const generated = await api.invoke('report', report);
+        preparedExport = { signature, scope, report: generated.report };
+        const changes =
+            generated.report.rows?.filter((row) => row.state !== 'same' || row.differences).length ??
+            generated.report.parts?.filter((part) => part.added || part.removed).length ??
+            0;
+        $('#export-summary').textContent = [
+            `左侧：${App.items[0]?.path || App.items[0]?.name || '手动文本'}`,
+            `右侧：${App.items[1]?.path || App.items[1]?.name || '手动文本'}`,
+            `类型：${App.content} · ${changes} 个差异条目/片段`,
+            `范围：${scope === 'differences' ? '仅差异' : '包含上下文'}`,
+            `规则：${rules.join('；')}`,
+            App.content === 'document'
+                ? `工作表：${
+                      App.documents.items
+                          .flatMap((i) => i?.sheets?.map((s) => s.name) || [])
+                          .filter((n, i, a) => a.indexOf(n) === i)
+                          .join('、') || '不适用'
+                  }；表格按单元格列出差异，范围不扩展到未更改单元格。`
+                : '',
+            App.content === 'image' ? '图片范围：仅差异导出像素摘要，不附完整图片；包含上下文会附当前画面。' : ''
+        ]
+            .filter(Boolean)
+            .join('\n');
+        return true;
+    } catch (error) {
+        preparedExport = null;
+        $('#export-summary').textContent = error.message;
+        App.error(error.message);
+        return false;
+    } finally {
+        preparingExport = false;
+        $('#confirm-export').disabled = !preparedExport;
+    }
+}
+$('#export-scope').onchange = () => void prepareExport();
 $('#export').onclick = () => {
     if (App.mode === 'folder' && !App.folders.snapshot) {
         App.status('请先完成目录扫描再导出报告');
@@ -1060,6 +1118,7 @@ $('#export').onclick = () => {
         return;
     }
     $('#export-dialog').showModal();
+    void prepareExport();
 };
 $('#cancel-export').onclick = () => $('#export-dialog').close();
 $('#export-dialog').onclick = (e) => {
@@ -1073,10 +1132,19 @@ $('#confirm-export').onclick = () =>
         const button = $('#confirm-export');
         button.disabled = true;
         try {
+            if (
+                !preparedExport ||
+                preparedExport.scope !== $('#export-scope').value ||
+                preparedExport.signature !== exportSignature(await App.report())
+            ) {
+                await prepareExport();
+                App.status('内容已变化，请核对更新后的范围摘要并再次导出');
+                return;
+            }
             App.status('正在生成报告…');
             const result = await api.invoke('export', {
                 format: $('#export-format').value,
-                report: await App.report()
+                report: preparedExport.report
             });
             if (result) {
                 $('#export-dialog').close();

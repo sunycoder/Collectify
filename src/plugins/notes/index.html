@@ -12,6 +12,7 @@
         <link rel="stylesheet" href="collectify-plugin://collectify.sdk/readability.css" />
         <link rel="stylesheet" href="collectify-plugin://collectify.sdk/board.css" />
         <link rel="stylesheet" href="collectify-plugin://collectify.sdk/plugin-page.css" />
+        <link rel="stylesheet" href="notes.css" />
     </head>
     <body>
         <main>
@@ -27,6 +28,12 @@
                     <input id="note-search" placeholder="搜索便签标题或正文" aria-label="搜索便签" /><span
                         id="note-count"
                     ></span>
+                    <label
+                        >排列<select id="note-sort">
+                            <option value="updated">最近修改</option>
+                            <option value="manual">手动固定顺序</option>
+                        </select></label
+                    >
                 </div>
                 <div id="notes-grid" class="notes-grid"></div>
             </section>

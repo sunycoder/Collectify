@@ -10,6 +10,7 @@ function formattedDate(value) {
 }
 function renderNotes() {
     $('#notes-grid').replaceChildren();
+    const previousScroll = document.scrollingElement.scrollTop;
     const noteQuery = $('#note-search').value.trim().toLowerCase(),
         visibleNotes = (state.notes || [])
             .filter(
@@ -17,7 +18,8 @@ function renderNotes() {
                     (noteColor === 'all' || note.color === noteColor) &&
                     [note.title, note.content].some((value) => value.toLowerCase().includes(noteQuery))
             )
-            .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+            .sort(state.noteSort === 'manual' ? () => 0 : (a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+    $('#note-sort').value = state.noteSort || 'updated';
     $('#note-count').textContent = `${visibleNotes.length} 张便签`;
     for (const note of visibleNotes) {
         const node = el('article', `sticky-note ${note.color}`);
@@ -30,6 +32,35 @@ function renderNotes() {
             button('转为待办', 'list', () => call('to-task', note.id)),
             button('删除便签', 'trash', () => confirmDelete('notes', note), 'icon-button')
         );
+        if (state.noteSort === 'manual') {
+            const position = visibleNotes.findIndex((n) => n.id === note.id);
+            const move = async (delta) => {
+                const target = visibleNotes[position + delta];
+                if (!target) return;
+                await call(
+                    'note-move',
+                    delta < 0 ? { id: note.id, before: target.id } : { id: target.id, before: note.id }
+                );
+                await refresh();
+                $('#notes-grid').querySelector(`[data-id="${note.id}"]`)?.focus({ preventScroll: true });
+            };
+            const up = button('向前移动', 'up', () => move(-1), 'icon-button'),
+                down = button('向后移动', 'down', () => move(1), 'icon-button');
+            up.disabled = position === 0;
+            down.disabled = position === visibleNotes.length - 1;
+            actions.prepend(up, down);
+            node.draggable = true;
+            node.ondragstart = (event) => event.dataTransfer.setData('application/collectify-note', note.id);
+            node.ondragover = (event) => event.preventDefault();
+            node.ondrop = task(async (event) => {
+                event.preventDefault();
+                const id = event.dataTransfer.getData('application/collectify-note');
+                if (id && id !== note.id) {
+                    await call('note-move', { id, before: note.id });
+                    await refresh();
+                }
+            });
+        }
         node.append(title, content, el('small', '', `更新于 ${formattedDate(note.updatedAt)}`), actions);
         $('#notes-grid').append(node);
         node.tabIndex = 0;
@@ -41,6 +72,7 @@ function renderNotes() {
             if (event.target === node && event.key === 'Enter') return showNote(note);
         });
     }
+    document.scrollingElement.scrollTop = previousScroll;
     if (!visibleNotes.length) {
         const empty = el('div', 'no-notes');
         empty.append(
@@ -116,6 +148,10 @@ async function refresh() {
 }
 $('#new-note').onclick = task(() => showNote());
 $('#note-search').oninput = renderNotes;
+$('#note-sort').onchange = task(async () => {
+    await call('note-sort', $('#note-sort').value);
+    await refresh();
+});
 guardEditor($('#note-form'));
 const ready = refresh();
 collectify.onNavigate(({ route }) => {

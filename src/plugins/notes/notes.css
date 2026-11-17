@@ -1,0 +1,33 @@
+.notes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+}
+.sticky-note {
+    min-width: 0;
+}
+.sticky-note h2,
+.sticky-note > p {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+.sticky-note > p {
+    max-height: 260px;
+    overflow: auto;
+}
+.sticky-actions {
+    flex-wrap: wrap;
+    gap: 5px;
+}
+.notes-toolbar {
+    flex-wrap: wrap;
+}
+.notes-toolbar label {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 12px;
+}
+.notes-toolbar label > .ts-wrapper {
+    margin: 0;
+    width: 155px;
+}

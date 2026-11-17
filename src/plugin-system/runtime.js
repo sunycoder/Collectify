@@ -202,6 +202,17 @@ class PluginRuntime {
             if (isBackground || !plugin.permissions.includes('window')) throw Error('插件未声明独立窗口权限');
             return this.openWindow(plugin, payload);
         }
+        if (action === 'window.topmost') {
+            if (
+                !plugin.permissions.includes('window') ||
+                !pair[1].window ||
+                pair[1].mode === 'shortcut' ||
+                typeof payload !== 'boolean'
+            )
+                throw Error('仅独立插件窗口可调整自身置顶');
+            pair[1].window.setAlwaysOnTop(payload);
+            return payload;
+        }
         if (action === 'desktop.paste') {
             if (isBackground || !plugin.permissions.includes('desktop.paste')) throw Error('插件未声明执行粘贴权限');
             if (
@@ -405,6 +416,7 @@ class PluginRuntime {
         if (this.services?.errors.has(id)) throw Error(`插件后台加载失败：${this.services.errors.get(id)}`);
         if (commandId && !plugin.commands.some((c) => c.id === commandId)) throw Error('插件命令不存在');
         this.activeId = id;
+        this.layoutOwnedWindows();
         let record = this.views.get(id);
         if (!record) {
             const view = new WebContentsView({
@@ -453,6 +465,7 @@ class PluginRuntime {
                 record.error = '插件进程已退出，请重新打开';
                 record.loading = false;
                 view.setVisible(false);
+                this.layoutOwnedWindows();
                 this.changed();
             });
             record.ready = view.webContents
@@ -492,8 +505,10 @@ class PluginRuntime {
             (record) => record.pluginId === plugin.id && record.mode !== 'shortcut'
         );
         if (existing) {
-            existing.window.show();
-            existing.window.focus();
+            if (!existing.followActivePlugin || (this.ownerVisible && this.activeId === plugin.id)) {
+                existing.window.show();
+                existing.window.focus();
+            }
             existing.view.webContents.send('plugin-navigate', { route: plugin.navigation[0]?.id, payload });
             return;
         }
@@ -505,7 +520,7 @@ class PluginRuntime {
             title: plugin.name + ' · ' + (typeof payload.title === 'string' ? payload.title.slice(0, 60) : '悬浮中转'),
             alwaysOnTop: true,
             autoHideMenuBar: true,
-            show: !this.smoke,
+            show: !this.smoke && payload.followActivePlugin !== true,
             webPreferences: {
                 partition: this.prepare(plugin),
                 preload: path.join(__dirname, 'preload.js'),
@@ -517,7 +532,14 @@ class PluginRuntime {
             }
         });
         const key = randomUUID(),
-            record = { pluginId: plugin.id, window, view: { webContents: window.webContents }, errors: [] };
+            record = {
+                pluginId: plugin.id,
+                window,
+                view: { webContents: window.webContents },
+                errors: [],
+                followActivePlugin: payload.followActivePlugin === true,
+                loading: true
+            };
         this.popouts.set(key, record);
         const savedBounds = this.registry.getSetting('windowBounds:' + plugin.id);
         if (
@@ -547,6 +569,8 @@ class PluginRuntime {
         try {
             await window.loadURL(this.url(plugin));
             if (window.isDestroyed()) return;
+            record.loading = false;
+            this.layoutOwnedWindows();
             window.webContents.send('plugin-navigate', { route: plugin.navigation[0]?.id, payload });
         } catch (error) {
             if (!window.isDestroyed()) window.destroy();
@@ -725,9 +749,25 @@ class PluginRuntime {
         };
     }
     layout(visible) {
+        this.ownerVisible = !!visible;
         for (const [id, record] of this.views) {
             const show = !!visible && id === this.activeId && !record.loading && !record.error;
             layoutView(record.view, show, this.bounds);
+        }
+        this.layoutOwnedWindows();
+    }
+    layoutOwnedWindows() {
+        for (const record of this.popouts.values()) {
+            if (!record.followActivePlugin || record.window.isDestroyed()) continue;
+            const owner = this.views.get(record.pluginId);
+            const show =
+                this.ownerVisible &&
+                this.activeId === record.pluginId &&
+                !record.loading &&
+                !owner?.loading &&
+                !owner?.error;
+            if (show && !record.window.isVisible()) record.window.showInactive();
+            else if (!show && record.window.isVisible()) record.window.hide();
         }
     }
     close(id) {

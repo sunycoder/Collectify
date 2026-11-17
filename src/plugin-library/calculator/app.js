@@ -10,6 +10,48 @@ let index,
     operation = false,
     compose = false;
 let latestSave, deletedRow, undoTimer;
+const editHistory = new Map();
+function historyKey(row) {
+    return sheet.id + ':' + row.id;
+}
+function trackEdit(row, input) {
+    const key = historyKey(row),
+        history = editHistory.get(key) || { undo: [], redo: [] };
+    if (row.expression !== input.value) {
+        history.undo.push({
+            text: row.expression,
+            start: input.editSelection?.start ?? input.selectionStart,
+            end: input.editSelection?.end ?? input.selectionEnd
+        });
+        if (history.undo.length > 40) history.undo.shift();
+        history.redo = [];
+    }
+    editHistory.delete(key);
+    editHistory.set(key, history);
+    if (editHistory.size > 80) editHistory.delete(editHistory.keys().next().value);
+}
+function undoFormula(redo = false) {
+    if (keyboardOnly) {
+        sendKeyboard(redo ? 'redo' : 'undo');
+        return;
+    }
+    if (!initialized || sheet.locked || operation || compose) return;
+    const row = sheet.rows.find((row) => row.id === currentRow),
+        history = row && editHistory.get(historyKey(row));
+    const input = [...$('#rows').children].find((n) => n.dataset.rowId === currentRow)?.querySelector('.expression');
+    const from = history?.[redo ? 'redo' : 'undo'],
+        to = history?.[redo ? 'undo' : 'redo'];
+    if (!input || !from?.length) return;
+    to.push({ text: row.expression, start: input.selectionStart, end: input.selectionEnd });
+    const previous = from.pop();
+    row.expression = previous.text;
+    input.value = previous.text;
+    input.setSelectionRange(Math.min(previous.start, input.value.length), Math.min(previous.end, input.value.length));
+    resize(input);
+    recalculate();
+    changed();
+    refreshKeyboard();
+}
 let keyboardOnly = false,
     keyboardOpen = false,
     keyboardOwner = null,
@@ -141,14 +183,26 @@ function renderRows(focusId) {
             update();
         };
         const update = () => {
+            trackEdit(row, input);
             row.expression = input.value;
             resize(input);
             recalculate();
             changed();
+            refreshKeyboard();
         };
-        input.oninput = update;
+        input.onbeforeinput = () => {
+            input.editSelection = { start: input.selectionStart, end: input.selectionEnd };
+        };
+        input.oninput = (event) => {
+            if (!event.isComposing && !compose) update();
+        };
         input.onkeydown = (event) => {
             if (event.isComposing || compose) return;
+            if ((event.ctrlKey || event.metaKey) && ['z', 'y'].includes(event.key.toLowerCase())) {
+                event.preventDefault();
+                undoFormula(event.key.toLowerCase() === 'y' || event.shiftKey);
+                return;
+            }
             if (event.key === 'Enter' && !event.shiftKey && !sheet.locked) {
                 event.preventDefault();
                 const next = sheet.rows[i + 1];
@@ -367,7 +421,9 @@ function renderSheets() {
     }
 }
 function renderPaper() {
-    $('#result-digits').value = [2, 4].includes(index.resultDigits) ? String(index.resultDigits) : '12';
+    const digits = [2, 4].includes(index.resultDigits) ? String(index.resultDigits) : '12';
+    $('#result-digits').value = digits;
+    $('#result-digits').tomselect?.setValue(digits, true);
     $('#paper-title').value = sheet.title;
     $('#paper-title').readOnly = sheet.locked;
     $('#paper-date').textContent = '创建于 ' + new Date(sheet.createdAt).toLocaleString();
@@ -430,6 +486,7 @@ $('#paper-title').oninput = () => {
     if (sheet.locked) return;
     sheet.title = $('#paper-title').value;
     changed();
+    refreshKeyboard();
 };
 $('#lock-paper').onclick = () =>
     void run(async () => {
@@ -492,11 +549,18 @@ function refreshKeyboard() {
     $('#math-keyboard')
         .querySelectorAll('.keyboard-layout button')
         .forEach((b) => (b.disabled = sheet.locked));
+    const history = rowIndex < 0 ? null : editHistory.get(historyKey(sheet.rows[rowIndex]));
+    $('#formula-undo').disabled = sheet.locked || !history?.undo.length;
+    $('#formula-redo').disabled = sheet.locked || !history?.redo.length;
     keyboardChannel.postMessage({
         type: 'state',
         owner: keyboardSession,
         rowId: currentRow,
         row: rowIndex + 1,
+        title: title(sheet),
+        formula: sheet.rows[rowIndex]?.expression || '',
+        canUndo: !!history?.undo.length,
+        canRedo: !!history?.redo.length,
         locked: sheet.locked || operation
     });
 }
@@ -507,7 +571,14 @@ async function setKeyboard(open) {
     }
     if (open) {
         try {
-            await api.windows.open({ title: '数学键盘', width: 720, height: 370, minWidth: 360, minHeight: 280 });
+            await api.windows.open({
+                title: '数学键盘',
+                width: 720,
+                height: 460,
+                minWidth: 360,
+                minHeight: 280,
+                followActivePlugin: true
+            });
         } catch (error) {
             message(error.message);
             return;
@@ -532,6 +603,7 @@ function keyboardInput(key) {
     if (!input) return;
     try {
         const next = CalcKeyboard.edit(input.value, input.selectionStart, input.selectionEnd, key);
+        input.editSelection = { start: input.selectionStart, end: input.selectionEnd };
         input.focus({ preventScroll: true });
         input.setRangeText(next.text, 0, input.value.length, 'end');
         input.setSelectionRange(next.caret, next.caret);
@@ -577,9 +649,16 @@ keyboardChannel.onmessage = (event) => {
             keyboardOwner = data.owner;
             keyboardTarget = data.rowId;
             $('#keyboard-target').textContent = data.locked ? '稿纸已锁定' : `输入到第 ${data.row} 行`;
+            $('#keyboard-target').textContent =
+                `${data.title || '未命名稿纸'} · 第 ${data.row} 行${data.locked ? ' · 已锁定' : ''}`;
+            $('#keyboard-target').title = $('#keyboard-target').textContent;
+            $('#keyboard-formula').textContent = data.formula || '当前行为空，点击按键开始输入';
+            $('#keyboard-formula').title = data.formula || '';
             $('#math-keyboard')
                 .querySelectorAll('.keyboard-layout button')
                 .forEach((b) => (b.disabled = !!data.locked));
+            $('#keyboard-undo').disabled = !!data.locked || !data.canUndo;
+            $('#keyboard-redo').disabled = !!data.locked || !data.canRedo;
         } else if (data.type === 'close' && data.owner === keyboardOwner) window.close();
         return;
     }
@@ -605,6 +684,7 @@ keyboardChannel.onmessage = (event) => {
         if (key) keyboardInput(key);
     } else if (data.action === 'backspace') keyboardInput(['', '', '', 'delete']);
     else if (data.action === 'clear') keyboardInput(['', '', '', 'clear']);
+    else if (data.action === 'undo' || data.action === 'redo') undoFormula(data.action === 'redo');
     else if (data.action === 'next') $('#keyboard-next').click();
 };
 window.addEventListener('beforeunload', () => {
@@ -620,6 +700,20 @@ $('#math-keyboard').onpointerdown = (event) => {
 $('#keyboard-toggle').onclick = () => void setKeyboard(!keyboardOpen);
 $('#keyboard-close').onclick = () => setKeyboard(false);
 $('#keyboard-reset').hidden = true;
+$('#keyboard-pin').onclick = async () => {
+    try {
+        const enabled = $('#keyboard-pin').getAttribute('aria-pressed') !== 'true';
+        await api.windows.setAlwaysOnTop(enabled);
+        $('#keyboard-pin').setAttribute('aria-pressed', String(enabled));
+        $('#keyboard-pin').textContent = enabled ? '置顶' : '不置顶';
+    } catch (error) {
+        message(error.message);
+    }
+};
+$('#keyboard-undo').onclick = () => undoFormula();
+$('#keyboard-redo').onclick = () => undoFormula(true);
+$('#formula-undo').onclick = () => undoFormula();
+$('#formula-redo').onclick = () => undoFormula(true);
 $('#keyboard-backspace').onclick = () =>
     keyboardOnly ? sendKeyboard('backspace') : keyboardInput(['', '', '', 'delete']);
 $('#keyboard-clear').onclick = () => (keyboardOnly ? sendKeyboard('clear') : keyboardInput(['', '', '', 'clear']));
@@ -728,6 +822,16 @@ $('#math-keyboard').inert = true;
         }
         currentRow = sheet.rows.at(-1).id;
         $('#result-digits').value = [2, 4].includes(index.resultDigits) ? String(index.resultDigits) : '12';
+        // 仅稿纸主页面加载公共选择器；独立数学键盘不加载无关控件。
+        for (const resource of ['vendor/tom-select.js', 'vendor/floating-ui.js', 'overlay.js', 'ui-components.js']) {
+            await new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = `collectify-plugin://collectify.sdk/${resource}`;
+                script.onload = resolve;
+                script.onerror = () => reject(Error('小数位选择器加载失败，请重新打开插件'));
+                document.head.append(script);
+            });
+        }
         setFont(Number.isInteger(index.fontSize) ? index.fontSize : 22);
         initialized = true;
         renderPaper();

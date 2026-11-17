@@ -184,8 +184,15 @@ async function run(job) {
                 opts
             );
             if (!report.parts) throw Error('差异过多，报告计算已停止，请缩小内容');
+            if (report.scope === 'differences')
+                report.parts = report.parts.filter((part) => part.added || part.removed);
             delete report.before;
             delete report.after;
+        }
+        if (report.scope === 'differences') {
+            if (report.rows) report.rows = report.rows.filter((row) => row.state !== 'same' || row.differences);
+            // 只导出差异时不附完整画面；避免用户误以为只包含变更内容。
+            delete report.image;
         }
         return { report, html: M.reportHTML(report) };
     }

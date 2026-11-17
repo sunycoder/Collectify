@@ -83,6 +83,19 @@ app.whenReady().then(async () => {
         const keyboard = () => [...runtime.popouts.values()].find((record) => record.pluginId === id);
         const keyboardJs = (code) => keyboard().view.webContents.executeJavaScript(code);
         await until(() => keyboard() && keyboardJs('keyboardOnly && !!keyboardOwner'));
+        runtime.layout(true);
+        assert.equal(keyboard().window.isVisible(), true);
+        const sameKeyboard = keyboard().window;
+        await runtime.open('collectify.json', 'open', 'format');
+        runtime.layout(true);
+        assert.equal(sameKeyboard.isVisible(), false, '切换插件必须隐藏数学键盘');
+        await runtime.open(id, 'open', 'home');
+        runtime.layout(true);
+        assert.equal(sameKeyboard.isVisible(), true, '返回稿纸恢复原键盘');
+        assert.equal(keyboard().window, sameKeyboard, '恢复不重新创建窗口或丢失位置');
+        runtime.layout(false);
+        assert.equal(sameKeyboard.isVisible(), false, '宿主隐藏或弹窗遮挡时键盘不覆盖其他界面');
+        runtime.layout(true);
         assert.equal(
             await keyboardJs("getComputedStyle(document.querySelector('#math-keyboard')).webkitAppRegion"),
             'drag'
@@ -114,9 +127,39 @@ app.whenReady().then(async () => {
         await clickKey('[data-key="sqrt"]');
         await clickKey('[data-key="9"]');
         await saved();
+        assert.match(await keyboardJs("document.querySelector('#keyboard-target').textContent"), /未命名稿纸/);
+        assert.match(await keyboardJs("document.querySelector('#keyboard-formula').textContent"), /sqrt\(9\)/);
+        await keyboardJs("document.querySelector('#keyboard-clear').click()");
+        await until(() => js("sheet.rows[0].expression===''"));
+        await keyboardJs("document.querySelector('#keyboard-undo').click()");
+        await until(() => js("sheet.rows[0].expression==='sqrt(9)'"));
+        await keyboardJs("document.querySelector('#keyboard-redo').click()");
+        await until(() => js("sheet.rows[0].expression===''"));
+        await js("document.querySelector('#formula-undo').click()");
+        await until(() => js("sheet.rows[0].expression==='sqrt(9)'"));
+        await keyboardJs("document.querySelector('#keyboard-pin').click()");
+        await until(() => Promise.resolve(!keyboard().window.isAlwaysOnTop()));
+        await keyboardJs("document.querySelector('#keyboard-pin').click()");
         await edit(0, '11/6');
+        assert.equal(await js("!!document.querySelector('#result-digits').tomselect"), true);
+        await js("document.querySelector('#result-digits').tomselect.open()");
+        await wait(100);
+        assert.equal(
+            await js(
+                "(()=>{const control=document.querySelector('#result-digits').tomselect.control;const probe=document.createElement('span');probe.style.background='var(--surface)';document.body.append(probe);const matches=getComputedStyle(control).backgroundColor===getComputedStyle(probe).backgroundColor;probe.remove();return matches})()"
+            ),
+            true
+        );
+        assert.equal(await js("document.querySelector('#result-digits').tomselect.isOpen"), true);
+        assert.equal(
+            await js(
+                "document.querySelector('#result-digits').tomselect.dropdown.classList.contains('managed-overlay')"
+            ),
+            true
+        );
+        fs.writeFileSync(path.join(root, 'dist/calculator-precision-select.png'), (await wc.capturePage()).toPNG());
         await js(
-            "document.querySelector('#result-digits').value='2';document.querySelector('#result-digits').dispatchEvent(new Event('change'))"
+            "document.querySelector('#result-digits').tomselect.setValue('2');document.querySelector('#result-digits').tomselect.close()"
         );
         assert.equal(await js("document.querySelector('.result-button').textContent"), '1.83');
         await js(
@@ -258,6 +301,19 @@ app.whenReady().then(async () => {
         theme = require('../../src/theme').validate({ preset: 'ink' });
         runtime.themeChanged();
         await until(() => js("getComputedStyle(document.documentElement).colorScheme==='dark'"));
+        await js("document.querySelector('#result-digits').tomselect.open()");
+        await wait(100);
+        assert.equal(
+            await js(
+                "(()=>{const r=document.querySelector('#result-digits').tomselect.dropdown.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth&&r.bottom<=innerHeight})()"
+            ),
+            true
+        );
+        fs.writeFileSync(
+            path.join(directory, 'calculator-precision-select-dark-narrow.png'),
+            (await wc.capturePage()).toPNG()
+        );
+        await js("document.querySelector('#result-digits').tomselect.close()");
         await js("document.querySelector('#clear-paper').click()");
         await until(() => js("document.querySelector('#confirm-dialog').open"));
         await js("document.querySelector('#confirm-dialog').close('confirm')");

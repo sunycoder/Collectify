@@ -107,8 +107,23 @@ function renderResults(append = false) {
         const content = make('div', 'result-copy'),
             name = make('div', 'result-name');
         name.append(highlight(item.name));
-        content.append(name, make('div', 'result-parent', item.parent));
-        row.append(glyph, content, make('span', 'result-meta', item.directory ? '文件夹' : bytes(item.size)));
+        content.append(glyph, name);
+        const parent = make('div', 'result-parent', item.parent),
+            modified = make(
+                'span',
+                'result-modified',
+                Number.isFinite(Number(item.modified)) || !Number.isNaN(Date.parse(item.modified))
+                    ? new Date(item.modified).toLocaleString()
+                    : '—'
+            );
+        parent.title = item.parent;
+        parent.dir = 'auto';
+        row.append(
+            content,
+            parent,
+            make('span', 'result-meta', item.directory ? '文件夹' : bytes(item.size)),
+            modified
+        );
         row.onclick = () => select(item.id);
         row.ondblclick = run(() => call('open', { id: item.id }));
         row.oncontextmenu = (event) => {
@@ -125,6 +140,61 @@ function renderResults(append = false) {
     $('#load-more').hidden = items.length >= total;
     $('#result-count').textContent = total ? total.toLocaleString() : '';
     $('#footer-count').textContent = `共 ${total.toLocaleString()} 条结果`;
+}
+function renderResultColumns() {
+    const widths = settings.columns || [230, 260, 80, 160],
+        panel = $('.result-panel');
+    widths.forEach((width, i) => panel.style.setProperty('--result-col-' + i, width + 'px'));
+    if ($('#result-columns').children.length) return;
+    ['文件名', '所在文件夹', '大小', '修改时间'].forEach((name, i) => {
+        const column = make('div', 'result-column', name),
+            handle = make('span', 'column-resize');
+        handle.tabIndex = 0;
+        handle.setAttribute('role', 'separator');
+        handle.setAttribute('aria-label', '调整' + name + '列宽');
+        handle.title = '拖动调整列宽，双击恢复';
+        let start;
+        const resize = (width) => {
+            settings.columns ??= [230, 260, 80, 160];
+            settings.columns[i] = Math.max(i === 2 ? 70 : 100, Math.min(600, width));
+            panel.style.setProperty('--result-col-' + i, settings.columns[i] + 'px');
+        };
+        const save = () =>
+            run(async () => {
+                settings = await call('settings', { ...settings });
+            })();
+        handle.onpointerdown = (event) => {
+            if (event.button !== 0) return;
+            event.preventDefault();
+            start = { x: event.clientX, width: settings.columns[i] };
+            handle.setPointerCapture(event.pointerId);
+        };
+        handle.onpointermove = (event) => {
+            if (start) resize(start.width + event.clientX - start.x);
+        };
+        handle.onpointerup = () => {
+            if (start) {
+                start = null;
+                void save();
+            }
+        };
+        handle.onpointercancel = () => {
+            if (start) resize(start.width);
+            start = null;
+        };
+        handle.ondblclick = () => {
+            resize([230, 260, 80, 160][i]);
+            void save();
+        };
+        handle.onkeydown = (event) => {
+            if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+            event.preventDefault();
+            resize(settings.columns[i] + (event.key === 'ArrowLeft' ? -20 : 20));
+            void save();
+        };
+        column.append(handle);
+        $('#result-columns').append(column);
+    });
 }
 async function search(append = false) {
     const revision = ++searchRevision;
@@ -369,6 +439,7 @@ async function pdfPreview(url, content, revision) {
 }
 function updateState(state) {
     settings = state.settings;
+    renderResultColumns();
     $('.search-layout').style.setProperty('--result-width', (settings.splitRatio || 0.39) * 100 + '%');
     $('#sort').value = settings.sort;
     $('#preview-toggle').checked = settings.preview;

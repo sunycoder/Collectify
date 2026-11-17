@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <title>计算稿纸</title>
         <link rel="stylesheet" href="collectify-plugin://collectify.sdk/tool.css" />
+        <link rel="stylesheet" href="collectify-plugin://collectify.sdk/select.css" />
         <link rel="stylesheet" href="style.css" />
     </head>
     <body>
@@ -27,6 +28,7 @@
                     ><button id="font-up" title="增大字号" aria-label="增大字号">A＋</button>
                 </div>
                 <button id="keyboard-toggle" aria-expanded="true" aria-controls="math-keyboard">数学键盘</button>
+                <button id="formula-undo" disabled>撤销输入</button><button id="formula-redo" disabled>重做</button>
                 <button id="examples-toggle" aria-expanded="false">公式示例</button
                 ><button id="copy-paper">复制稿纸</button><button id="clear-paper">清空</button>
             </div>
@@ -75,14 +77,17 @@
                 </button>
                 <span id="keyboard-target">输入到当前公式</span>
                 <button id="keyboard-reset" title="恢复到右下角">恢复位置</button>
+                <button id="keyboard-pin" aria-pressed="true" title="关闭后可由其他应用覆盖键盘">置顶</button>
                 <button id="keyboard-close" aria-label="收起数学键盘">收起</button>
             </div>
+            <p id="keyboard-formula" aria-label="当前公式"></p>
             <div id="keyboard-tabs" role="group" aria-label="键盘分类"></div>
             <div class="keyboard-layout">
                 <div id="keyboard-keys"></div>
                 <div class="keyboard-actions">
                     <button id="keyboard-backspace" title="删除选中内容或光标前一个字符">⌫ 退格</button>
                     <button id="keyboard-clear">清空本行</button>
+                    <button id="keyboard-undo">撤销</button><button id="keyboard-redo">重做</button>
                     <button id="keyboard-next" class="primary">下一行 ↵</button>
                 </div>
             </div>

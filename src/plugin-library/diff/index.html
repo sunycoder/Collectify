@@ -381,6 +381,17 @@
             <h2>导出差异报告</h2>
             <p>报告可能包含两侧的完整内容，仅保存到你选择的本地位置。</p>
             <label
+                >内容范围<select id="export-scope">
+                    <option value="differences">仅差异</option>
+                    <option value="context">包含上下文</option>
+                </select></label
+            >
+            <pre
+                id="export-summary"
+                role="status"
+                style="white-space: pre-wrap; overflow-wrap: anywhere; max-height: 240px; overflow: auto"
+            ></pre>
+            <label
                 >格式<select id="export-format">
                     <option value="html">HTML（可离线查看）</option>
                     <option value="pdf">PDF</option>

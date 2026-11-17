@@ -181,6 +181,32 @@ app.whenReady().then(async () => {
         await until(() => js('(DiffApp.diff.getLineChanges()||[]).length>0'));
         const report = await js('DiffApp.report()');
         assert.match(report.before, /old/);
+        await js("document.querySelector('#export').click()");
+        await until(() => js('!!preparedExport && !preparingExport'));
+        assert.match(await js("document.querySelector('#export-summary').textContent"), /仅差异/);
+        assert.equal(await js('preparedExport.report.parts.every(part=>part.added||part.removed)'), true);
+        await js(
+            "document.querySelector('#export-scope').value='context';document.querySelector('#export-scope').dispatchEvent(new Event('change'))"
+        );
+        await until(() => js("preparedExport?.scope==='context' && !preparingExport"));
+        assert.equal(await js('preparedExport.report.parts.some(part=>!part.added&&!part.removed)'), true);
+        const summarySave = dialog.showSaveDialog,
+            summaryFile = path.join(tmp, 'scoped-report.json');
+        try {
+            dialog.showSaveDialog = async () => ({ canceled: false, filePath: summaryFile });
+            await js(
+                "document.querySelector('#export-format').value='json';document.querySelector('#export-scope').value='differences';document.querySelector('#export-scope').dispatchEvent(new Event('change'))"
+            );
+            await until(() => js("preparedExport?.scope==='differences'&&!preparingExport"));
+            await js("document.querySelector('#confirm-export').click()");
+            await until(async () => fs.existsSync(summaryFile));
+            const scoped = JSON.parse(fs.readFileSync(summaryFile, 'utf8'));
+            assert.equal(scoped.scope, 'differences');
+            assert.ok(scoped.parts.every((part) => part.added || part.removed));
+        } finally {
+            dialog.showSaveDialog = summarySave;
+        }
+        await js("document.querySelector('#cancel-export').click()");
         await js('DiffApp.next(1,true);DiffApp.merge(1)');
         await until(() => js("DiffApp.models[1].getValue()==='hello old world'"));
         await js("document.querySelector('#undo-merge').click()");

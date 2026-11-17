@@ -74,6 +74,11 @@ app.whenReady().then(async () => {
             throw Error('Local search UI timeout');
         };
         await until(() => js('!!settings'));
+        assert.equal(await js("document.querySelectorAll('#result-columns [role=separator]').length"), 4);
+        await js(
+            "(()=>{const handle=document.querySelector('#result-columns [role=separator]');handle.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));})()"
+        );
+        await until(() => js('settings.columns[0]===250'));
         const dividerPoint = await js(
             "(()=>{const r=document.querySelector('#preview-divider').getBoundingClientRect();return {x:Math.round(r.x+r.width/2),y:Math.round(r.y+30)}})()"
         );

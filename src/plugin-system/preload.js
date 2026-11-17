@@ -54,6 +54,7 @@ contextBridge.exposeInMainWorld('collectify', {
     },
     notify: (data) => call('plugin.notify', data),
     windows: {
+        setAlwaysOnTop: (enabled) => call('window.topmost', enabled),
         open: (options) => call('window.open', options),
         shortcut: (enabled) => call('window.shortcut', enabled),
         reveal: () => call('window.reveal'),

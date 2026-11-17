@@ -48,6 +48,10 @@ function reference(templates) {
             background: '可选包内 HTML 后台页面，需声明 background；在隔离渲染进程运行，不提供 Node.js'
         },
         sdk: {
+            'collectify.windows.setAlwaysOnTop(enabled)':
+                '5.7.16 起：独立插件窗口按用户主动操作调整自身置顶，需要 window 权限，主页面及后台不能调用',
+            'collectify.windows.open({followActivePlugin:true})':
+                '5.7.15 起：独立窗口跟随所属插件可见状态；切走或宿主遮挡时隐藏，返回时无抢焦点恢复，手动关闭后不自动重建',
             'collectify.confirmUnsaved()':
                 '5.7.13 起：前台页面显示继续编辑/放弃修改/保存并离开，返回 0/1/2；不自动保存，调用方负责处理保存失败',
             'collectify.context()': 'Promise<{apiVersion,plugin:{id,name,version},theme,tokens}>',

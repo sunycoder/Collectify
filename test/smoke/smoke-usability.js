@@ -41,6 +41,18 @@ exports.run = async ({ registry, services, runtime, hostAction, win }) => {
         await notes("document.querySelector('#note-dialog').close()");
         await until(() => notes("!document.querySelector('#note-dialog').open"));
         assert.ok((await services.call('collectify.notes', 'state')).notes.some((n) => n.title === '未保存测试'));
+        await services.call('collectify.notes', 'note-sort', 'manual');
+        const beforeOrder = (await services.call('collectify.notes', 'state')).notes.map((n) => n.id);
+        const note = (await services.call('collectify.notes', 'state')).notes[0];
+        await services.call('collectify.notes', 'note-save', { ...note, content: '编辑后不移动' });
+        assert.deepEqual(
+            (await services.call('collectify.notes', 'state')).notes.map((n) => n.id),
+            beforeOrder
+        );
+        if (beforeOrder.length > 1) {
+            await services.call('collectify.notes', 'note-move', { id: beforeOrder.at(-1), before: beforeOrder[0] });
+            assert.equal((await services.call('collectify.notes', 'state')).notes[0].id, beforeOrder.at(-1));
+        }
         await notes("document.querySelector('#note-search').value='does not exist';renderNotes()");
         assert.match(await notes("document.querySelector('#notes-grid').textContent"), /清除筛选/);
         const tasks = await open('collectify.tasks');
@@ -69,6 +81,18 @@ exports.run = async ({ registry, services, runtime, hostAction, win }) => {
         registry.install(path.resolve(__dirname, '../../src/plugin-library/calculator'));
         await services.load();
         await hostAction('plugin-open', { id: 'collectify.calculator' });
+        const calculatorPage = runtime.views.get('collectify.calculator').view.webContents;
+        await until(() => calculatorPage.executeJavaScript('initialized'));
+        const keyboard = () =>
+            [...runtime.popouts.values()].find((record) => record.pluginId === 'collectify.calculator');
+        await until(() => !!keyboard() && !keyboard().loading);
+        win.show();
+        await hostAction('overlay', false);
+        await until(() => keyboard().window.isVisible());
+        win.hide();
+        await until(() => !keyboard().window.isVisible());
+        win.show();
+        await until(() => keyboard().window.isVisible());
         await host('refresh()');
         assert.equal(await host("document.body.classList.contains('navigation-collapsed')"), true);
         await host("document.querySelector('#expand-navigation').click()");

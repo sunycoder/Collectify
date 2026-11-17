@@ -244,6 +244,68 @@ kbd {
 #results {
     outline: none;
 }
+.result-columns,
+.result-row {
+    display: grid;
+    grid-template-columns: var(--result-col-0, 230px) var(--result-col-1, 260px) var(--result-col-2, 80px) var(
+            --result-col-3,
+            160px
+        );
+    gap: 0;
+    width: max-content;
+    min-width: 100%;
+}
+.result-columns {
+    position: sticky;
+    top: 40px;
+    z-index: 2;
+    background: var(--paper);
+    border-bottom: 1px solid var(--line);
+    font-size: 11px;
+    color: var(--muted);
+}
+.result-column {
+    position: relative;
+    padding: 8px 12px;
+    border-right: 1px solid var(--line);
+}
+.column-resize {
+    position: absolute;
+    inset: 0 -3px 0 auto;
+    width: 8px;
+    cursor: col-resize;
+    touch-action: none;
+}
+.column-resize:hover,
+.column-resize:focus {
+    background: var(--accent);
+}
+.result-row .result-copy {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 9px;
+}
+.result-row > * {
+    padding-inline: 10px;
+    min-width: 0;
+}
+.result-row .result-parent {
+    direction: rtl;
+    text-align: left;
+    unicode-bidi: plaintext;
+}
+.result-row .result-modified {
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+}
+.result-row .result-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 .result-row {
     display: flex;
     align-items: center;
@@ -805,4 +867,37 @@ dialog::backdrop {
 .result-menu .search-icon svg {
     width: 16px;
     height: 16px;
+}
+
+/* 列宽布局覆盖既有双行列表定义。 */
+.result-columns,
+.result-row {
+    display: grid;
+    grid-template-columns: var(--result-col-0, 230px) var(--result-col-1, 260px) var(--result-col-2, 80px) var(
+            --result-col-3,
+            160px
+        );
+    gap: 0;
+    width: max-content;
+    min-width: 100%;
+}
+.result-row .result-copy {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 9px;
+}
+.result-row .result-parent {
+    direction: rtl;
+    unicode-bidi: plaintext;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.result-row .result-modified {
+    white-space: nowrap;
+}
+.result-panel {
+    min-width: 0;
 }

@@ -377,7 +377,7 @@ async function pluginManagement(action, payload) {
 }
 function layout() {
     if (!win || win.isDestroyed()) return;
-    runtime.layout(!overlay);
+    runtime.layout(!overlay && !fullscreenTransition && win.isVisible() && !win.isMinimized());
     services.layout(
         runtime.bounds,
         runtime.activeId,
@@ -765,8 +765,8 @@ async function createWindow() {
     bindStableLayout(win, layout, (value) => {
         fullscreenTransition = value;
     });
-    win.on('hide', () => services.layout(runtime.bounds, runtime.activeId, true));
-    win.on('minimize', () => services.layout(runtime.bounds, runtime.activeId, true));
+    win.on('hide', layout);
+    win.on('minimize', layout);
     win.on('show', layout);
     win.on('restore', layout);
     let windowCloseApproved = false,
