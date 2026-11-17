@@ -72,6 +72,12 @@ test('Diff 默认不写工作文本，取消关闭保持内存，保存草稿后
     response = 1;
     assert.equal(await backend.beforeClose('uninstall'), true);
     assert.equal((await backend.call('draft-read')).texts[0], 'last input', '放弃不覆盖已保存草稿');
+    await backend.deactivate();
+    backend.activate();
+    assert.equal(await backend.beforeClose('quit'), true, '新页面未编辑时不继承旧工作副本');
+    await backend.call('workspace-state', { ...value, texts: ['changed again', 'new'] });
+    response = 0;
+    assert.equal(await backend.beforeClose('reload'), false, '重新启用后，相同内容仍须重新确认离开');
     await assert.rejects(backend.call('workspace-state', { ...value, texts: ['x', null] }));
 });
 test('统一任务只接受受限描述，取消准确指向所属插件，离开钩子拒绝会中止', async () => {

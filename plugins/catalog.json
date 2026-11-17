@@ -125,9 +125,9 @@
       "id": "collectify.diff",
       "name": "Diff",
       "description": "离线对比文本、图片、文件夹及 Word、Excel、PDF、PowerPoint 内容，支持差异高亮与报告导出。",
-      "version": "1.0.4",
+      "version": "1.0.5",
       "apiVersion": 1,
-      "size": 17440082,
+      "size": 17440227,
       "details": {
         "features": [
           "Monaco 文本差异、内存合并与撤销",
@@ -175,8 +175,8 @@
         ]
       },
       "iconData": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBzdGFuZGFsb25lPSJubyI/PjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+PHN2ZyB0PSIxNzk0ODg5MDM1MDA2IiBjbGFzcz0iaWNvbiIgdmlld0JveD0iMCAwIDExMzcgMTAyNCIgdmVyc2lvbj0iMS4xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHAtaWQ9IjEyODk5IiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgd2lkdGg9IjIyMi4wNzAzMTI1IiBoZWlnaHQ9IjIwMCI+PHBhdGggZD0iTTUxMiAwaDExMy43Nzc3Nzh2MTAyNEg1MTJ6TTAgMjI3LjU1NTU1NnY1NjguODg4ODg4YTExMy43Nzc3NzggMTEzLjc3Nzc3OCAwIDAgMCAxMTMuNzc3Nzc4IDExMy43Nzc3NzhoMzQxLjMzMzMzM3YtMTEzLjc3Nzc3OEgxMTMuNzc3Nzc4VjIyNy41NTU1NTZoMzQxLjMzMzMzM1YxMTMuNzc3Nzc4SDExMy43Nzc3NzhhMTEzLjc3Nzc3OCAxMTMuNzc3Nzc4IDAgMCAwLTExMy43Nzc3NzggMTEzLjc3Nzc3OHpNNjgyLjY2NjY2NyAxMTMuNzc3Nzc4aDExMy43Nzc3Nzd2MTEzLjc3Nzc3OGgtMTEzLjc3Nzc3N3pNNjgyLjY2NjY2NyA3OTYuNDQ0NDQ0aDExMy43Nzc3Nzd2MTEzLjc3Nzc3OGgtMTEzLjc3Nzc3N3pNMTAyNCAxMTMuNzc3Nzc4aC0xMTMuNzc3Nzc4djExMy43Nzc3NzhoMTEzLjc3Nzc3OHYxMTMuNzc3Nzc3aDExMy43Nzc3NzhWMjI3LjU1NTU1NmExMTMuNzc3Nzc4IDExMy43Nzc3NzggMCAwIDAtMTEzLjc3Nzc3OC0xMTMuNzc3Nzc4ek0xMDI0IDc5Ni40NDQ0NDRoLTExMy43Nzc3Nzh2MTEzLjc3Nzc3OGgxMTMuNzc3Nzc4YTExMy43Nzc3NzggMTEzLjc3Nzc3OCAwIDAgMCAxMTMuNzc3Nzc4LTExMy43Nzc3Nzh2LTExMy43Nzc3NzdoLTExMy43Nzc3Nzh6TTEwMjQgNDU1LjExMTExMWgxMTMuNzc3Nzc4djExMy43Nzc3NzhoLTExMy43Nzc3Nzh6IiBwLWlkPSIxMjkwMCI+PC9wYXRoPjwvc3ZnPg==",
-      "sha256": "37c87e66f59d29e8871fd33da9242da4141c12316bf287b0ce2df954e2aa519e",
-      "url": "https://github.com/sunycoder/Collectify/releases/download/plugin-collectify.diff-v1.0.4/collectify.diff-1.0.4.collectify-plugin"
+      "sha256": "a2f98795fc660e01b05a476a14b0dc474f6d1967ad08978f3d0db950053e71ab",
+      "url": "https://github.com/sunycoder/Collectify/releases/download/plugin-collectify.diff-v1.0.5/collectify.diff-1.0.5.collectify-plugin"
     }
   ]
 }

@@ -2,7 +2,7 @@
   "id": "collectify.diff",
   "name": "Diff",
   "description": "离线对比文本、图片、文件夹及 Word、Excel、PDF、PowerPoint 内容，支持差异高亮与报告导出。",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "minHostVersion": "5.7.12",
   "runtime": "native",
   "apiVersion": 1,

@@ -505,6 +505,8 @@ exports.create = async (context, adapters = {}) => {
         },
         activate() {
             active = true;
+            closeApproved = false;
+            workspace = { dirty: false, texts: ['', ''], names: ['左侧', '右侧'], hasOtherEdits: false };
         },
         async deactivate() {
             active = false;
