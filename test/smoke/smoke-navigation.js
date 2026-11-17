@@ -96,7 +96,7 @@ exports.run = async ({ win, registry, runtime, services, hostAction, withTestTra
         originalOrder,
         'Esc 取消不保存顺序'
     );
-    assert.equal(await host("!!document.querySelector('.plugin-sort-ghost')"), false);
+    await until(() => host("!document.querySelector('.plugin-sort-ghost')"));
     // 原生插件视图不能在两个宿主弹窗之间的空档重新显示。
     const layout = runtime.layout.bind(runtime),
         visibility = [];
