@@ -17,6 +17,7 @@
         <link rel="stylesheet" href="glass-material.css" />
         <link rel="stylesheet" href="plugins.css" />
         <link rel="stylesheet" href="settings-layout.css" />
+        <link rel="stylesheet" href="plugin-market.css" />
     </head>
     <body>
         <aside class="shell-sidebar">
@@ -245,8 +246,8 @@
                     <div class="settings-panel" data-panel="plugins" hidden>
                         <div class="plugin-manager-heading">
                             <div>
-                                <h3>插件</h3>
-                                <p>独立安装、更新和卸载，无需 Git。</p>
+                                <h3>插件市场</h3>
+                                <p>发现实用扩展，打造你的工作台。</p>
                             </div>
                             <button id="install-plugin-package" class="primary">安装插件包</button>
                         </div>
@@ -264,20 +265,25 @@
                             </details>
                         </section>
                         <section id="catalog-plugins" hidden>
-                            <label for="plugin-catalog-url">插件目录地址（HTTPS，或已允许的公司内网 JSON）</label>
-                            <div class="catalog-source">
-                                <input
-                                    id="plugin-catalog-url"
-                                    type="url"
-                                    placeholder="https://…/catalog.json"
-                                    spellcheck="false"
-                                /><button id="save-plugin-catalog" class="subtle">保存地址</button
-                                ><button id="refresh-plugin-catalog" class="subtle">刷新</button
-                                ><button id="official-plugin-catalog" class="subtle">使用官方源</button>
+                            <details class="plugin-source-settings">
+                                <summary>插件来源设置</summary>
+                                <label for="plugin-catalog-url">插件目录地址（HTTPS，或已允许的公司内网 JSON）</label>
+                                <div class="catalog-source">
+                                    <input
+                                        id="plugin-catalog-url"
+                                        type="url"
+                                        placeholder="https://…/catalog.json"
+                                        spellcheck="false"
+                                    /><button id="save-plugin-catalog" class="subtle">保存地址</button
+                                    ><button id="official-plugin-catalog" class="subtle">使用官方源</button>
+                                </div>
+                            </details>
+                            <div class="plugin-market-toolbar">
+                                <p id="plugin-catalog-status" role="status">
+                                    配置发布者的目录地址，或直接安装下载好的插件包。
+                                </p>
+                                <button id="refresh-plugin-catalog" class="subtle">刷新目录</button>
                             </div>
-                            <p id="plugin-catalog-status" role="status">
-                                配置发布者的目录地址，或直接安装下载好的插件包。
-                            </p>
                             <input
                                 id="catalog-search"
                                 type="search"

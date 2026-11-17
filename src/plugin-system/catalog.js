@@ -59,6 +59,14 @@ function validateCatalog(input, { validateUrl = httpsUrl } = {}) {
             apiVersion: item.apiVersion,
             sha256: item.sha256,
             size: item.size,
+            // 目录内附带小型 SVG，安装前也能展示；不接受远程图片或任意 data URL。
+            ...(typeof item.iconData === 'string' &&
+            item.iconData.length <= 87408 &&
+            /^data:image\/svg\+xml;base64,(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(
+                item.iconData
+            )
+                ? { iconData: item.iconData }
+                : {}),
             url: validateUrl(item.url),
             ...(item.homepage ? { homepage: validateUrl(item.homepage) } : {})
         };

@@ -1,0 +1,16 @@
+{
+  "id": "collectify.chinese-calendar",
+  "name": "日历",
+  "description": "合社日历：节气主题、农历黄历、节日调休、日期距离、城市天气与只读 MCP 查询。",
+  "version": "1.0.1",
+  "minHostVersion": "5.7.9",
+  "runtime": "native",
+  "apiVersion": 1,
+  "entry": "view/index.html",
+  "backend": "backend.js",
+  "icon": "icon/calendar.svg",
+  "glyph": "历",
+  "permissions": ["native"],
+  "commands": [{ "id": "open", "title": "打开日历" }],
+  "navigation": [{ "id": "home", "label": "日历与黄历", "icon": "grid" }]
+}

@@ -1,0 +1,34 @@
+{
+  "current": {
+    "temperature": { "value": "18" },
+    "feelsLike": { "value": "17" },
+    "humidity": { "value": "60" },
+    "weather": "1",
+    "wind": { "direction": { "value": "90" }, "speed": { "value": "12" } }
+  },
+  "forecastDaily": {
+    "pubTime": "2026-11-17T08:00:00+08:00",
+    "temperature": {
+      "value": [
+        { "from": "8", "to": "18" },
+        { "from": "9", "to": "19" },
+        { "from": "10", "to": "20" },
+        { "from": "11", "to": "21" },
+        { "from": "12", "to": "22" }
+      ]
+    },
+    "weather": {
+      "value": [
+        { "from": "1", "to": "1" },
+        { "from": "0", "to": "1" },
+        { "from": "2", "to": "1" },
+        { "from": "7", "to": "1" },
+        { "from": "1", "to": "1" }
+      ]
+    }
+  },
+  "forecastHourly": {
+    "temperature": { "pubTime": "2026-11-17T08:00:00+08:00", "value": ["18", "19", "20", "21"] },
+    "weather": { "value": ["1", "0", "0", "1"] }
+  }
+}

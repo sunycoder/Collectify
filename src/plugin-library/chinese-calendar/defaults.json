@@ -1,0 +1,10 @@
+{
+  "weatherBaseUrl": "https://weatherapi.market.xiaomi.com/wtr-v3/",
+  "weatherAppKey": "weather20151024",
+  "weatherSign": "zUFJoAR2ZVrDy1vF3D07",
+  "timeoutMs": 15000,
+  "responseLimit": 1048576,
+  "weatherCacheMs": 600000,
+  "searchCacheMs": 300000,
+  "cacheLimit": 30
+}

@@ -1,0 +1,252 @@
+/* 保留上游主题、网格、黄历及天气卡片，外壳尺寸适应插件可用区域。 */
+html,
+body,
+#app {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+}
+body {
+    background: var(--bg-color, #f9fafb);
+}
+.app-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+.calendar-container {
+    flex: 1;
+    min-height: 0;
+}
+.calendar-brand {
+    width: 27px;
+    height: 27px;
+    flex-shrink: 0;
+    margin-right: 6px;
+}
+.dark-mode .calendar-brand {
+    filter: invert(1);
+}
+.save-warning {
+    color: #b45309;
+    background: #fff7ed;
+    padding: 8px 14px;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+.save-warning button {
+    cursor: pointer;
+}
+.calendar-notice {
+    flex-shrink: 0;
+    padding: 6px 16px;
+    font-size: 10px;
+    line-height: 1.5;
+    color: var(--secondary-text);
+    border-top: 1px solid var(--border-color);
+    background: var(--panel-bg);
+}
+.weather-brief {
+    position: relative;
+}
+.calendar-header button {
+    cursor: pointer;
+}
+button:focus-visible,
+[role='button']:focus-visible {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 3px;
+}
+.location-error {
+    font-size: 11px;
+    color: #dc6262;
+    margin-top: 5px;
+}
+.task-day-badge {
+    margin-top: 4px;
+    border-radius: 9px;
+    padding: 1px 6px;
+    font-size: 10px;
+    line-height: 1.5;
+    color: var(--accent-color);
+    background: var(--almanac-strong-tint);
+    max-width: 100%;
+}
+.day-cell.selected .task-day-badge,
+.day-cell.today .task-day-badge {
+    background: var(--panel-bg);
+    color: var(--accent-color);
+}
+.calendar-tasks {
+    margin: 16px 0;
+    padding: 12px 0;
+    border-top: 1px solid var(--almanac-line);
+    border-bottom: 1px solid var(--almanac-line);
+}
+.tasks-heading,
+.tasks-heading > div,
+.tasks-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 7px;
+}
+.tasks-heading {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 10px;
+}
+.tasks-total {
+    font-size: 10px;
+    padding: 1px 6px;
+    background: var(--almanac-strong-tint);
+    border-radius: 8px;
+    color: var(--accent-color);
+}
+.calendar-tasks button {
+    font: inherit;
+    border: none;
+    background: transparent;
+    color: var(--accent-color);
+    cursor: pointer;
+    padding: 3px 0;
+    font-size: 11px;
+}
+.calendar-tasks button:disabled {
+    opacity: 0.5;
+    cursor: wait;
+}
+.tasks-empty {
+    font-size: 11px;
+    line-height: 1.8;
+    color: var(--secondary-text);
+    margin: 8px 0;
+}
+.tasks-list {
+    max-height: 230px;
+    overflow: auto;
+}
+.calendar-task {
+    background: var(--almanac-board-bg);
+    border: 1px solid var(--almanac-soft-line);
+    border-left: 2px solid var(--almanac-line);
+    padding: 8px;
+    margin-top: 7px;
+    border-radius: 6px;
+}
+.task-important {
+    border-left-color: var(--accent-color);
+}
+.task-title {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    color: var(--text-color);
+    font-size: 12px;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+.task-state-dot {
+    flex-shrink: 0;
+    width: 5px;
+    height: 5px;
+    border: 1px solid var(--accent-color);
+    border-radius: 50%;
+    align-self: center;
+}
+.state-doing {
+    background: var(--accent-color);
+}
+.state-done {
+    background: var(--secondary-text);
+    border-color: var(--secondary-text);
+}
+.task-done .task-title {
+    text-decoration: line-through;
+    color: var(--secondary-text);
+}
+.task-metadata {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    font-size: 10px;
+    line-height: 1.7;
+    color: var(--secondary-text);
+    margin-left: 11px;
+    margin-top: 3px;
+}
+.task-overdue {
+    color: var(--accent-color);
+}
+.tasks-footer {
+    margin-top: 10px;
+    font-size: 10px;
+    color: var(--secondary-text);
+    justify-content: end;
+}
+@media (max-width: 700px) {
+    .calendar-container .calendar-header {
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px;
+    }
+    .calendar-container .current-info {
+        min-width: 0;
+        flex-wrap: wrap;
+        gap: 3px;
+    }
+    .calendar-container .main-content {
+        display: block;
+        overflow-y: auto;
+    }
+    .calendar-container .calendar-grid-wrapper {
+        min-height: 400px;
+        height: 56vh;
+        padding: 10px;
+    }
+    .calendar-container .almanac-panel {
+        width: 100%;
+        max-width: none;
+        overflow: visible;
+        border-left: 0;
+    }
+    .calendar-container .day-cell {
+        min-width: 0;
+    }
+    .calendar-container .solar-day {
+        font-size: 20px;
+    }
+    .calendar-container .lunar-day {
+        font-size: 10px;
+        overflow: hidden;
+        max-width: 100%;
+        text-overflow: ellipsis;
+    }
+    .calendar-container .weather-card {
+        left: 0;
+        right: auto;
+        width: min(340px, calc(100vw - 28px));
+    }
+    .calendar-container .theme-options,
+    .calendar-container .settings-panel {
+        position: fixed;
+        top: 110px;
+        right: 10px;
+        max-height: calc(100vh - 150px);
+        overflow-y: auto;
+    }
+    .calendar-container .picker-dropdown {
+        max-width: calc(100vw - 20px);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        transition-duration: 0.001ms !important;
+    }
+}

@@ -18,6 +18,18 @@
       "id": "collectify.ip-query",
       "name": "IP 地址查询",
       "version": "1.0.2"
+    },
+    {
+      "source": "src/plugin-library/calculator",
+      "id": "collectify.calculator",
+      "name": "计算稿纸",
+      "version": "1.0.0"
+    },
+    {
+      "source": "src/plugin-library/chinese-calendar",
+      "id": "collectify.chinese-calendar",
+      "name": "日历",
+      "version": "1.0.1"
     }
   ]
 }

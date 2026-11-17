@@ -26,6 +26,12 @@ jobs:
       - name: IP 查询可选插件回归
         if: runner.os != 'Linux'
         run: npm run smoke:ip-query
+      - name: 计算稿纸可选插件回归
+        if: runner.os != 'Linux'
+        run: npm run smoke:calculator
+      - name: 日历可选插件回归
+        if: runner.os != 'Linux'
+        run: npm run smoke:calendar
       - name: 桌面回归检查
         if: runner.os != 'Linux'
         run: npm run smoke
@@ -37,3 +43,5 @@ jobs:
           sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
           xvfb-run -a npm run smoke
           xvfb-run -a npm run smoke:ip-query
+          xvfb-run -a npm run smoke:calculator
+          xvfb-run -a npm run smoke:calendar

@@ -12,11 +12,14 @@ let state = { plugins: [], settings: {} },
 let catalogState = { source: '', plugins: [], loaded: false },
     pluginBusy = false;
 const pluginIcons = new Map();
-function renderPluginIcon(plugin, glyph) {
+function renderPluginIcon(plugin, glyph, includeDisabled = false) {
     const key = `${plugin.id}@${plugin.version}:${plugin.icon}`;
     const display = (source) => {
         if (!source || !glyph.isConnected) return;
-        const image = el('img', 'plugin-asset-icon');
+        const image = el(
+            'img',
+            glyph.classList.contains('plugin-card-logo') ? 'plugin-card-image' : 'plugin-asset-icon'
+        );
         image.src = source;
         image.alt = '';
         image.draggable = false;
@@ -30,7 +33,7 @@ function renderPluginIcon(plugin, glyph) {
         display(cached);
         return;
     }
-    const pending = cached || call('plugin-icon', { id: plugin.id });
+    const pending = cached || call('plugin-icon', { id: plugin.id, includeDisabled });
     pluginIcons.set(key, pending);
     pending
         .then((source) => {
@@ -40,6 +43,25 @@ function renderPluginIcon(plugin, glyph) {
         .catch(() => {
             if (pluginIcons.get(key) === pending) pluginIcons.delete(key);
         });
+}
+// 市场与导航共用插件自己的图标；旧目录和损坏图片仍显示可辨认的文字图标。
+function pluginMarketHeader(plugin, badge) {
+    const header = el('div', 'plugin-card-header'),
+        logo = el('div', 'plugin-card-logo', plugin.glyph || plugin.name.slice(0, 1)),
+        title = el('div', 'plugin-card-title');
+    if (plugin.iconData || plugin.iconAsset) {
+        const image = el('img');
+        image.src = plugin.iconData || `../assets/${plugin.iconAsset}`;
+        image.alt = '';
+        image.draggable = false;
+        image.onerror = () => logo.replaceChildren(document.createTextNode(plugin.glyph || plugin.name.slice(0, 1)));
+        logo.replaceChildren(image);
+    }
+    title.append(el('strong', '', plugin.name), el('span', 'plugin-card-badge', badge));
+    header.append(logo, title);
+    // 连接 DOM 后再交付异步图标，避免快速切换设置页时更新过期节点。
+    if (plugin.icon) queueMicrotask(() => renderPluginIcon(plugin, logo, true));
+    return header;
 }
 const paths = {
     layers: '<path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/>',
@@ -263,15 +285,20 @@ function renderShell(next) {
 let pluginManagerSignature = '';
 function renderPluginManager() {
     const signature = JSON.stringify({
-        plugins: state.plugins.map(({ id, name, description, version, enabled, builtin, distributable }) => ({
-            id,
-            name,
-            description,
-            version,
-            enabled,
-            builtin,
-            distributable
-        })),
+        plugins: state.plugins.map(
+            ({ id, name, description, version, enabled, builtin, distributable, icon, iconAsset, glyph }) => ({
+                id,
+                name,
+                description,
+                version,
+                enabled,
+                builtin,
+                distributable,
+                icon,
+                iconAsset,
+                glyph
+            })
+        ),
         restorable: state.restorableDefaults,
         diagnostics: state.diagnostics
     });
@@ -282,14 +309,14 @@ function renderPluginManager() {
     pluginManagerSignature = signature;
     $('#plugin-manager').replaceChildren();
     for (const plugin of state.plugins) {
-        const row = el('div', 'plugin-manager-row'),
-            copy = el('div'),
+        const row = el('article', 'plugin-manager-row plugin-market-card'),
+            copy = el('div', 'plugin-card-body'),
             label = el('label', 'plugin-switch'),
             input = document.createElement('input');
         copy.append(
-            el('strong', '', plugin.name),
-            el('p', '', plugin.description),
-            el('small', '', `${plugin.builtin ? '默认插件' : '本地插件'} · ${plugin.version}`)
+            pluginMarketHeader(plugin, plugin.builtin ? '默认插件' : '可选插件'),
+            el('p', 'plugin-card-description', plugin.description),
+            el('small', 'plugin-card-version', `v${plugin.version}`)
         );
         input.type = 'checkbox';
         input.checked = plugin.enabled;
@@ -308,7 +335,7 @@ function renderPluginManager() {
         input.setAttribute('role', 'switch');
         input.setAttribute('aria-label', plugin.name + ' 启用状态');
         label.append(input, document.createTextNode(plugin.enabled ? '已启用' : '已停用'));
-        row.append(copy, label);
+        row.append(copy);
         const actions = el('div', 'plugin-row-actions');
         actions.append(
             button(
@@ -366,7 +393,9 @@ function renderPluginManager() {
         if (plugin.distributable) menuAction('导出插件包', 'download', 'plugin-package-export');
         menuAction('卸载插件', 'trash', 'plugin-uninstall', true);
         actions.append(more, menu);
-        row.append(actions);
+        const footer = el('div', 'plugin-card-footer');
+        footer.append(label, actions);
+        row.append(footer);
         $('#plugin-manager').append(row);
     }
     $('#restore-plugins').replaceChildren();
@@ -420,6 +449,7 @@ async function managePlugin(action, payload) {
         document
             .querySelectorAll('#installed-plugins button,#catalog-plugins button,#install-plugin-package')
             .forEach((n) => (n.disabled = false));
+        pluginManagerSignature = null;
         renderPluginManager();
     }
 }
@@ -440,18 +470,17 @@ function renderPluginCatalog() {
     for (const plugin of items) {
         const installed = state.plugins.find((p) => p.id === plugin.id),
             restorable = state.restorableDefaults?.some((p) => p.id === plugin.id),
-            row = el('article', 'catalog-plugin'),
-            copy = el('div');
+            row = el('article', 'catalog-plugin plugin-market-card'),
+            copy = el('div', 'plugin-card-body');
         copy.append(
-            el('strong', '', plugin.name),
-            el('p', '', plugin.description),
-            el('small', '', `${plugin.id} · v${plugin.version} · ${Math.ceil(plugin.size / 1024)} KB`)
+            pluginMarketHeader(installed || plugin, installed ? '已在工作台' : '可选插件'),
+            el('p', 'plugin-card-description', plugin.description)
         );
         const action = button(
             restorable ? '恢复默认插件' : installed ? '检查 / 更新' : '安装',
             null,
             () => managePlugin(restorable ? 'plugin-restore' : 'plugin-catalog-install', plugin.id),
-            'subtle'
+            installed && !plugin.updateAvailable ? 'subtle' : 'primary'
         );
         const upgradable = installed && comparePluginVersion(plugin.version, installed.version) > 0;
         if (installed) {
@@ -469,7 +498,12 @@ function renderPluginCatalog() {
             copy.append(el('p', 'form-error', plugin.compatibilityReason));
         }
         action.disabled = action.disabled || pluginBusy;
-        row.append(copy, action);
+        const footer = el('div', 'plugin-card-footer');
+        footer.append(
+            el('small', 'plugin-card-version', `v${plugin.version} · ${Math.ceil(plugin.size / 1024)} KB`),
+            action
+        );
+        row.append(copy, footer);
         target.append(row);
     }
 }

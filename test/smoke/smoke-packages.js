@@ -65,6 +65,11 @@ exports.run = async ({ win, registry, runtime, services, pluginCatalog, hostActi
                                       version,
                                       apiVersion: 1,
                                       size: data.length,
+                                      iconData:
+                                          'data:image/svg+xml;base64,' +
+                                          Buffer.from(
+                                              '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>'
+                                          ).toString('base64'),
                                       sha256: sha256(data),
                                       url: 'https://plugins.example/plugin.collectify-plugin'
                                   }
@@ -79,6 +84,13 @@ exports.run = async ({ win, registry, runtime, services, pluginCatalog, hostActi
         await host("openSettings('plugins')");
         await host("document.querySelector('[data-plugin-tab=catalog]').click()");
         assert.equal(await host("document.querySelectorAll('.catalog-plugin').length"), 1);
+        await delay(100);
+        assert.equal(
+            await host("document.querySelector('.catalog-plugin .plugin-card-logo img').naturalWidth>0"),
+            true,
+            '未安装插件显示目录图标'
+        );
+        assert.equal(await host("getComputedStyle(document.querySelector('#plugin-catalog-list')).display"), 'grid');
         confirmed = false;
         assert.equal(await hostAction('plugin-catalog-install', 'example.downloaded'), null);
         assert.ok(!registry.plugins.has('example.downloaded'));
@@ -100,6 +112,14 @@ exports.run = async ({ win, registry, runtime, services, pluginCatalog, hostActi
         assert.match(image, /^data:image\/svg\+xml;base64,/);
         registry.storage.set('example.downloaded', 'retained', '保持用户数据');
         await hostAction('plugin-enable', { id: 'example.downloaded', enabled: false });
+        await delay(100);
+        assert.equal(
+            await host(
+                "[...document.querySelectorAll('#plugin-manager .plugin-market-card')].find(card=>card.textContent.includes('下载验证插件')).querySelector('.plugin-card-logo img').naturalWidth>0"
+            ),
+            true,
+            '停用插件仍展示包内图标'
+        );
         version = '1.1.0';
         await hostAction('plugin-catalog-refresh');
         await hostAction('plugin-catalog-install', 'example.downloaded');

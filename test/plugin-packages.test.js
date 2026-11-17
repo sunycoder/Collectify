@@ -51,6 +51,23 @@ function record(data, changes = {}) {
     };
 }
 
+test('目录图标兼容旧目录，过滤远程地址、错误类型和超大内容', () => {
+    const iconData =
+        'data:image/svg+xml;base64,' + Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>').toString('base64');
+    const parse = (changes) =>
+        validateCatalog({ format: 'collectify-plugin-catalog', version: 1, plugins: [record(archive(), changes)] })[0];
+    assert.equal(parse({ iconData }).iconData, iconData);
+    for (const value of [
+        undefined,
+        'https://example.com/icon.svg',
+        'data:text/html;base64,abcd',
+        'data:image/svg+xml;base64,!!!!',
+        iconData + 'a'.repeat(90000)
+    ]) {
+        assert.equal(parse({ iconData: value }).iconData, undefined);
+    }
+});
+
 test('插件包导入、更新、停用保持、导出与重装保留数据，包中不夹带用户数据', (t) => {
     const { registry, packages } = fixture(t),
         install = (data) => {

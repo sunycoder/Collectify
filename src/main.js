@@ -461,7 +461,7 @@ async function pluginEnabled(id, enabled) {
     publish();
 }
 async function hostAction(action, payload) {
-    if (action === 'plugin-icon') return registry.icon(payload.id);
+    if (action === 'plugin-icon') return registry.icon(payload.id, payload.includeDisabled === true);
     if (action === 'login-item-set') return loginItem.set(payload);
     if (action === 'plugin-download-status') return pluginTransfer?.status || null;
     if (action === 'plugin-download-cancel') {

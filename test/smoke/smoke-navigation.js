@@ -75,6 +75,17 @@ exports.run = async ({ win, registry, runtime, services, hostAction, withTestTra
         );
         await host("selectSettingsPanel('plugins')");
         await host("document.querySelector('[data-plugin-tab=installed]').click()");
+        assert.equal(
+            await host(
+                "document.querySelector('[data-plugin-tab=installed]').classList.contains('selected') && document.querySelector('#catalog-plugins').hidden"
+            ),
+            true
+        );
+        await until(() =>
+            host(
+                "[...document.querySelectorAll('#plugin-manager .plugin-card-logo img')].every(image=>image.naturalWidth>0)"
+            )
+        );
         const beforeMenu = await host("document.querySelector('.plugin-manager-row').getBoundingClientRect().height");
         await host("document.querySelector('.plugin-more').click()");
         assert.equal(await host("document.querySelector('.plugin-action-menu').matches(':popover-open')"), true);
@@ -96,6 +107,19 @@ exports.run = async ({ win, registry, runtime, services, hostAction, withTestTra
             path.join(screenshotDirectory, 'settings-plugin-manager.png'),
             (await win.webContents.capturePage()).toPNG()
         );
+        const originalSize = win.getSize();
+        const originalMinimum = win.getMinimumSize();
+        win.setMinimumSize(600, 500);
+        win.setSize(760, 700);
+        await delay(150);
+        const compact = await host(
+            "(()=>{const grid=document.querySelector('#plugin-manager'), content=document.querySelector('.settings-content');return {columns:getComputedStyle(grid).gridTemplateColumns.split(' ').length,overflow:content.scrollWidth>content.clientWidth+1}})()"
+        );
+        assert.equal(compact.columns, 1);
+        assert.equal(compact.overflow, false, '窄窗口插件卡片不能横向溢出');
+        win.setSize(...originalSize);
+        win.setMinimumSize(...originalMinimum);
+        await delay(150);
         await host("document.querySelector('.plugin-more').click()");
         await delay(100);
         fs.writeFileSync(

@@ -87,6 +87,13 @@ function buildCatalog({
                 version: published.version,
                 apiVersion: published.apiVersion,
                 size: data.length,
+                ...(published.icon
+                    ? {
+                          iconData:
+                              'data:image/svg+xml;base64,' +
+                              files.find((f) => f.name === published.icon).data.toString('base64')
+                      }
+                    : {}),
                 sha256: digest,
                 url: publisher
                     ? `${validateUrl(publisher.baseUrl).replace(/\/$/, '')}/api/v4/projects/${encodeURIComponent(publisher.project)}/packages/generic/${published.id}/${published.version}/${filename}`

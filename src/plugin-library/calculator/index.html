@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>计算稿纸</title>
+        <link rel="stylesheet" href="collectify-plugin://collectify.sdk/tool.css" />
+        <link rel="stylesheet" href="style.css" />
+    </head>
+    <body>
+        <header class="toolbar">
+            <div class="brand">
+                <img src="icon/calculator.svg" alt="" />
+                <h1>计算稿纸</h1>
+            </div>
+            <div class="toolbar-actions">
+                <div class="font-controls" aria-label="字号">
+                    <button id="font-down" title="缩小字号" aria-label="缩小字号">A−</button
+                    ><span id="font-size">22</span
+                    ><button id="font-up" title="增大字号" aria-label="增大字号">A＋</button>
+                </div>
+                <button id="examples-toggle" aria-expanded="false">公式示例</button
+                ><button id="copy-paper">复制稿纸</button><button id="clear-paper">清空</button>
+            </div>
+        </header>
+        <section id="examples" hidden aria-label="公式示例">
+            <div class="examples-heading">
+                <span>点击公式插入空行；当前行已有内容时追加新行</span
+                ><span><code>ans</code> 上一行 · <code>_1</code> 指定行 · 三角函数使用弧度</span>
+            </div>
+            <div id="examples-grid"></div>
+        </section>
+        <div class="workspace">
+            <main class="paper-panel">
+                <div class="paper-heading">
+                    <div>
+                        <input id="paper-title" placeholder="未命名稿纸" aria-label="稿纸名称" maxlength="80" />
+                        <p id="paper-date"></p>
+                    </div>
+                    <button id="lock-paper" aria-pressed="false">锁定稿纸</button>
+                </div>
+                <div id="locked-notice" hidden>稿纸已锁定，可查看和复制；解锁后继续编辑。</div>
+                <div id="rows" aria-label="计算过程"></div>
+                <button id="add-row">＋ 添加一行</button>
+                <div class="paper-footer">
+                    <span>Enter 下一行 · Shift+Enter 换行 · <kbd>Ctrl / ⌘ + L</kbd> 清空当前稿纸</span
+                    ><span id="save-status" role="status" aria-live="polite">正在读取稿纸…</span
+                    ><button id="retry-save" hidden>重试保存</button>
+                </div>
+                <p id="message" role="status" aria-live="polite"></p>
+            </main>
+            <aside class="sheets-panel" aria-label="稿纸列表">
+                <div class="sheets-heading">
+                    <h2>我的稿纸</h2>
+                    <span id="sheet-count"></span>
+                </div>
+                <button id="new-paper" class="primary">＋ 新稿纸</button>
+                <div id="sheets"></div>
+                <p class="local-note">离线计算 · 数据仅保存在本机<br />支持宿主全局备份</p>
+            </aside>
+        </div>
+        <dialog id="confirm-dialog">
+            <form method="dialog">
+                <h2 id="confirm-title"></h2>
+                <p id="confirm-description"></p>
+                <div class="dialog-actions">
+                    <button value="cancel">取消</button
+                    ><button value="confirm" class="danger" id="confirm-action">确认</button>
+                </div>
+            </form>
+        </dialog>
+        <script src="engine.js"></script>
+        <script src="model.js"></script>
+        <script src="examples.js"></script>
+        <script src="app.js"></script>
+    </body>
+</html>

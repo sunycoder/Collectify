@@ -1,6 +1,6 @@
 {
   "name": "collectify",
-  "version": "5.7.9",
+  "version": "5.7.10",
   "description": "Collectify · 可扩展的个人插件工作台",
   "main": "src/main.js",
   "author": "Collectify",
@@ -28,6 +28,9 @@
     "predist:linux": "npm run build:assets",
     "smoke:local-search": "electron test/smoke/local-search.cjs",
     "smoke:ip-query": "electron test/smoke/ip-query.cjs",
+    "smoke:calculator": "electron test/smoke/calculator.cjs",
+    "smoke:calendar": "electron test/smoke/chinese-calendar.cjs",
+    "calendar:build": "node scripts/build-calendar.cjs",
     "test:fixtures": "node test/tools/create-local-search-fixtures.cjs"
   },
   "devDependencies": {

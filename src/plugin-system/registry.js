@@ -127,8 +127,8 @@ class PluginRegistry {
         if (!plugin || (enabled && !plugin.enabled)) throw Error('插件未安装或已停用');
         return plugin;
     }
-    async icon(id) {
-        const plugin = this.get(id, true);
+    async icon(id, includeDisabled = false) {
+        const plugin = this.get(id, !includeDisabled);
         if (!plugin.icon) return null;
         if (this.iconCache.has(id)) return this.iconCache.get(id);
         const cache = this.iconCache;
@@ -141,7 +141,8 @@ class PluginRegistry {
                 const bytes = Buffer.alloc(65537);
                 const { bytesRead } = await handle.read(bytes, 0, bytes.length, 0);
                 if (bytesRead > 65536) throw Error('插件图标不能超过 64 KiB');
-                if (this.plugins.get(id) !== plugin || !plugin.enabled) throw Error('插件已更新或停用');
+                if (this.plugins.get(id) !== plugin || (!includeDisabled && !plugin.enabled))
+                    throw Error('插件已更新或停用');
                 return 'data:image/svg+xml;base64,' + bytes.subarray(0, bytesRead).toString('base64');
             } finally {
                 await handle.close();

@@ -1,0 +1,144 @@
+/* 两个插件页共用卡片，颜色沿用宿主主题；菜单仍使用原生 popover 顶层展示。 */
+#plugin-manager,
+#plugin-catalog-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr));
+    gap: 16px;
+    margin-top: 20px;
+}
+.plugin-market-card.plugin-manager-row,
+.plugin-market-card.catalog-plugin {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 20px;
+    min-width: 0;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--paper);
+    transition:
+        border-color 0.15s,
+        box-shadow 0.15s;
+}
+.plugin-market-card:hover {
+    border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+    box-shadow: 0 4px 18px color-mix(in srgb, var(--ink) 5%, transparent);
+}
+.plugin-market-card .plugin-card-body {
+    flex: 1;
+}
+.plugin-card-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+.plugin-card-logo {
+    display: grid;
+    place-items: center;
+    flex: 0 0 54px;
+    width: 54px;
+    height: 54px;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    background: var(--surface);
+    color: var(--accent-text);
+    font-size: 22px;
+    font-weight: 600;
+}
+.plugin-card-logo img,
+.plugin-card-logo .plugin-asset-icon {
+    display: block;
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+}
+.plugin-card-title {
+    display: flex;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+    min-width: 0;
+}
+.plugin-market-card .plugin-card-title strong {
+    font-size: 15px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+.plugin-card-badge {
+    font-size: 10px;
+    line-height: 1.5;
+    padding: 2px 7px;
+    border-radius: 5px;
+    color: var(--accent-text);
+    background: color-mix(in srgb, var(--accent) 9%, var(--paper));
+}
+.plugin-market-card .plugin-card-description {
+    font-size: 12px;
+    line-height: 1.8;
+    color: var(--muted);
+    margin: 15px 0 10px;
+    overflow-wrap: anywhere;
+}
+.plugin-market-card .plugin-card-footer {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+}
+.plugin-market-card .plugin-card-version {
+    font-size: 11px;
+    color: var(--subtle);
+}
+.plugin-market-card .plugin-switch {
+    font-size: 11px;
+    color: var(--muted);
+}
+.plugin-market-card .plugin-card-footer > button {
+    padding: 6px 14px;
+    min-height: 32px;
+    font-size: 12px;
+}
+#plugin-catalog-list > .plugin-empty {
+    grid-column: 1 / -1;
+    padding: 36px 12px;
+    text-align: center;
+}
+.plugin-source-settings {
+    border: 0;
+    padding-top: 0;
+    margin: 18px 0 10px;
+    color: var(--muted);
+    font-size: 12px;
+}
+.plugin-source-settings summary {
+    cursor: pointer;
+    margin-bottom: 12px;
+}
+.plugin-market-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.plugin-market-toolbar button {
+    flex-shrink: 0;
+    font-size: 12px;
+}
+@media (max-width: 620px) {
+    .plugin-market-card.plugin-manager-row,
+    .plugin-market-card.catalog-plugin {
+        padding: 16px;
+    }
+    .catalog-source {
+        flex-wrap: wrap;
+    }
+    .catalog-source input {
+        flex-basis: 100%;
+    }
+}

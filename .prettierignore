@@ -7,6 +7,9 @@ coverage/
 src/vendor/
 src/plugins/local-search/vendor/
 src/plugin-library/local-search/vendor/
+src/plugin-library/chinese-calendar/vendor/
+src/plugin-library/chinese-calendar/view/
+plugins/sources/he-calendar/package-lock.json
 package-lock.json
 
 # Local settings, private configuration and persisted data

@@ -73,6 +73,8 @@ test('插件图标拒绝外部 URL、越界、非 SVG、超大内容，读取中
     registry.setEnabled(manifest.id, false);
     await assert.rejects(pending, /停用/);
     await assert.rejects(registry.icon(manifest.id), /停用/);
+    assert.match(await registry.icon(manifest.id, true), /^data:image\/svg\+xml;base64,/);
+    assert.equal(registry.get(manifest.id).enabled, false, '管理页读取图标不能启用插件');
     registry.setEnabled(manifest.id, true);
     assert.ok(await registry.icon(manifest.id));
 });
