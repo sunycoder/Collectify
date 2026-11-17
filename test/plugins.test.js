@@ -22,6 +22,32 @@ function fixture(t) {
     };
     return { root, options, registry: new PluginRegistry(options) };
 }
+test('插件导航排序保存重启、停用启用和重新发现保持，非法操作不写入，可恢复默认顺序', (t) => {
+    const { registry, options } = fixture(t),
+        initial = registry.list().map((p) => p.id);
+    const [first, last] = [initial[0], initial.at(-1)];
+    registry.move(last, first, 'before');
+    assert.equal(registry.list()[0].id, last);
+    assert.equal(new PluginRegistry(options).list()[0].id, last);
+    registry.setEnabled(last, false);
+    registry.discover();
+    assert.equal(registry.list()[0].id, last);
+    registry.setEnabled(last, true);
+    assert.equal(registry.list()[0].id, last);
+    const saved = registry.getSetting('pluginOrder');
+    assert.throws(() => registry.move(last, 'example.missing'), /未安装/);
+    assert.throws(() => registry.move(last, first, 'invalid'), /无效/);
+    assert.deepEqual(registry.getSetting('pluginOrder'), saved);
+    registry.resetOrder();
+    assert.deepEqual(
+        registry.list().map((p) => p.id),
+        initial
+    );
+    assert.deepEqual(
+        new PluginRegistry(options).list().map((p) => p.id),
+        initial
+    );
+});
 test('插件清单自动发现，启停持久化、命令回收，不影响原业务库', (t) => {
     const { registry, options, root } = fixture(t);
     assert.equal(registry.list().length, 2);
@@ -64,13 +90,17 @@ test('新增自有插件通过目录安装、更新、卸载与重装，无需�
     fs.writeFileSync(path.join(source, 'index.html'), '<h1>Hello</h1>');
     fs.mkdirSync(path.dirname(path.join(source, manifest.icon)), { recursive: true });
     fs.copyFileSync(path.resolve(__dirname, '../src/plugins/json', manifest.icon), path.join(source, manifest.icon));
+    const defaults = registry.list().map((p) => p.id);
+    registry.move(defaults.at(-1), defaults[0], 'before');
     registry.install(source);
+    assert.equal(registry.list().at(-1).id, manifest.id, '新插件追加，不打乱已有自定义顺序');
     assert.equal(registry.commands().length, 3);
     registry.storage.set(manifest.id, 'keep', 123);
     manifest.version = '1.1.0';
     fs.writeFileSync(path.join(source, 'manifest.json'), JSON.stringify(manifest));
     registry.install(source);
     assert.equal(registry.get(manifest.id).version, '1.1.0');
+    assert.equal(registry.list()[0].id, defaults.at(-1), '更新不重置已有排序');
     assert.equal(registry.storage.get(manifest.id, 'keep'), 123);
     registry.uninstall(manifest.id);
     assert.throws(() => registry.get(manifest.id), /未安装/);

@@ -29,5 +29,9 @@
       "label": "最近打开"
     }
   ],
-  "icon": "icon/icon.svg"
+  "icon": "icon/icon.svg",
+  "details": {
+    "limitations": ["原始文件和浏览器 Cookie 不随数据备份复制；密码可按用户设置明文查看"],
+    "features": ["收藏网页、文本、文件、目录与账号资料", "分类、搜索、内置浏览器会话与跨插件关联"]
+  }
 }

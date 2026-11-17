@@ -172,6 +172,14 @@ MCP 传输由宿主提供，工具由激活的后台插件贡献。每次请求�
 
 ## 验证与范围
 
+5.7.12 增加可选 `collectify.onPrepareClose(callback)`：前台在关闭、停用、更新、导入和退出前刷新内存状态，通过限时 IPC 握手确认，失败取消操作。可信后台可实现 `beforeClose(reason)` 返回布尔值，必要时提示保存/放弃；多个插件中任何一个拒绝都会取消本次操作。`closeCheckCanceled()` 用于撤销本次临时关闭许可。原始业务与持久化仍由插件自行负责。
+
+可信后台可贡献 `tasks()`（最多 30 个 `{id,title,progress,startedAt,cancellable}`）与 `cancelTask(id)`。宿主仅展示经过裁剪的描述和取消按钮，不接收文件内容；`progress:null` 表示未知进度。任务变化用 `context.changed()` 发布，任务的创建、并发与释放仍归插件。统一备份覆盖信息可用 `backupCoverage()` 声明；未实现 `exportData/planData/importData` 的原生数据不会自动纳入备份。
+
+插件详情为可选 `details`：受限文本数组、权限说明、PNG data URL 缩略图与逐平台验证记录。官方目录可从 `plugins/details.json` 与 `plugins/previews` 生成，安装清单权限仍为实际授权依据。缺失信息明确标注；声明支持平台不等于已验证。
+
+可信原生插件前台可使用 `collectify.files.paths(files)` 将用户拖入的 File 数组转换为本地路径，每次最多两个。页面插件与后台页面拒绝此操作，不提供任意路径读取接口；真正读取与授权判断由原生插件负责。静态资源协议支持 TTF 字体 MIME，字体仍受插件源和 CSP 限制。
+
 ```powershell
 npm test
 npm run smoke

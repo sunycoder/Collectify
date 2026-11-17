@@ -1,0 +1,82 @@
+{
+  "id": "collectify.diff",
+  "name": "Diff",
+  "description": "离线对比文本、图片、文件夹及 Word、Excel、PDF、PowerPoint 内容，支持差异高亮与报告导出。",
+  "version": "1.0.4",
+  "minHostVersion": "5.7.12",
+  "runtime": "native",
+  "apiVersion": 1,
+  "entry": "index.html",
+  "backend": "backend.js",
+  "icon": "icon/diff.svg",
+  "glyph": "⇄",
+  "permissions": ["native", "clipboard.read", "clipboard.write"],
+  "commands": [
+    {
+      "id": "open",
+      "title": "打开 Diff 内容对比"
+    }
+  ],
+  "navigation": [
+    {
+      "id": "text",
+      "label": "文本对比",
+      "icon": "code"
+    },
+    {
+      "id": "image",
+      "label": "图片对比",
+      "icon": "image"
+    },
+    {
+      "id": "folder",
+      "label": "文件夹对比",
+      "icon": "folder"
+    },
+    {
+      "id": "document",
+      "label": "文档对比",
+      "icon": "file-text"
+    }
+  ],
+  "details": {
+    "features": [
+      "Monaco 文本差异、内存合并与撤销",
+      "图片多模式、离线 OCR 与差异区域定位",
+      "目录指纹、Office/PDF 对比、表格 Redline 与报告导出",
+      "表格按唯一业务键或组合键配对，提示重复键与空键",
+      "文本草稿自愿开启、离开保护、偏好统一备份"
+    ],
+    "limitations": [
+      "Word 只比较正文；PPTX 基础预览不保证复杂版式还原",
+      "PDF 视觉高亮针对当前页；图片 OCR 不会自动处理 PDF 扫描件",
+      "草稿只包含文本，不包含图片、表格编辑或原文件；默认不自动保存",
+      "单文件 32 MiB，目录每侧 20000 项；超限明确拒绝"
+    ],
+    "changelog": [
+      "1.0.4：表格业务键配对、原始坐标与异常键提示",
+      "1.0.3：工作副本保护、偏好备份、任务贡献与详情说明",
+      "1.0.2：图片工具、表格增强和对齐目录列表"
+    ],
+    "verification": [
+      {
+        "platform": "win32",
+        "status": "local",
+        "date": "2026-11-17",
+        "scope": "本地签名安装、文档/图片/OCR、拖放、报告及热插拔；本轮复测后记录最终结果"
+      },
+      {
+        "platform": "darwin",
+        "status": "unverified",
+        "date": "2026-11-17",
+        "scope": "已配置回归入口，本轮未实际运行"
+      },
+      {
+        "platform": "linux",
+        "status": "unverified",
+        "date": "2026-11-17",
+        "scope": "已配置 Xvfb 回归入口，本轮未实际运行"
+      }
+    ]
+  }
+}

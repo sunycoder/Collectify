@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Diff</title>
+        <link rel="stylesheet" href="style.css" />
+        <link rel="stylesheet" href="collectify-plugin://collectify.sdk/vendor/tom-select.css" />
+        <link rel="stylesheet" href="collectify-plugin://collectify.sdk/select.css" />
+        <link rel="stylesheet" href="refinement.css" />
+        <link rel="stylesheet" href="comparison-tools.css" />
+    </head>
+    <body>
+        <header class="topbar">
+            <div class="brand">
+                <img src="icon/diff.svg" alt="" /><strong>Diff</strong><span>内容差异，一目了然</span>
+            </div>
+            <div class="header-actions">
+                <button id="toggle-tools" aria-expanded="true">☷ 工具面板</button
+                ><button id="shortcuts-open">快捷键</button>
+            </div>
+        </header>
+        <nav class="mode-tabs" aria-label="对比类型">
+            <button data-mode="text" class="selected">文本</button><button data-mode="image">图片</button
+            ><button data-mode="folder">文件夹</button><button data-mode="document">文档</button
+            ><span class="spacer"></span><button id="swap">⇄ 交换</button><button id="clear">清空</button
+            ><button id="export">↥ 导出报告</button>
+        </nav>
+        <main>
+            <aside id="controls">
+                <div class="section-heading">工具 <span>TOOLBOX</span></div>
+                <div class="text-options">
+                    <label
+                        >视图<select id="view">
+                            <option value="split">拆分</option>
+                            <option value="unified">统一</option>
+                        </select></label
+                    ><label>实时编辑<input id="editable" type="checkbox" checked /></label
+                    ><label>忽略空白更改<input id="ignoreWhitespace" type="checkbox" /></label
+                    ><label>折叠未更改行<input id="collapse" type="checkbox" /></label
+                    ><label>自动换行<input id="wrap" type="checkbox" checked /></label
+                    ><label
+                        >比对精度<select id="precision">
+                            <option value="advanced">智能</option>
+                            <option value="legacy">标准</option>
+                        </select></label
+                    ><label
+                        >语法<select id="language">
+                            <option value="auto">自动识别</option>
+                        </select></label
+                    ><label>字号<input id="fontSize" type="number" min="10" max="24" value="13" /></label>
+                    <details>
+                        <summary>忽略规则</summary>
+                        <label>统一引号<input id="ignoreQuotes" type="checkbox" /></label
+                        ><label>统一破折号<input id="ignoreDashes" type="checkbox" /></label
+                        ><textarea id="ignoreRules" rows="3" placeholder="每行一个忽略词，最多 20 条"></textarea
+                        ><button id="apply-rules">应用规则</button
+                        ><small>忽略规则只影响显示与报告；清除规则可恢复原文。</small>
+                    </details>
+                    <details>
+                        <summary>文本转换</summary>
+                        <button data-transform="trim">清理行末空白</button
+                        ><button data-transform="sort">按行排序</button
+                        ><button data-transform="json">格式化 JSON</button
+                        ><small>转换作用于当前两侧文本，可使用编辑器撤销。</small>
+                    </details>
+                    <button id="first-diff" class="wide">↓ 跳到第一个差异</button>
+                    <details class="draft-options">
+                        <summary>文本工作副本</summary>
+                        <label>本机自动草稿<input id="local-drafts" type="checkbox" /></label
+                        ><small>默认关闭。开启后文本保存到本机，不含图片或表格内存编辑，不随备份导出。</small
+                        ><button id="save-draft">保存当前文本草稿</button
+                        ><button id="delete-draft">删除本地草稿</button>
+                    </details>
+                </div>
+                <div class="folder-options" hidden>
+                    <label>仅显示差异<input id="only-diff" type="checkbox" /></label
+                    ><button id="refresh-folder">↻ 刷新目录</button><button id="rehash">重新计算内容指纹</button>
+                    <div class="legend">
+                        <span class="changed">● 不同 / 属性不同</span><span class="left">● 仅左侧</span
+                        ><span class="right">● 仅右侧</span><span class="type">● 类型不同</span>
+                    </div>
+                    <small>Ctrl / ⌘ + 单击可独立指定配对文件。目录数字包含子目录的差异文件数。</small>
+                    <div id="folder-navigation" aria-label="目录文件导航"></div>
+                </div>
+                <div class="image-options" hidden>
+                    <label
+                        >查看模式<select id="image-tool-mode">
+                            <option value="split">分割</option>
+                            <option value="fade">淡化</option>
+                            <option value="blink">闪烁</option>
+                            <option value="slider">滑块</option>
+                            <option value="difference">高亮</option>
+                            <option value="subtract">相减</option>
+                            <option value="ocr-rich">富文本 OCR</option>
+                            <option value="ocr-text">OCR 文本</option>
+                            <option value="details">文件详情</option>
+                        </select></label
+                    >
+                    <label>容差<input id="image-tool-threshold" type="range" min="0" max="100" value="16" /></label
+                    ><label>叠加比例<input id="image-tool-blend" type="range" min="0" max="100" value="50" /></label
+                    ><label>变更框<input id="image-boxes" type="checkbox" checked /></label>
+                    <button id="image-align">对齐到相同画布</button><button id="image-fit-side">适应窗口</button
+                    ><button id="image-original">原始尺寸 100%</button>
+                    <div class="section-heading">调整右侧图片</div>
+                    <label
+                        >旋转<select id="image-rotate">
+                            <option value="0">0°</option>
+                            <option value="90">90°</option>
+                            <option value="180">180°</option>
+                            <option value="270">270°</option>
+                        </select></label
+                    ><label>水平翻转<input id="image-flip" type="checkbox" /></label
+                    ><label>X 偏移<input id="image-offset-x" type="number" min="-4000" max="4000" value="0" /></label
+                    ><label>Y 偏移<input id="image-offset-y" type="number" min="-4000" max="4000" value="0" /></label
+                    ><button id="image-reset">重置图像调整</button>
+                    <div class="section-heading">文字识别</div>
+                    <label
+                        >识别语言<select id="ocr-language">
+                            <option value="eng+chi_sim">简体中文 + 英文</option>
+                            <option value="eng">英文</option>
+                        </select></label
+                    ><button id="image-ocr">识别两侧文字</button><button id="image-add-region">＋ 框选关注区域</button
+                    ><small
+                        >拖动画面平移，滚轮缩放；框选模式可标记关注区域。文字识别使用随包离线字库，结果需核对。</small
+                    >
+                </div>
+                <div class="sheet-options" hidden>
+                    <div class="section-heading">表格比较</div>
+                    <label
+                        >比较方式<select id="sheet-compare">
+                            <option value="values">标准 · 显示值</option>
+                            <option value="formulas">公式</option>
+                        </select></label
+                    ><label
+                        >对比精度<select id="sheet-precision">
+                            <option value="smart">智能</option>
+                            <option value="word">单词</option>
+                            <option value="character">字符</option>
+                        </select></label
+                    >
+                    <label>按表头匹配列<input id="sheet-match-headers" type="checkbox" /></label>
+                    <details class="sheet-key-options">
+                        <summary>按业务键匹配行</summary>
+                        <small
+                            >选择一列或多列组成唯一键。首行为表头；调换列时先开启按表头匹配。重复、空键不会强行配对。</small
+                        >
+                        <div id="sheet-key-columns"></div>
+                        <button id="sheet-key-clear">取消业务键，恢复按行比较</button>
+                    </details>
+                    <p id="sheet-key-status" role="status" hidden></p>
+                    <label>忽略空格<input id="sheet-ignore-space" type="checkbox" /></label
+                    ><label>忽略大小写变化<input id="sheet-ignore-case" type="checkbox" /></label
+                    ><label>隐藏未更改的行<input id="sheet-hide-rows" type="checkbox" /></label
+                    ><label>隐藏未更改的列<input id="sheet-hide-cols" type="checkbox" /></label
+                    ><label>保留单元格格式<input id="sheet-keep-format" type="checkbox" checked /></label>
+                    <label
+                        >排序行<select id="sheet-sort-row">
+                            <option value="none">原始顺序</option>
+                            <option value="asc">按首列升序</option>
+                            <option value="desc">按首列降序</option>
+                        </select></label
+                    ><label
+                        >排序列<select id="sheet-sort-col">
+                            <option value="none">原始顺序</option>
+                            <option value="asc">按表头升序</option>
+                            <option value="desc">按表头降序</option>
+                        </select></label
+                    ><button id="sheet-date-us">标准化日期（US）</button
+                    ><button id="sheet-date-eu">标准化日期（EU）</button><button id="sheet-reset">重置比较选项</button
+                    ><small>排序、日期标准化与编辑作用于内存。日期遇到非日期单元格时保持原值。</small>
+                    <details class="sheet-appearance">
+                        <summary>更改外观</summary>
+                        <label>字号<input id="sheet-font-size" type="number" min="10" max="18" value="12" /></label
+                        ><label>单元格换行<input id="sheet-wrap" type="checkbox" checked /></label
+                        ><label
+                            >表格密度<select id="sheet-density">
+                                <option value="normal">标准</option>
+                                <option value="compact">紧凑</option>
+                                <option value="relaxed">宽松</option>
+                            </select></label
+                        >
+                    </details>
+                </div>
+                <div class="document-options" hidden>
+                    <small
+                        >Word：正文文本。Excel：工作表与单元格。PDF：页渲染及文本。PPTX：幻灯片内容与基础预览。全部离线解析。</small
+                    >
+                </div>
+                <div class="aside-bottom"><button id="cancel">取消当前任务</button></div>
+            </aside>
+            <section class="workspace">
+                <section id="draft-notice" hidden role="status">
+                    <span id="draft-notice-text"></span><button id="restore-draft">恢复文本草稿</button
+                    ><button id="dismiss-draft">稍后</button>
+                </section>
+                <section id="folder-panel" hidden>
+                    <div class="folder-toolbar">
+                        <strong id="folder-summary">选择两侧目录开始对比</strong><span id="scan-progress"></span>
+                    </div>
+                    <div id="folder-overview">
+                        <input
+                            id="folder-search"
+                            type="search"
+                            placeholder="搜索文件名或路径"
+                            aria-label="搜索目录差异"
+                        /><span id="folder-counts"></span
+                        ><button id="folder-link" aria-pressed="true">同路径对齐</button>
+                    </div>
+                    <div class="folder-list-head">
+                        <span>左侧文件 <small>大小</small></span
+                        ><span>右侧文件 <small>大小</small></span>
+                    </div>
+                    <div class="trees">
+                        <section data-side="0" class="tree-pane">
+                            <div class="tree-title"><button data-choose-folder="0">选择左侧文件夹</button></div>
+                            <div class="breadcrumbs" data-breadcrumb="0"></div>
+                            <div class="tree" data-tree="0"></div>
+                        </section>
+                        <section data-side="1" class="tree-pane">
+                            <div class="tree-title"><button data-choose-folder="1">选择右侧文件夹</button></div>
+                            <div class="breadcrumbs" data-breadcrumb="1"></div>
+                            <div class="tree" data-tree="1"></div>
+                        </section>
+                    </div>
+                    <div class="pairing">
+                        <strong>内容对比</strong
+                        ><select id="pair-left" aria-label="左侧文件">
+                            <option value="">请先选择左侧目录</option></select
+                        ><span>⇄</span
+                        ><select id="pair-right" aria-label="右侧文件">
+                            <option value="">请先选择右侧目录</option>
+                        </select>
+                    </div>
+                </section>
+                <div class="input-bar">
+                    <section class="input-side" data-side="0">
+                        <span class="side-label">左侧</span>
+                        <div class="file-heading">
+                            <strong id="left-name">原始内容</strong><small id="left-detail">拖入文件，或直接输入</small>
+                        </div>
+                        <button data-save-text="0">另存</button><button data-choose="0">打开文件</button
+                        ><button data-paste="0">粘贴</button
+                        ><button data-reload="0" title="重新读取左侧原文件">↻</button
+                        ><button data-copy="0" title="复制左侧文本">复制</button>
+                    </section>
+                    <section class="input-side" data-side="1">
+                        <span class="side-label">右侧</span>
+                        <div class="file-heading">
+                            <strong id="right-name">更改内容</strong
+                            ><small id="right-detail">拖入另一个文件开始对比</small>
+                        </div>
+                        <button data-save-text="1">另存</button><button data-choose="1">打开文件</button
+                        ><button data-paste="1">粘贴</button
+                        ><button data-reload="1" title="重新读取右侧原文件">↻</button
+                        ><button data-copy="1" title="复制右侧文本">复制</button>
+                    </section>
+                </div>
+                <div class="comparison-meta">
+                    <span id="summary">输入文本，或连续拖入两个文件</span><span class="spacer"></span>
+                    <button id="document-preview" hidden>返回文档预览</button><span id="change-position">0 / 0</span
+                    ><button id="previous" title="上一个差异 Shift+F7">↑</button
+                    ><button id="next" title="下一个差异 F7">↓</button>
+                    <span class="merge-actions"
+                        ><button id="merge-left" title="将当前右侧差异应用到左侧内存文本">← 应用到左侧</button
+                        ><button id="merge-right" title="将当前左侧差异应用到右侧内存文本">应用到右侧 →</button
+                        ><button id="undo-merge" title="撤销最近一次合并或文本编辑">撤销</button></span
+                    >
+                </div>
+                <section id="subfolder-panel" hidden></section>
+                <section id="content-empty" hidden>
+                    <span class="empty-symbol">⇄</span>
+                    <h2 id="empty-title">选择对比内容</h2>
+                    <p id="empty-description">拖入两个文件，或分别选择左侧与右侧内容。</p>
+                    <div>
+                        <button id="empty-left">选择左侧文件</button><button id="empty-right">选择右侧文件</button>
+                    </div>
+                </section>
+                <div id="text-panel">
+                    <div id="editor"></div>
+                    <svg id="diff-links" aria-hidden="true"></svg>
+                    <div id="editor-loading">正在准备本地编辑器…</div>
+                    <div id="text-empty-hint">
+                        <span>左侧原始内容</span><small>拖入第一个文件，或点击编辑区输入</small><span>右侧更改内容</span
+                        ><small>再拖入一个文件，自动配对</small>
+                    </div>
+                </div>
+                <section id="image-panel" hidden>
+                    <nav id="image-modes" class="content-tabs">
+                        <button data-image-view="split" class="selected">分割</button
+                        ><button data-image-view="fade">淡化</button><button data-image-view="blink">闪烁</button
+                        ><button data-image-view="slider">滑块</button><button data-image-view="difference">高亮</button
+                        ><button data-image-view="subtract">相减</button
+                        ><button data-image-view="ocr-rich">富文本 OCR</button
+                        ><button data-image-view="ocr-text">OCR 文本</button
+                        ><button data-image-view="details">文件详情</button>
+                    </nav>
+                    <div class="image-toolbar">
+                        <select id="image-mode" aria-label="图片对比模式" hidden>
+                            <option value="split">左右对比</option>
+                            <option value="difference">差异高亮</option>
+                            <option value="fade">淡化叠加</option>
+                            <option value="slider">滑动对比</option></select
+                        ><label>叠加 / 分界<input id="blend" type="range" min="0" max="100" value="50" /></label
+                        ><label>容差<input id="threshold" type="range" min="0" max="100" value="16" /></label
+                        ><button id="zoom-out">−</button><span id="zoom-value">100%</span
+                        ><button id="zoom-in">＋</button><button id="zoom-reset">适应</button
+                        ><button id="export-image">导出 PNG</button>
+                    </div>
+                    <div class="image-body">
+                        <div id="image-main">
+                            <div id="image-viewport">
+                                <div id="image-surface">
+                                    <canvas id="image-canvas"></canvas><canvas id="image-regions"></canvas>
+                                </div>
+                                <div id="image-empty">
+                                    拖入图片，或在左右两侧点击“粘贴”<small
+                                        >PNG · JPEG · WebP · GIF · BMP（静态首帧）</small
+                                    >
+                                </div>
+                            </div>
+                            <div id="ocr-result" hidden></div>
+                            <div id="image-file-details" hidden></div>
+                        </div>
+                        <section id="image-changes" class="changes-rail">
+                            <div class="rail-heading">
+                                <strong>变更列表</strong><span id="image-change-count">0</span>
+                            </div>
+                            <div id="image-change-list"></div>
+                        </section>
+                    </div>
+                </section>
+                <section id="document-panel" hidden>
+                    <div class="document-toolbar">
+                        <select id="sheet" aria-label="工作表"></select
+                        ><select id="sheet-mode">
+                            <option value="values">对比显示值</option>
+                            <option value="formulas">对比公式</option></select
+                        ><label>页 / 幻灯片 <input id="page" type="number" min="1" value="1" /></label
+                        ><span id="page-total"></span><button id="document-highlight">差异高亮</button
+                        ><button id="document-text">查看文本差异</button>
+                    </div>
+                    <div id="sheet-toolbar" hidden>
+                        <nav class="content-tabs">
+                            <button data-sheet-view="split" class="selected">双栏 Diff</button
+                            ><button data-sheet-view="redline">Redline</button
+                            ><button data-sheet-view="original">原始</button
+                            ><button data-sheet-view="modified">已更改</button><button data-sheet-view="rows">行</button
+                            ><button data-sheet-view="details">文件详情</button>
+                        </nav>
+                        <div>
+                            <button id="sheet-edit">编辑内存副本</button
+                            ><button id="sheet-export-csv">导出当前视图 CSV</button><span id="sheet-counts"></span>
+                        </div>
+                    </div>
+                    <p id="document-note"></p>
+                    <div class="document-body">
+                        <div class="document-pair">
+                            <section id="document-left"></section>
+                            <section id="document-right"></section>
+                        </div>
+                        <div id="sheet-single" hidden></div>
+                        <section id="sheet-changes" class="changes-rail" hidden>
+                            <div class="rail-heading">
+                                <strong>变更</strong><span id="sheet-change-position">0 / 0</span
+                                ><button id="sheet-change-prev">↑</button><button id="sheet-change-next">↓</button>
+                            </div>
+                            <div id="sheet-change-list"></div>
+                        </section>
+                    </div>
+                    <canvas id="document-difference" hidden></canvas>
+                    <div class="table-pagination" hidden>
+                        <button id="table-prev">上一页</button><span id="table-position"></span
+                        ><button id="table-next">下一页</button>
+                    </div>
+                </section>
+                <footer><span id="status" role="status">就绪</span><span id="error" role="alert"></span></footer>
+            </section>
+        </main>
+        <dialog id="export-dialog">
+            <h2>导出差异报告</h2>
+            <p>报告可能包含两侧的完整内容，仅保存到你选择的本地位置。</p>
+            <label
+                >格式<select id="export-format">
+                    <option value="html">HTML（可离线查看）</option>
+                    <option value="pdf">PDF</option>
+                    <option value="json">JSON（结构化数据）</option>
+                </select></label
+            >
+            <div class="dialog-actions">
+                <button id="cancel-export">取消</button><button id="confirm-export" class="primary">导出</button>
+            </div>
+        </dialog>
+        <dialog id="shortcuts-dialog">
+            <h2>快捷键与使用提示</h2>
+            <dl>
+                <dt>F7 / Shift + F7</dt>
+                <dd>下一个 / 上一个差异</dd>
+                <dt>Ctrl / ⌘ + F</dt>
+                <dd>在编辑器中查找</dd>
+                <dt>Ctrl / ⌘ + Z</dt>
+                <dd>撤销内存中的编辑或合并</dd>
+                <dt>Ctrl / ⌘ + 单击文件</dt>
+                <dd>在目录中独立选择配对文件</dd>
+            </dl>
+            <p>
+                连续拖入两个文件会自动填入左右两侧；两侧均有内容后，拖到哪侧就替换哪侧。所有编辑与合并只作用于当前内存内容。
+            </p>
+            <button id="shortcuts-close">知道了</button>
+        </dialog>
+        <div id="drop-overlay" hidden>
+            <div data-drop-side="0"><strong>放入左侧</strong><span>原始内容</span></div>
+            <div data-drop-side="1"><strong>放入右侧</strong><span>更改内容</span></div>
+        </div>
+        <script src="collectify-plugin://collectify.sdk/vendor/tom-select.js"></script>
+        <script src="collectify-plugin://collectify.sdk/vendor/floating-ui.js"></script>
+        <script src="collectify-plugin://collectify.sdk/overlay.js"></script>
+        <script src="collectify-plugin://collectify.sdk/ui-components.js"></script>
+        <script src="vendor/diff-text.js"></script>
+        <script src="images.js"></script>
+        <script src="sheet-model.js"></script>
+        <script src="sheets.js"></script>
+        <script src="folders.js"></script>
+        <script src="documents.js"></script>
+        <script src="app.js"></script>
+    </body>
+</html>

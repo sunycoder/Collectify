@@ -37,5 +37,9 @@
       "label": "已归档"
     }
   ],
-  "icon": "icon/icon.svg"
+  "icon": "icon/icon.svg",
+  "details": {
+    "limitations": ["附件备份保留路径，不自动复制外部文件；系统通知受系统设置影响"],
+    "features": ["清单、看板、四象限、排期日历与提醒", "任务状态、附件路径、归档与跨插件关联"]
+  }
 }

@@ -5,31 +5,37 @@
       "source": "src/plugin-library/clipboard-history",
       "id": "collectify.clipboard-history",
       "name": "剪贴板历史",
-      "version": "2.2.5"
+      "version": "2.2.6"
     },
     {
       "source": "src/plugin-library/local-search",
       "id": "collectify.local-search",
       "name": "本地搜索",
-      "version": "1.2.1"
+      "version": "1.2.2"
     },
     {
       "source": "src/plugin-library/ip-query",
       "id": "collectify.ip-query",
       "name": "IP 地址查询",
-      "version": "1.0.2"
+      "version": "1.0.3"
     },
     {
       "source": "src/plugin-library/calculator",
       "id": "collectify.calculator",
       "name": "计算稿纸",
-      "version": "1.0.0"
+      "version": "1.0.4"
     },
     {
       "source": "src/plugin-library/chinese-calendar",
       "id": "collectify.chinese-calendar",
       "name": "日历",
       "version": "1.0.1"
+    },
+    {
+      "source": "src/plugin-library/diff",
+      "id": "collectify.diff",
+      "name": "Diff",
+      "version": "1.0.4"
     }
   ]
 }

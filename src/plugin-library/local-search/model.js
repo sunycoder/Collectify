@@ -58,6 +58,7 @@ function preferences(value = {}) {
     return {
         filters: [all, ...result.filter((entry) => entry.id !== 'all')],
         preview: value.preview !== false,
+        splitRatio: Number.isFinite(value.splitRatio) ? Math.max(0.2, Math.min(0.75, value.splitRatio)) : 0.39,
         sort: Object.hasOwn(SORTS, value.sort) ? value.sort : 'modified',
         engine: value.engine === 'folder' ? 'folder' : 'everything'
     };

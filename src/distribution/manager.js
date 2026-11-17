@@ -333,7 +333,7 @@ class Distribution {
             if (draft.raw.settings) {
                 const personal = this.registry.getSetting('personalSettingKeys', []),
                     defaults = {};
-                for (const key of ['theme', 'keepInTray', 'navigationCollapsed', 'browserOpenMode'])
+                for (const key of ['theme', 'keepInTray', 'navigationCollapsed', 'browserOpenMode', 'pluginOrder'])
                     if (
                         Object.hasOwn(draft.raw.settings, key) &&
                         !personal.includes(key) &&

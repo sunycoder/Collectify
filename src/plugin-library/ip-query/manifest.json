@@ -3,7 +3,7 @@
   "name": "IP 地址查询",
   "description": "查询公网 IPv4 / IPv6、归属地与网络服务商，按需联网，无常驻任务。",
   "glyph": "IP",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "icon": "icon/ip.svg",
   "minHostVersion": "5.7.9",
   "runtime": "native",

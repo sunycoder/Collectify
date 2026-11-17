@@ -37,5 +37,9 @@
       "label": "绿色"
     }
   ],
-  "icon": "icon/icon.svg"
+  "icon": "icon/icon.svg",
+  "details": {
+    "limitations": ["桌面窗口位置在不同显示器和系统上可能需要调整"],
+    "features": ["便签与桌面组件", "内容保存与待办转换"]
+  }
 }

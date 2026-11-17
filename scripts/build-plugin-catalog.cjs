@@ -14,6 +14,8 @@ function buildCatalog({
     check = false
 } = {}) {
     const definition = JSON.parse(fs.readFileSync(path.join(root, 'plugins', 'definitions.json'), 'utf8'));
+    const detailsFile = path.join(root, 'plugins', 'details.json'),
+        detailIndex = fs.existsSync(detailsFile) ? JSON.parse(fs.readFileSync(detailsFile, 'utf8')) : {};
     const publisher = definition.publisher;
     const validateUrl = (value) => webUrl(value, { allowInsecureHttp: publisher?.allowInsecureHttp === true }).href;
     if (publisher && (publisher.provider !== 'gitlab' || !publisher.project || !publisher.baseUrl))
@@ -87,6 +89,21 @@ function buildCatalog({
                 version: published.version,
                 apiVersion: published.apiVersion,
                 size: data.length,
+                details: require('../src/plugin-system/details').validateDetails({
+                    ...detailIndex[published.id],
+                    ...(published.details || {}),
+                    ...(detailIndex[published.id]?.previewFiles
+                        ? {
+                              screenshots: detailIndex[published.id].previewFiles.map((name) => {
+                                  if (!/^[a-z0-9-]+\.png$/.test(name)) throw Error('预览截图路径无效');
+                                  const bytes = fs.readFileSync(path.join(root, 'plugins/previews', name));
+                                  if (bytes.length > 80000) throw Error('预览截图过大');
+                                  return 'data:image/png;base64,' + bytes.toString('base64');
+                              })
+                          }
+                        : {}),
+                    permissions: published.permissions
+                }),
                 ...(published.icon
                     ? {
                           iconData:

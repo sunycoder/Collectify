@@ -39,6 +39,12 @@ function renderHistory(items) {
             $('#address').value = item.ip;
             void query(item.ip);
         };
+        const detail = document.createElement('small');
+        detail.textContent = [item.location, item.isp, new Date(item.queriedAt).toLocaleString()]
+            .filter(Boolean)
+            .join(' · ');
+        button.append(document.createElement('br'), detail);
+        button.title = '点击重新查询 ' + item.ip;
         $('#history').append(button);
     }
 }
@@ -57,14 +63,13 @@ function render(value) {
         ['经纬度', value.latitude !== null && value.longitude !== null ? `${value.longitude}, ${value.latitude}` : '']
     ];
     for (const [label, text] of fields) {
-        if (!text) continue;
         const row = document.createElement('div'),
             title = document.createElement('span'),
             content = document.createElement('div');
         title.className = 'field-label';
         title.textContent = label;
         content.className = 'field-value';
-        content.textContent = text;
+        content.textContent = text || '数据源未提供';
         row.append(title, content);
         $('#fields').append(row);
     }

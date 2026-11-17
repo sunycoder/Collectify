@@ -2,6 +2,18 @@ const { app } = require('electron');
 const assert = require('node:assert/strict');
 exports.run = async ({ services, win }) => {
     await win.webContents.executeJavaScript('shellReady');
+    const provider = services.providers.get('collectify.tasks');
+    let checks = 0;
+    provider.beforeClose = () => {
+        checks++;
+        return false;
+    };
+    app.quit();
+    await new Promise((resolve) => setTimeout(resolve, 180));
+    assert.equal(checks, 1);
+    assert.equal(win.isDestroyed(), false, '取消退出不能销毁主窗口');
+    assert.ok(services.providers.size > 0, '取消退出不能释放后台');
+    provider.beforeClose = () => true;
     let finished = false;
     void services.perform('collectify.tasks', async () => {
         await new Promise((resolve) => setTimeout(resolve, 120));

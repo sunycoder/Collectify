@@ -59,6 +59,7 @@ function validateCatalog(input, { validateUrl = httpsUrl } = {}) {
             apiVersion: item.apiVersion,
             sha256: item.sha256,
             size: item.size,
+            ...(item.details ? { details: require('./details').validateDetails(item.details) } : {}),
             // 目录内附带小型 SVG，安装前也能展示；不接受远程图片或任意 data URL。
             ...(typeof item.iconData === 'string' &&
             item.iconData.length <= 87408 &&

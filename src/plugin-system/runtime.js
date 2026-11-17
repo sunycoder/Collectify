@@ -23,6 +23,7 @@ const MIME = {
     '.js': 'text/javascript',
     '.mjs': 'text/javascript',
     '.css': 'text/css',
+    '.ttf': 'font/ttf',
     '.json': 'application/json',
     '.svg': 'image/svg+xml',
     '.png': 'image/png',
@@ -45,6 +46,8 @@ class PluginRuntime {
         this.popouts = new Map();
         this.pasteAdapter = pasteToPreviousApplication;
         this.pendingRequests = new Map();
+        this.closeRequests = new Map();
+        this.resourceReads = new Map();
         this.backgroundActivity = new Set();
         this.activeId = null;
         this.prepared = new Set();
@@ -107,12 +110,58 @@ class PluginRuntime {
                   : plugin;
         if (event.senderFrame.url !== this.url(page)) throw Error('插件页面来源不正确');
         if (Buffer.byteLength(JSON.stringify(payload ?? null)) > 10 * 1024 * 1024) throw Error('插件请求过大');
+        if (action === 'lifecycle.register') {
+            if (isBackground) throw Error('后台不能注册页面离开钩子');
+            pair[1].prepareClose = true;
+            return;
+        }
+        if (action === 'lifecycle.response') {
+            const pending = this.closeRequests.get(payload?.id);
+            if (!pending || pending.sender !== event.sender) throw Error('离开检查请求已失效');
+            this.closeRequests.delete(payload.id);
+            clearTimeout(pending.timer);
+            payload.error ? pending.reject(Error(payload.error)) : pending.resolve();
+            return;
+        }
+        if (action === 'dialog.unsaved') {
+            if (isBackground) throw Error('后台页面不能显示编辑确认');
+            const requests = [...this.closeRequests].filter(([, request]) => request.sender === event.sender);
+            for (const [, request] of requests) {
+                clearTimeout(request.timer);
+                request.timer = null;
+            }
+            try {
+                const result = await require('electron').dialog.showMessageBox(this.getWindow(), {
+                    type: 'question',
+                    title: '未保存的修改',
+                    message: `${plugin.name} 有未保存的修改`,
+                    detail: '保存后离开，或放弃本次修改。取消可继续编辑。',
+                    buttons: ['继续编辑', '放弃修改', '保存并离开'],
+                    defaultId: 0,
+                    cancelId: 0,
+                    noLink: true
+                });
+                return result.response;
+            } finally {
+                for (const [id, request] of requests)
+                    if (this.closeRequests.has(id))
+                        request.timer = setTimeout(() => {
+                            this.closeRequests.delete(id);
+                            request.reject(Error('插件未完成保存，操作已取消'));
+                        }, 5000);
+            }
+        }
         if (action === 'context')
             return {
                 ...this.context(plugin),
                 platform: process.platform,
                 windowMode: pair[1].mode || (pair[1].window ? 'floating' : isBackground ? 'background' : 'main')
             };
+        if (action === 'files.drop-authorize') {
+            if (isBackground || !plugin.permissions.includes('native'))
+                throw Error('仅可信原生插件前台可读取拖入文件的路径');
+            return true;
+        }
         if (action === 'window.shortcut') {
             if (!plugin.permissions.includes('window') || !plugin.shortcut || typeof payload !== 'boolean')
                 throw Error('插件未声明桌面快捷按钮入口与权限');
@@ -279,7 +328,7 @@ class PluginRuntime {
             isolated.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
             isolated.setPermissionCheckHandler(() => false);
             isolated.on('will-download', (event) => event.preventDefault());
-            isolated.protocol.handle('collectify-plugin', async (request) => {
+            const serve = async (request) => {
                 try {
                     const url = new URL(request.url);
                     if (url.hostname !== plugin.id && url.hostname !== 'collectify.sdk')
@@ -323,6 +372,16 @@ class PluginRuntime {
                 } catch {
                     return new Response('Not found', { status: 404 });
                 }
+            };
+            isolated.protocol.handle('collectify-plugin', (request) => {
+                const task = serve(request),
+                    reads = this.resourceReads.get(plugin.id) || new Set();
+                this.resourceReads.set(plugin.id, reads);
+                reads.add(task);
+                return task.finally(() => {
+                    reads.delete(task);
+                    if (!reads.size) this.resourceReads.delete(plugin.id);
+                });
             });
             isolated.webRequest.onBeforeRequest((details, callback) => {
                 let allowed = false;
@@ -427,6 +486,8 @@ class PluginRuntime {
                 record.view.webContents.send('plugin-event', { name, data });
     }
     async openWindow(plugin, payload = {}) {
+        const size = (value, fallback, min, max) =>
+            Number.isFinite(value) ? Math.max(min, Math.min(max, Math.round(value))) : fallback;
         const existing = [...this.popouts.values()].find(
             (record) => record.pluginId === plugin.id && record.mode !== 'shortcut'
         );
@@ -437,11 +498,11 @@ class PluginRuntime {
             return;
         }
         const window = new BrowserWindow({
-            width: 800,
-            height: 650,
-            minWidth: 520,
-            minHeight: 360,
-            title: plugin.name + ' · 悬浮中转',
+            width: size(payload.width, 800, 360, 1400),
+            height: size(payload.height, 650, 240, 1000),
+            minWidth: size(payload.minWidth, 520, 360, 800),
+            minHeight: size(payload.minHeight, 360, 240, 600),
+            title: plugin.name + ' · ' + (typeof payload.title === 'string' ? payload.title.slice(0, 60) : '悬浮中转'),
             alwaysOnTop: true,
             autoHideMenuBar: true,
             show: !this.smoke,
@@ -458,6 +519,24 @@ class PluginRuntime {
         const key = randomUUID(),
             record = { pluginId: plugin.id, window, view: { webContents: window.webContents }, errors: [] };
         this.popouts.set(key, record);
+        const savedBounds = this.registry.getSetting('windowBounds:' + plugin.id);
+        if (
+            savedBounds &&
+            [savedBounds.x, savedBounds.y, savedBounds.width, savedBounds.height].every(Number.isFinite)
+        ) {
+            const area = screen.getDisplayMatching(savedBounds).workArea;
+            const width = Math.min(area.width, Math.max(window.getMinimumSize()[0], savedBounds.width));
+            const height = Math.min(area.height, Math.max(window.getMinimumSize()[1], savedBounds.height));
+            window.setBounds({
+                x: Math.max(area.x, Math.min(area.x + area.width - width, savedBounds.x)),
+                y: Math.max(area.y, Math.min(area.y + area.height - height, savedBounds.y)),
+                width,
+                height
+            });
+        }
+        window.on('close', () => {
+            if (!window.isDestroyed()) this.registry.setSetting('windowBounds:' + plugin.id, window.getBounds());
+        });
         window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
         for (const event of ['will-navigate', 'will-redirect', 'will-frame-navigate'])
             window.webContents.on(event, (e) => e.preventDefault());
@@ -652,16 +731,52 @@ class PluginRuntime {
         }
     }
     close(id) {
-        for (const record of [...this.popouts.values()]) if (record.pluginId === id) record.window.destroy();
+        const pending = [];
+        const waitForDestroyed = (contents) => {
+            if (!contents.isDestroyed()) pending.push(new Promise((resolve) => contents.once('destroyed', resolve)));
+        };
+        for (const record of [...this.popouts.values()])
+            if (record.pluginId === id) {
+                waitForDestroyed(record.view.webContents);
+                if (record.mode !== 'shortcut' && !record.window.isDestroyed())
+                    this.registry.setSetting('windowBounds:' + id, record.window.getBounds());
+                record.window.destroy();
+            }
+        const background = this.backgrounds.get(id);
+        if (background) waitForDestroyed(background.view.webContents);
         this.stopBackground(id);
         const record = this.views.get(id);
         if (record) {
+            waitForDestroyed(record.view.webContents);
             this.views.delete(id);
             const win = this.getWindow();
             if (win && !win.isDestroyed()) win.contentView.removeChildView(record.view);
             if (!record.view.webContents.isDestroyed()) record.view.webContents.close();
         }
         if (this.activeId === id) this.deactivate();
+        return Promise.all(pending).then(async () => {
+            await new Promise((resolve) => setImmediate(resolve));
+            while (this.resourceReads.get(id)?.size) await Promise.allSettled([...this.resourceReads.get(id)]);
+        });
+    }
+    async prepareClose(ids) {
+        const records = [
+            ...this.views,
+            ...[...this.popouts.values()].map((record) => [record.pluginId, record])
+        ].filter(([id, r]) => ids.includes(id) && r.prepareClose);
+        for (const [, record] of records) {
+            const sender = record.view.webContents;
+            if (sender.isDestroyed()) continue;
+            await new Promise((resolve, reject) => {
+                const id = randomUUID(),
+                    timer = setTimeout(() => {
+                        this.closeRequests.delete(id);
+                        reject(Error('插件未完成离开检查，操作已取消，请稍后重试'));
+                    }, 5000);
+                this.closeRequests.set(id, { resolve, reject, timer, sender });
+                sender.send('plugin-prepare-close', { id });
+            });
+        }
     }
     destroy() {
         for (const record of [...this.popouts.values()]) record.window.destroy();

@@ -369,6 +369,7 @@ async function pdfPreview(url, content, revision) {
 }
 function updateState(state) {
     settings = state.settings;
+    $('.search-layout').style.setProperty('--result-width', (settings.splitRatio || 0.39) * 100 + '%');
     $('#sort').value = settings.sort;
     $('#preview-toggle').checked = settings.preview;
     $('.search-layout').classList.toggle('preview-off', !settings.preview);
@@ -392,6 +393,46 @@ $('#connect').onclick = run(async () => {
     }
 });
 $('#engine-window').onclick = run(() => call('engine-window'));
+let previewDrag = null;
+function setSplitRatio(ratio) {
+    settings.splitRatio = Math.max(0.2, Math.min(0.75, ratio));
+    $('.search-layout').style.setProperty('--result-width', settings.splitRatio * 100 + '%');
+    $('#preview-divider').setAttribute('aria-valuenow', Math.round(settings.splitRatio * 100));
+}
+const saveSplitRatio = run(async () => {
+    settings = await call('settings', { ...settings });
+});
+$('#preview-divider').onpointerdown = (event) => {
+    if (event.button !== 0 || !settings) return;
+    event.preventDefault();
+    previewDrag = { id: event.pointerId, ratio: settings.splitRatio || 0.39 };
+    event.currentTarget.setPointerCapture(event.pointerId);
+};
+$('#preview-divider').onpointermove = (event) => {
+    if (previewDrag?.id !== event.pointerId) return;
+    const rect = $('.search-layout').getBoundingClientRect();
+    setSplitRatio((event.clientX - rect.left) / rect.width);
+};
+$('#preview-divider').onpointerup = () => {
+    if (previewDrag) {
+        previewDrag = null;
+        void saveSplitRatio();
+    }
+};
+$('#preview-divider').onpointercancel = () => {
+    if (previewDrag) setSplitRatio(previewDrag.ratio);
+    previewDrag = null;
+};
+$('#preview-divider').ondblclick = () => {
+    setSplitRatio(0.39);
+    void saveSplitRatio();
+};
+$('#preview-divider').onkeydown = (event) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home'].includes(event.key)) return;
+    event.preventDefault();
+    setSplitRatio(event.key === 'Home' ? 0.39 : settings.splitRatio + (event.key === 'ArrowLeft' ? -0.03 : 0.03));
+    void saveSplitRatio();
+};
 $('#choose-folder').onclick = run(async () => {
     await call('choose-folder');
     updateState(await call('state'));
@@ -425,11 +466,21 @@ $('#sort').onchange = run(async () => {
     await search();
 });
 $('#preview-toggle').onchange = run(async () => {
+    $('.search-layout').classList.remove('preview-expanded');
+    $('#preview-expand').textContent = '放大预览';
     settings = await call('settings', { ...settings, preview: $('#preview-toggle').checked });
     $('.search-layout').classList.toggle('preview-off', !settings.preview);
     if (settings.preview && selected) await select(selected);
     else clearPreview();
 });
+$('#preview-expand').onclick = () => {
+    if (!settings.preview) {
+        message('请先开启文件预览', true);
+        return;
+    }
+    const expanded = $('.search-layout').classList.toggle('preview-expanded');
+    $('#preview-expand').textContent = expanded ? '返回搜索结果' : '放大预览';
+};
 $('#load-more').onclick = () => search(true);
 $('#results').onkeydown = (event) => {
     const index = items.findIndex((item) => item.id === selected);

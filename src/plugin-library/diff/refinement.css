@@ -1,0 +1,627 @@
+/* 对比区优先：文件标题、差异导航和编辑区固定分层，控件使用宿主的主题浮层。 */
+.draft-options small {
+    display: block;
+    margin: 8px 0;
+}
+#draft-notice {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    margin-bottom: 10px;
+    border: 1px solid var(--line);
+    background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+    border-radius: 7px;
+    font-size: 11px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+#draft-notice > span {
+    flex: 1;
+}
+#draft-notice button {
+    font-size: 11px;
+}
+.topbar {
+    padding: 12px 20px;
+    min-height: 56px;
+}
+.brand strong {
+    font-size: 19px;
+}
+.brand span {
+    font-size: 11px;
+}
+.header-actions {
+    display: flex;
+    gap: 8px;
+}
+.header-actions button {
+    background: transparent;
+    border-color: transparent;
+    color: var(--muted);
+    font-size: 11px;
+}
+.mode-tabs {
+    padding: 8px 18px;
+    background: var(--surface);
+}
+.mode-tabs [data-mode] {
+    min-width: 60px;
+}
+aside {
+    width: 192px;
+    background: var(--surface);
+    padding: 18px 14px;
+    gap: 14px;
+}
+.section-heading span {
+    display: none;
+}
+.workspace {
+    padding: 12px 14px 0;
+}
+.input-bar {
+    padding: 0;
+    gap: 0;
+    min-height: 68px;
+    border-radius: 8px 8px 0 0;
+}
+.input-side {
+    padding: 11px 12px;
+    gap: 7px;
+    flex-wrap: nowrap !important;
+    overflow: hidden;
+}
+.input-side + .input-side {
+    border-left: 1px solid var(--line);
+}
+.side-label {
+    font-size: 10px;
+    color: var(--muted);
+    padding: 4px 5px;
+    background: var(--paper);
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+.file-heading {
+    flex: 1;
+    min-width: 50px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+.input-side .file-heading strong {
+    flex: none;
+    max-width: 100%;
+    font-size: 12px;
+    font-weight: 600;
+}
+.file-heading small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 10px;
+    line-height: 1.4;
+}
+.input-side button {
+    flex-shrink: 0;
+}
+.comparison-meta {
+    min-height: 43px;
+    padding: 6px 12px;
+    gap: 6px;
+    font-size: 11px;
+}
+.comparison-meta #summary {
+    font-variant-numeric: tabular-nums;
+}
+#change-position {
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    min-width: 43px;
+    text-align: center;
+}
+.comparison-meta button {
+    height: 26px;
+    min-width: 26px;
+    border-color: var(--line);
+}
+.merge-actions {
+    display: flex;
+    gap: 5px;
+    margin-left: 10px;
+    padding-left: 12px;
+    border-left: 1px solid var(--line);
+}
+.merge-actions button {
+    font-size: 10px;
+}
+.diff-current-line {
+    background: color-mix(in srgb, var(--accent) 5%, transparent);
+    border-top: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.diff-current-gutter {
+    border-left: 3px solid var(--accent);
+}
+#diff-links {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 2;
+}
+#diff-links path {
+    fill: color-mix(in srgb, var(--accent) 6%, var(--surface));
+    stroke: color-mix(in srgb, var(--accent) 24%, var(--line));
+    stroke-width: 1;
+}
+#diff-links path.current {
+    fill: color-mix(in srgb, var(--accent) 15%, var(--surface));
+    stroke: color-mix(in srgb, var(--accent) 45%, var(--line));
+}
+.ts-wrapper.single:not(.no-arrow) .ts-control:after {
+    border: solid var(--muted) !important;
+    border-width: 0 1.5px 1.5px 0 !important;
+    display: block !important;
+    width: 5px !important;
+    height: 5px !important;
+    transform: rotate(45deg);
+    top: calc(50% - 4px) !important;
+    right: 10px !important;
+    margin: 0 !important;
+}
+.ts-wrapper.single.dropdown-active:not(.no-arrow) .ts-control:after {
+    transform: rotate(225deg);
+    top: calc(50% - 1px) !important;
+}
+body[data-scheme='dark'] .brand img {
+    filter: invert(0.85);
+}
+.loading-input #cancel {
+    color: var(--accent-text);
+    border-color: var(--accent);
+}
+.diff-whole-line {
+    border-top: 1px solid #7796b322;
+    border-bottom: 1px solid #7796b322;
+}
+#text-panel {
+    min-height: 160px;
+}
+.monaco-diff-editor .diffOverview {
+    opacity: 0.65;
+}
+#text-empty-hint {
+    position: absolute;
+    inset: 24% 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-auto-flow: column;
+    grid-template-rows: auto auto;
+    pointer-events: none;
+    text-align: center;
+    gap: 10px;
+    color: var(--muted);
+}
+#text-empty-hint span {
+    font-size: 16px;
+    font-weight: 500;
+}
+#text-empty-hint small {
+    font-size: 11px;
+}
+.text-options {
+    gap: 13px;
+}
+.text-options label {
+    font-size: 11px;
+}
+.text-options details {
+    padding-top: 10px;
+}
+footer {
+    min-height: 30px;
+    padding: 7px 3px;
+    align-items: baseline;
+}
+.aside-bottom {
+    padding-top: 16px;
+}
+.ts-wrapper {
+    min-width: 0;
+    width: auto;
+    font-size: 11px;
+}
+.text-options label > .ts-wrapper {
+    margin: 0;
+    width: 102px;
+    flex: 0 0 102px;
+}
+.ts-wrapper .ts-control {
+    min-height: 29px;
+    padding: 5px 23px 5px 8px !important;
+    border-radius: 5px;
+    background: var(--surface) !important;
+    box-shadow: none !important;
+    color: var(--ink) !important;
+    border-color: var(--line) !important;
+    font-size: 11px;
+}
+.ts-wrapper.single .ts-control .item {
+    font-size: 11px;
+}
+.ts-control > input {
+    font-size: 11px !important;
+}
+.ts-dropdown {
+    font-size: 12px;
+}
+.ts-dropdown .option.selected {
+    background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+    color: var(--accent-text, var(--ink));
+}
+.pairing > .ts-wrapper {
+    flex: 1;
+    min-width: 0;
+    width: 0;
+}
+.pairing {
+    gap: 8px;
+    padding: 8px 10px;
+    flex-shrink: 0;
+}
+.pairing .ts-control {
+    min-height: 30px;
+}
+.image-toolbar > .ts-wrapper,
+.document-toolbar > .ts-wrapper {
+    width: 145px;
+    flex: 0 0 145px;
+}
+.image-toolbar .ts-wrapper .ts-control {
+    min-height: 30px;
+}
+.document-toolbar .ts-wrapper {
+    max-width: 220px;
+}
+#export-dialog label > .ts-wrapper {
+    width: 250px;
+    margin: 0;
+}
+.ts-dropdown.managed-overlay {
+    z-index: 2147483645 !important;
+}
+.ts-wrapper.disabled {
+    opacity: 0.65;
+}
+.folder-toolbar {
+    min-height: 43px;
+    align-items: center;
+}
+.tree-pane .tree-title button {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.tree-pane .tree-title {
+    padding: 10px 8px 3px;
+}
+.trees .tree {
+    min-height: 100px;
+}
+.folder-content-empty #folder-panel {
+    flex: 1;
+    min-height: 250px;
+}
+.folder-content-empty #content-empty {
+    flex: 0 0 auto;
+    min-height: 115px;
+    padding: 15px;
+}
+.folder-content-empty #content-empty .empty-symbol {
+    display: none;
+}
+.folder-content-empty #content-empty h2 {
+    font-size: 13px;
+    margin: 0 0 8px;
+}
+#content-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    min-height: 220px;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+    padding: 24px;
+    gap: 8px;
+}
+#content-empty h2 {
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--ink);
+    margin: 10px 0 3px;
+}
+#content-empty p {
+    max-width: 420px;
+    line-height: 1.8;
+    margin: 3px 0 12px;
+}
+#content-empty .empty-symbol {
+    font-size: 40px;
+    color: var(--subtle, var(--muted));
+    font-weight: 300;
+}
+#content-empty > div {
+    display: flex;
+    gap: 10px;
+}
+#drop-overlay {
+    position: fixed;
+    inset: 115px 16px 28px 205px;
+    z-index: 2147483646;
+    pointer-events: none;
+    display: flex;
+    gap: 12px;
+    padding: 14px;
+    background: color-mix(in srgb, var(--surface) 70%, transparent);
+    backdrop-filter: blur(2px);
+    border-radius: 10px;
+}
+#drop-overlay > div {
+    flex: 1;
+    border: 2px dashed var(--line);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+    background: color-mix(in srgb, var(--surface) 85%, transparent);
+    color: var(--muted);
+}
+#drop-overlay > div.active {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+    color: var(--accent-text, var(--ink));
+}
+#drop-overlay strong {
+    font-size: 20px;
+}
+#shortcuts-dialog {
+    width: min(510px, 90vw);
+}
+#shortcuts-dialog dl {
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    gap: 12px;
+    font-size: 12px;
+    line-height: 1.6;
+}
+#shortcuts-dialog dt {
+    font-family: Consolas, monospace;
+}
+#shortcuts-dialog dd {
+    margin: 0;
+    color: var(--muted);
+}
+body.tools-hidden #controls {
+    display: none;
+}
+body.tools-hidden #drop-overlay {
+    left: 16px;
+}
+.header-actions button[aria-expanded='false'] {
+    background: var(--paper);
+}
+.controls-open #controls {
+    display: flex !important;
+}
+.tree-empty {
+    padding: 26px 16px;
+    text-align: center;
+    color: var(--muted);
+    line-height: 1.8;
+}
+.directory-path {
+    color: var(--muted);
+    font-size: 10px;
+    display: block;
+    margin: 6px 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.file-heading .edited {
+    color: var(--accent-text, var(--ink));
+}
+.text-options .filtered-note {
+    color: var(--orange);
+    line-height: 1.6;
+    font-size: 10px;
+}
+.comparison-meta[data-state='same'] #summary {
+    color: var(--green);
+}
+.comparison-meta[data-state='waiting'] #summary {
+    color: var(--muted);
+}
+.comparison-meta[data-state='different'] #summary {
+    color: var(--ink);
+}
+@media (max-width: 1100px) {
+    aside {
+        width: 175px;
+        padding: 16px 11px;
+    }
+    .merge-actions button {
+        font-size: 0;
+        min-width: 26px;
+    }
+    .merge-actions #merge-left:after {
+        content: '←';
+        font-size: 13px;
+    }
+    .merge-actions #merge-right:after {
+        content: '→';
+        font-size: 13px;
+    }
+    .merge-actions #undo-merge:after {
+        content: '↶';
+        font-size: 13px;
+    }
+    .input-side {
+        padding: 9px 10px;
+    }
+    .input-side [data-copy] {
+        display: none;
+    }
+    .text-options label > .ts-wrapper {
+        width: 94px;
+        flex-basis: 94px;
+    }
+    #drop-overlay {
+        left: 185px;
+    }
+    .comparison-meta {
+        gap: 4px;
+    }
+    .merge-actions {
+        margin-left: 4px;
+        padding-left: 7px;
+    }
+}
+@media (max-width: 760px) {
+    .workspace {
+        padding: 8px 8px 0;
+    }
+    aside {
+        width: 160px;
+        padding: 14px 9px;
+    }
+    .input-side {
+        flex-wrap: wrap !important;
+        padding: 9px 8px;
+        gap: 5px;
+    }
+    .file-heading {
+        flex-basis: calc(100% - 40px);
+    }
+    .input-side [data-choose] {
+        margin-left: 28px;
+    }
+    .input-side .file-heading strong {
+        font-size: 11px;
+    }
+    .comparison-meta {
+        flex-wrap: wrap;
+        padding: 7px 8px;
+    }
+    .comparison-meta #summary {
+        flex-basis: calc(100% - 150px);
+        font-size: 10px;
+    }
+    .merge-actions {
+        margin-left: 0;
+    }
+    .text-options label > .ts-wrapper {
+        width: 82px;
+        flex-basis: 82px;
+    }
+    .mode-tabs [data-mode] {
+        min-width: 45px;
+        padding: 6px 8px;
+    }
+    .brand span {
+        display: none;
+    }
+    #drop-overlay {
+        left: 168px;
+    }
+    .text-options label {
+        font-size: 10px;
+    }
+    #text-empty-hint {
+        gap: 7px;
+    }
+    #text-empty-hint span {
+        font-size: 13px;
+    }
+    #text-empty-hint small {
+        padding: 0 14px;
+        font-size: 10px;
+    }
+}
+@media (max-width: 620px) {
+    #controls {
+        display: none;
+    }
+    .controls-open #controls {
+        position: fixed;
+        left: 8px;
+        top: 106px;
+        bottom: 32px;
+        width: 190px;
+        z-index: 90;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: 0 8px 30px #0002;
+    }
+    .header-actions {
+        gap: 0;
+    }
+    .header-actions button {
+        font-size: 10px;
+        padding: 5px;
+    }
+    .mode-tabs #export {
+        font-size: 0;
+    }
+    .mode-tabs #export:after {
+        content: '导出';
+        font-size: 11px;
+    }
+    #drop-overlay {
+        left: 8px;
+        right: 8px;
+    }
+    .text-options label > .ts-wrapper {
+        width: 100px;
+        flex-basis: 100px;
+    }
+    .pairing {
+        flex-wrap: nowrap;
+    }
+    .pairing > strong {
+        width: auto;
+        flex-shrink: 0;
+    }
+    .pairing > .ts-wrapper {
+        flex: 1;
+        width: 0;
+        min-width: 0;
+    }
+    .image-toolbar > .ts-wrapper,
+    .document-toolbar > .ts-wrapper {
+        flex-basis: 128px;
+        width: 128px;
+    }
+    .ts-dropdown {
+        max-width: calc(100vw - 16px);
+    }
+    #shortcuts-dialog dl {
+        grid-template-columns: 1fr;
+        gap: 5px;
+    }
+    #shortcuts-dialog dd {
+        margin-bottom: 10px;
+    }
+}

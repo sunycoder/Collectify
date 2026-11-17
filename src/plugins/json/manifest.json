@@ -28,5 +28,9 @@
       "label": "校验"
     }
   ],
-  "icon": "icon/icon.svg"
+  "icon": "icon/icon.svg",
+  "details": {
+    "limitations": ["输入文本不自动保存；关闭插件后需自行保留结果"],
+    "features": ["本地 JSON 格式化、压缩与校验"]
+  }
 }

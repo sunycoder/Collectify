@@ -543,6 +543,7 @@ $('#task-form').onsubmit = async (event) => {
         for (const field of ['important', 'urgent', 'allDay']) value[field] = form.elements[field].checked;
         if (editingTask) value.id = editingTask;
         const saved = await call('task-save', value);
+        form.markSaved?.();
         const wasHidden = !window.TaskQuery.matchesFilters(saved, taskFilters());
         if (wasHidden) clearTaskFilters();
         $('#task-dialog').close();
@@ -567,6 +568,7 @@ for (const [id, action] of [
         renderAttachments();
     });
 $('#task-search').oninput = $('#task-filter').onchange = renderProductivity;
+guardEditor($('#task-form'), () => taskAttachments);
 $('#task-date-query').onchange = $('#task-date-field').onchange = renderProductivity;
 $('#clear-task-date').onclick = () => {
     $('#task-date-query').value = '';

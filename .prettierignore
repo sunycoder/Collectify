@@ -8,6 +8,8 @@ src/vendor/
 src/plugins/local-search/vendor/
 src/plugin-library/local-search/vendor/
 src/plugin-library/chinese-calendar/vendor/
+src/plugin-library/diff/vendor/
+plugins/sources/diff/package-lock.json
 src/plugin-library/chinese-calendar/view/
 plugins/sources/he-calendar/package-lock.json
 package-lock.json

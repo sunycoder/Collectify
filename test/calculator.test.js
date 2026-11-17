@@ -185,7 +185,7 @@ test('稿纸数量和内容有界，使用 SDK SQLite 原子保存与重启，�
     const source = path.resolve(__dirname, '../src/plugin-library/calculator');
     const { readManifest } = require('../src/plugin-system/manifest');
     const manifest = readManifest(source);
-    assert.deepEqual(manifest.permissions, ['storage', 'clipboard.write']);
+    assert.deepEqual(manifest.permissions, ['storage', 'clipboard.write', 'window']);
     assert.equal(manifest.backend, undefined);
     assert.equal(manifest.background, undefined);
     assert.equal(manifest.runtime, undefined);

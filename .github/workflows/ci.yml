@@ -32,9 +32,18 @@ jobs:
       - name: 日历可选插件回归
         if: runner.os != 'Linux'
         run: npm run smoke:calendar
+      - name: Diff 可选插件回归
+        if: runner.os != 'Linux'
+        run: npm run smoke:diff
       - name: 桌面回归检查
         if: runner.os != 'Linux'
         run: npm run smoke
+      - name: 产品保护流程与退出回归
+        if: runner.os != 'Linux'
+        run: |
+          npm run smoke -- --smoke-product
+          npm run smoke -- --smoke-usability
+          npm run smoke -- --smoke-shutdown
       - name: Linux 桌面回归检查
         if: runner.os == 'Linux'
         run: |
@@ -45,3 +54,7 @@ jobs:
           xvfb-run -a npm run smoke:ip-query
           xvfb-run -a npm run smoke:calculator
           xvfb-run -a npm run smoke:calendar
+          xvfb-run -a npm run smoke:diff
+          xvfb-run -a npm run smoke -- --smoke-product
+          xvfb-run -a npm run smoke -- --smoke-usability
+          xvfb-run -a npm run smoke -- --smoke-shutdown

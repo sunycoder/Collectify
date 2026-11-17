@@ -4,7 +4,7 @@
   "description": "Everything 文件搜索、分类筛选与本地文件预览",
   "glyph": "搜",
   "order": 60,
-  "version": "1.2.1",
+  "version": "1.2.2",
   "minHostVersion": "5.7.9",
   "runtime": "native",
   "apiVersion": 1,

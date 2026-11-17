@@ -79,6 +79,63 @@ app.whenReady().then(async () => {
         await open();
         assert.equal(await js("document.querySelector('.brand img').naturalWidth>0"), true);
         assert.equal(runtime.backgrounds.size, 0);
+        assert.equal(await js("document.querySelector('#math-keyboard').hidden"), true, '主页面不再渲染遮挡内容的键盘');
+        const keyboard = () => [...runtime.popouts.values()].find((record) => record.pluginId === id);
+        const keyboardJs = (code) => keyboard().view.webContents.executeJavaScript(code);
+        await until(() => keyboard() && keyboardJs('keyboardOnly && !!keyboardOwner'));
+        assert.equal(
+            await keyboardJs("getComputedStyle(document.querySelector('#math-keyboard')).webkitAppRegion"),
+            'drag'
+        );
+        assert.equal(
+            await keyboardJs("getComputedStyle(document.querySelector('.keyboard-layout button')).webkitAppRegion"),
+            'no-drag'
+        );
+        const originalMainBounds = win.getBounds();
+        win.setBounds({ x: 0, y: 30, width: 500, height: 700 });
+        const mainBounds = win.getBounds();
+        keyboard().window.setBounds({
+            x: mainBounds.x + mainBounds.width + 20,
+            y: mainBounds.y,
+            width: 600,
+            height: 370
+        });
+        assert.ok(keyboard().window.getBounds().x >= mainBounds.x + mainBounds.width, '独立键盘可以移到主程序边界之外');
+        win.setBounds(originalMainBounds);
+        const clickKey = async (selector) => {
+            const point = await keyboardJs(
+                `(()=>{const r=document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect();return {x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)}})()`
+            );
+            keyboard().view.webContents.sendInputEvent({ type: 'mouseDown', ...point, button: 'left', clickCount: 1 });
+            keyboard().view.webContents.sendInputEvent({ type: 'mouseUp', ...point, button: 'left', clickCount: 1 });
+            await wait(50);
+        };
+        await js("document.querySelector('.expression').focus()");
+        await clickKey('[data-key="sqrt"]');
+        await clickKey('[data-key="9"]');
+        await saved();
+        await edit(0, '11/6');
+        await js(
+            "document.querySelector('#result-digits').value='2';document.querySelector('#result-digits').dispatchEvent(new Event('change'))"
+        );
+        assert.equal(await js("document.querySelector('.result-button').textContent"), '1.83');
+        await js(
+            "document.querySelector('#result-digits').value='12';document.querySelector('#result-digits').dispatchEvent(new Event('change'))"
+        );
+        await edit(0, 'sqrt(9)');
+        assert.equal(await js("document.querySelector('.result-button').textContent"), '3');
+        await js("document.querySelector('.expression').setSelectionRange(5,6)");
+        await clickKey('[data-key="4"]');
+        assert.equal(await js('sheet.rows[0].expression'), 'sqrt(4)');
+        await js("document.querySelector('#keyboard-next').click()");
+        await saved();
+        assert.equal(await js('sheet.rows.length'), 2);
+        await js("document.querySelectorAll('.row-delete')[1].click()");
+        await saved();
+        await js("document.querySelector('#undo-row').click()");
+        assert.equal(await js('sheet.rows.length'), 2);
+        await js("document.querySelectorAll('.row-delete')[1].click()");
+        fs.writeFileSync(path.join(root, 'dist/calculator-keyboard.png'), (await wc.capturePage()).toPNG());
         await edit(0, '55+88+7689*543');
         assert.equal(await js("document.querySelector('.result-button').textContent"), '4,175,270');
         await js("document.querySelector('#add-row').click()");
@@ -128,18 +185,26 @@ app.whenReady().then(async () => {
         await saved();
         assert.equal(await js("[...document.querySelectorAll('.expression')].every(n=>n.readOnly)"), true);
         assert.equal(await js("document.querySelector('#clear-paper').disabled"), true);
+        assert.equal(await js("[...document.querySelectorAll('.keyboard-layout button')].every(b=>b.disabled)"), true);
         await js("document.querySelector('#new-paper').click()");
         await saved();
         await until(() => js("document.querySelectorAll('.sheet-item').length===2"));
         await edit(0, '10000*pow(1.05,10)');
         const secondId = await js('sheet.id');
+        await keyboardJs("document.querySelector('#keyboard-close').click()");
+        await until(() => !keyboard());
+        await saved();
         assert.notEqual(secondId, firstId);
         await js("document.querySelector('#clear-paper').click()");
         await until(() => js("document.querySelector('#confirm-dialog').open"));
         await js("document.querySelector('#confirm-dialog').close('cancel')");
         assert.equal(await js('sheet.rows[0].expression'), '10000*pow(1.05,10)');
-        runtime.close(id);
+        await runtime.close(id);
         await open();
+        assert.equal(await js("document.querySelector('#math-keyboard').hidden"), true);
+        await js("document.querySelector('#keyboard-toggle').click()");
+        await saved();
+        await until(() => keyboard() && keyboardJs('keyboardOnly && !!keyboardOwner'));
         assert.equal(await js('sheet.id'), secondId);
         assert.equal(await js('sheet.rows[0].expression'), '10000*pow(1.05,10)');
         await js(`document.querySelector('[data-sheet-id="${firstId}"]').click()`);
@@ -182,7 +247,14 @@ app.whenReady().then(async () => {
         win.setContentSize(390, 850);
         runtime.layout(true);
         await wait(120);
-        assert.equal(await js('document.documentElement.scrollWidth<=innerWidth'), true, '窄屏不得横向溢出');
+        assert.equal(await js('document.documentElement.scrollWidth<=innerWidth'), true);
+        keyboard().window.setContentSize(390, 400);
+        await wait(120);
+        assert.equal(await keyboardJs('document.documentElement.scrollWidth<=innerWidth'), true);
+        fs.writeFileSync(
+            path.join(directory, 'calculator-keyboard-narrow.png'),
+            (await keyboard().view.webContents.capturePage()).toPNG()
+        );
         theme = require('../../src/theme').validate({ preset: 'ink' });
         runtime.themeChanged();
         await until(() => js("getComputedStyle(document.documentElement).colorScheme==='dark'"));
@@ -201,13 +273,13 @@ app.whenReady().then(async () => {
         await until(() => js('index.sheets.length===1'));
         assert.equal(registry.storage.get(id, 'sheet:' + firstId), null);
         assert.deepEqual(runtime.views.get(id).errors, []);
-        runtime.close(id);
+        await runtime.close(id);
         registry.setEnabled(id, false);
         await assert.rejects(runtime.open(id, 'open', 'home'));
         registry.setEnabled(id, true);
         await open();
         assert.equal(await js('sheet.id'), secondId);
-        runtime.close(id);
+        await runtime.close(id);
         const exported = packages.export(id);
         registry.uninstall(id);
         const reinstall = packages.prepare(exported);
@@ -215,7 +287,7 @@ app.whenReady().then(async () => {
         packages.cleanup(reinstall);
         await open();
         assert.equal(await js('sheet.id'), secondId);
-        runtime.close(id);
+        await runtime.close(id);
         registry.uninstall(id, { deleteData: true });
         assert.equal(fs.existsSync(path.join(registry.dataRoot, id)), false);
         runtime.destroy();
@@ -228,6 +300,16 @@ app.whenReady().then(async () => {
         app.exit(0);
     } catch (error) {
         console.error(error);
+        const record = runtime?.views.get(id);
+        if (record)
+            console.error(
+                record.errors,
+                await record.view.webContents
+                    .executeJavaScript(
+                        "({message:document.querySelector('#message')?.textContent,status:document.querySelector('#save-status')?.textContent})"
+                    )
+                    .catch(() => null)
+            );
         runtime?.destroy();
         win?.destroy();
         app.exit(1);

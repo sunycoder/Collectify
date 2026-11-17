@@ -241,7 +241,9 @@
     });
     document.querySelectorAll('dialog').forEach((dialog) => {
         // 滚动容器放在卡片内部，外层负责裁剪圆角，所有弹窗共用。
-        let scroller = dialog.querySelector('.settings-content');
+        let scroller =
+            dialog.querySelector('.settings-content') ||
+            (dialog.dataset.layout === 'fixed' ? dialog.querySelector('[data-dialog-scroll]') : null);
         if (!scroller) {
             scroller = document.createElement('div');
             scroller.className = 'dialog-scroll';

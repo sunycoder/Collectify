@@ -48,6 +48,8 @@ function reference(templates) {
             background: '可选包内 HTML 后台页面，需声明 background；在隔离渲染进程运行，不提供 Node.js'
         },
         sdk: {
+            'collectify.confirmUnsaved()':
+                '5.7.13 起：前台页面显示继续编辑/放弃修改/保存并离开，返回 0/1/2；不自动保存，调用方负责处理保存失败',
             'collectify.context()': 'Promise<{apiVersion,plugin:{id,name,version},theme,tokens}>',
             'collectify.storage.get(key)': '需要 storage；只读取本插件的 JSON 值，不存在时为 null',
             'collectify.storage.set(key,value)': '需要 storage；单值 256 KB，最多 200 项、8 MB',
@@ -65,7 +67,7 @@ function reference(templates) {
                 '需要 clipboard.write；恢复文本、PNG/JPEG 或文件列表到系统剪贴板',
             'collectify.notify(data)': '向本插件前台发送 plugin-notify 事件，不跨插件',
             'collectify.windows.open({focusItem})':
-                '需要 window；打开本插件的隔离置顶窗口，同一插件复用一个窗口，停用时关闭',
+                '需要 window；打开本插件的隔离置顶窗口，同一插件复用一个窗口，停用时关闭；5.7.14 起支持可选 title/width/height/minWidth/minHeight，并记住系统窗口位置，位置按屏幕工作区校正',
             'collectify.windows.shortcut(enabled)':
                 '需要 window 和清单 shortcut HTML 入口；显示/隐藏本插件的48px桌面快捷按钮，支持后台恢复、边缘拖动和位置保存。停用或卸载回收窗口。',
             'collectify.windows.reveal()': '需要 window；从插件前台主动唤起主窗口并切换至本插件，不接受其他插件ID。',
@@ -80,6 +82,8 @@ function reference(templates) {
             'collectify.onNavigate(callback)': '收到 {route,payload}；返回取消订阅函数',
             'collectify.onCommand(callback)': '收到 {id}；返回取消订阅函数',
             'collectify.onContextChanged(callback)': '收到新主题上下文；返回取消订阅函数',
+            'collectify.onPrepareClose(callback)':
+                '原生插件前台可注册关闭前刷新钩子；callback 完成前宿主不销毁页面，失败或 5 秒超时取消操作。用户确认与业务清理由后台 beforeClose(reason) 处理。',
             'ToolUI.run(asyncAction)': '公共 toolkit.js 的错误展示辅助函数',
             'ToolUI.message(text,isError=false)': '显示到 #message',
             'collectify.invoke': '仅可信默认后台插件可用，自有页面插件不能调用业务后台'

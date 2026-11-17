@@ -160,5 +160,55 @@ class PluginServices extends EventEmitter {
         this.providers.clear();
         if (failures.length) throw new AggregateError(failures, '部分插件退出失败');
     }
+    async beforeClose(ids, reason) {
+        const checked = [];
+        try {
+            for (const id of ids) {
+                const provider = this.providers.get(id);
+                if (provider?.beforeClose) {
+                    checked.push(provider);
+                    if ((await provider.beforeClose(reason)) === false) {
+                        for (const prior of checked) prior.closeCheckCanceled?.();
+                        return false;
+                    }
+                }
+            }
+            return true;
+        } catch (error) {
+            for (const prior of checked) prior.closeCheckCanceled?.();
+            throw error;
+        }
+    }
+    tasks() {
+        return [...this.providers]
+            .filter(([id]) => this.active.has(id))
+            .flatMap(([id, provider]) => {
+                let tasks;
+                try {
+                    tasks = provider.tasks?.() || [];
+                } catch {
+                    return [];
+                }
+                if (!Array.isArray(tasks)) return [];
+                return tasks
+                    .slice(0, 30)
+                    .filter((t) => t && typeof t.id === 'string' && t.id.length <= 100 && typeof t.title === 'string')
+                    .map((t) => ({
+                        pluginId: id,
+                        pluginName: this.registry.plugins.get(id)?.name || id,
+                        id: t.id,
+                        title: t.title.slice(0, 100),
+                        progress: Number.isFinite(t.progress) ? Math.max(0, Math.min(1, t.progress)) : null,
+                        startedAt: Number.isFinite(t.startedAt) ? t.startedAt : null,
+                        cancellable: t.cancellable === true && typeof provider.cancelTask === 'function'
+                    }));
+            });
+    }
+    async cancelTask(pluginId, id) {
+        const task = this.tasks().find((t) => t.pluginId === pluginId && t.id === id);
+        if (!task?.cancellable) throw Error('任务已结束或不支持取消');
+        await this.providers.get(pluginId).cancelTask(id);
+        this.emit('changed', pluginId);
+    }
 }
 module.exports = { PluginServices };

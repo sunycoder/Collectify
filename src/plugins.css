@@ -161,6 +161,77 @@ body {
 #plugin-rail::-webkit-scrollbar {
     width: 3px;
 }
+#plugin-rail .plugin-entry {
+    position: relative;
+    touch-action: pan-y;
+}
+#plugin-rail .plugin-entry.sorting-source {
+    opacity: 0.3;
+}
+#plugin-rail .sort-before::before,
+#plugin-rail .sort-after::after {
+    content: '';
+    position: absolute;
+    left: 5px;
+    right: 5px;
+    height: 3px;
+    border-radius: 3px;
+    background: var(--accent);
+    pointer-events: none;
+}
+#plugin-rail .sort-before::before {
+    top: -5px;
+}
+#plugin-rail .sort-after::after {
+    bottom: -5px;
+}
+.plugin-sort-ghost {
+    position: fixed !important;
+    z-index: 2147483647;
+    pointer-events: none;
+    background: var(--surface) !important;
+    color: var(--ink);
+    border: 1px solid var(--line) !important;
+    border-radius: 11px;
+    box-shadow: 0 6px 20px #0002;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 8px 3px;
+    opacity: 0.95;
+}
+.plugin-sort-ghost .plugin-name {
+    font-size: 10px;
+}
+.plugin-sorting,
+.plugin-sorting * {
+    cursor: grabbing !important;
+    user-select: none !important;
+}
+.plugin-order-help {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-top: 18px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.7;
+}
+.plugin-order-help button {
+    font-size: 11px;
+    white-space: nowrap;
+}
+#plugin-search-empty {
+    margin: 0 5px 10px;
+    padding: 8px 2px;
+    line-height: 1.8;
+    font-size: 10px;
+    background: var(--surface);
+    color: var(--muted);
+}
 #plugin-rail::-webkit-scrollbar-track {
     background: transparent;
 }

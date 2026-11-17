@@ -17,10 +17,12 @@ exports.run = async (context) => {
             trayAccess.set(previous);
         }
     };
-    if (process.argv.includes('--smoke-shutdown')) {
+    if (process.argv.includes('--smoke-usability')) await require('./smoke-usability').run(context);
+    else if (process.argv.includes('--smoke-shutdown')) {
         await require('./smoke-shutdown').run(context);
         return false;
-    } else if (process.argv.includes('--smoke-market')) await require('./smoke-market').run(context);
+    } else if (process.argv.includes('--smoke-product')) await require('./smoke-product').run(context);
+    else if (process.argv.includes('--smoke-market')) await require('./smoke-market').run(context);
     else if (process.argv.includes('--smoke-resources')) await require('./smoke-bookmark-resources').run(context);
     else if (process.argv.includes('--smoke-fullscreen')) await require('./smoke-fullscreen').run(context);
     else if (process.argv.includes('--smoke-deployment')) await require('./smoke-distribution').deployment(context);

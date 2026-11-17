@@ -229,6 +229,13 @@ function render() {
                 );
             })
         );
+        if (['win32', 'darwin'].includes(platform))
+            actions.append(
+                action('复制并粘贴到上一应用', '粘贴', async () => {
+                    await copy(item);
+                    await collectify.desktop.paste();
+                })
+            );
         row.append(actions);
         if (item.kind === 'image') {
             const wrap = node('div', 'image-wrap'),

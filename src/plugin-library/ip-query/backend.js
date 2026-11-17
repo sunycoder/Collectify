@@ -152,7 +152,14 @@ exports.create = async (context, adapters = {}) => {
             if (!active || disposed || revision !== generation) throw Error('查询已取消');
             const completed = { ...result, queriedAt: now(), cached: false };
             const nextHistory = [
-                { ip: result.ip, source: result.source, provider, queriedAt: completed.queriedAt },
+                {
+                    ip: result.ip,
+                    source: result.source,
+                    provider,
+                    queriedAt: completed.queriedAt,
+                    location: [result.country, result.region, result.city].filter(Boolean).join(' · '),
+                    isp: result.isp || result.organization || ''
+                },
                 ...history.filter((item) => item.ip !== result.ip)
             ].slice(0, defaults.historyLimit);
             save({ ...settings, history: nextHistory, secret });

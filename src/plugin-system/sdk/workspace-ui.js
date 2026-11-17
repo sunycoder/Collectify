@@ -18,6 +18,61 @@ let state = { entries: [], categories: [], tasks: [], notes: [], settings: {} },
     actionCallback,
     menuAnchor,
     toastTimer;
+const editorGuards = [];
+function guardEditor(form, extra = () => null) {
+    const dialog = form.closest('dialog'),
+        close = dialog.close.bind(dialog),
+        show = dialog.showModal.bind(dialog);
+    const snapshot = () =>
+        JSON.stringify([
+            [...form.elements].filter((node) => node.name).map((node) => [node.name, node.value, node.checked]),
+            extra()
+        ]);
+    let baseline, pending;
+    const dirty = () => dialog.open && baseline !== snapshot();
+    form.markSaved = () => {
+        baseline = snapshot();
+    };
+    dialog.showModal = () => {
+        baseline = snapshot();
+        show();
+    };
+    const leave = async () => {
+        if (!dirty()) {
+            close();
+            return true;
+        }
+        if (pending) return pending;
+        pending = (async () => {
+            const choice = await collectify.confirmUnsaved();
+            if (choice === 0) return false;
+            if (choice === 1) {
+                close();
+                return true;
+            }
+            if (!form.reportValidity()) return false;
+            await form.onsubmit({ preventDefault() {}, currentTarget: form });
+            return !dirty();
+        })();
+        try {
+            return await pending;
+        } finally {
+            pending = null;
+        }
+    };
+    dialog.close = () => {
+        void leave().catch((error) => toast(error.message));
+    };
+    dialog.addEventListener('cancel', (event) => {
+        event.preventDefault();
+        dialog.close();
+    });
+    editorGuards.push({ dirty, leave });
+}
+collectify.onPrepareClose?.(async () => {
+    for (const guard of editorGuards)
+        if (guard.dirty() && !(await guard.leave())) throw Error('已取消离开，未保存内容仍保留');
+});
 const paths = {
     layers: '<path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/>',
     grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',

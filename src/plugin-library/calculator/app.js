@@ -9,7 +9,13 @@ let index,
     initialized = false,
     operation = false,
     compose = false;
-let latestSave;
+let latestSave, deletedRow, undoTimer;
+let keyboardOnly = false,
+    keyboardOpen = false,
+    keyboardOwner = null,
+    keyboardTarget = null;
+const keyboardSession = crypto.randomUUID(),
+    keyboardChannel = new BroadcastChannel('collectify-calculator-keyboard');
 const applyTheme = (context) => {
     for (const [key, value] of Object.entries(context.tokens)) document.documentElement.style.setProperty(key, value);
     document.documentElement.dataset.scheme = context.tokens['color-scheme'];
@@ -59,6 +65,7 @@ async function run(action) {
     operation = true;
     $('.workspace').inert = true;
     $('.toolbar').inert = true;
+    $('#math-keyboard').inert = true;
     try {
         await action();
     } catch (error) {
@@ -67,6 +74,8 @@ async function run(action) {
         operation = false;
         $('.workspace').inert = false;
         $('.toolbar').inert = false;
+        $('#math-keyboard').inert = false;
+        refreshKeyboard();
     }
 }
 function resize(input) {
@@ -83,11 +92,23 @@ function recalculate() {
                 error = node.querySelector('.row-error');
             node.querySelector('.result-line').hidden = !value.value;
             error.hidden = !value.error;
-            error.textContent = value.error || '';
-            output.textContent = value.text || '';
-            output.title = value.approximate ? '近似结果（最多显示 12 位小数）；点击复制' : '点击复制结果';
-            node.querySelector('.equals').textContent = value.approximate ? '≈' : '=';
+            const pending = /公式未完成|缺少右括号|函数缺少右括号/.test(value.error || '');
+            error.classList.toggle('pending', pending);
+            error.textContent = pending ? '继续输入…' : value.error || '';
+            const formatted = value.value ? PaperCalc.format(value.value, true, index.resultDigits) : null;
+            output.textContent = formatted?.text || '';
+            output.title = '点击复制当前显示精度的结果；行引用始终使用内部精度';
+            node.querySelector('.equals').textContent = formatted?.approximate ? '≈' : '=';
+            node.classList.toggle('empty-row', !rowExpression(i));
         });
+}
+function rowExpression(i) {
+    return sheet.rows[i]?.expression.trim();
+}
+function markActiveRow() {
+    $('#rows')
+        .querySelectorAll('.calc-row')
+        .forEach((node) => node.classList.toggle('active-row', node.dataset.rowId === currentRow));
 }
 function renderRows(focusId) {
     $('#rows').replaceChildren();
@@ -109,7 +130,11 @@ function renderRows(focusId) {
         input.placeholder = '输入计算公式，例如 55 + 88';
         input.setAttribute('aria-label', `第 ${i + 1} 行公式`);
         input.readOnly = sheet.locked;
-        input.onfocus = () => (currentRow = row.id);
+        input.onfocus = () => {
+            currentRow = row.id;
+            refreshKeyboard();
+            markActiveRow();
+        };
         input.oncompositionstart = () => (compose = true);
         input.oncompositionend = () => {
             compose = false;
@@ -151,7 +176,7 @@ function renderRows(focusId) {
         output.onclick = () => {
             if (results[i].value)
                 api.clipboard
-                    .writeText(PaperCalc.format(results[i].value, false).text)
+                    .writeText(PaperCalc.format(results[i].value, false, index.resultDigits).text)
                     .then(() => message('结果已复制'))
                     .catch((e) => message(e.message));
         };
@@ -166,9 +191,30 @@ function renderRows(focusId) {
         note.placeholder = '添加备注…';
         note.maxLength = 200;
         note.readOnly = sheet.locked;
+        note.hidden = !row.note;
+        const addNote = document.createElement('button');
+        addNote.className = 'add-note';
+        addNote.textContent = '添加备注';
+        addNote.hidden = !!row.note;
+        addNote.disabled = sheet.locked;
+        addNote.onclick = () => {
+            note.hidden = false;
+            addNote.hidden = true;
+            note.focus();
+        };
+        note.onblur = () => {
+            if (!note.value) {
+                note.hidden = true;
+                addNote.hidden = false;
+            }
+        };
         note.setAttribute('aria-label', `第 ${i + 1} 行备注`);
         note.oninput = () => {
             row.note = note.value;
+            if (row.note) {
+                note.hidden = false;
+                addNote.hidden = true;
+            }
             changed();
         };
         const remove = document.createElement('button');
@@ -179,27 +225,63 @@ function renderRows(focusId) {
         remove.disabled = sheet.locked;
         remove.onclick = () => {
             if (sheet.locked) return;
+            deletedRow = { sheetId: sheet.id, row: { ...row }, position: i, placeholderId: null };
             sheet.rows.splice(i, 1);
-            if (!sheet.rows.length) sheet.rows.push({ id: M.uid(), expression: '', note: '' });
+            if (!sheet.rows.length) {
+                sheet.rows.push({ id: M.uid(), expression: '', note: '' });
+                deletedRow.placeholderId = sheet.rows[0].id;
+            }
+            clearTimeout(undoTimer);
+            $('#undo-row').hidden = false;
+            undoTimer = setTimeout(() => {
+                deletedRow = null;
+                $('#undo-row').hidden = true;
+            }, 10000);
             currentRow = sheet.rows[Math.min(i, sheet.rows.length - 1)].id;
             changed();
             renderRows(currentRow);
         };
-        tools.append(note, remove);
+        tools.append(addNote, note, remove);
         node.append(line, resultLine, error, tools);
         $('#rows').append(node);
         resize(input);
     });
     recalculate();
+    markActiveRow();
     if (focusId) focusRow(focusId);
 }
 function focusRow(id) {
     currentRow = id;
     const input = [...$('#rows').children].find((n) => n.dataset.rowId === id)?.querySelector('textarea');
     input?.focus();
+    if (input) {
+        input.scrollIntoView({ block: 'nearest' });
+        const r = input.getBoundingClientRect(),
+            k = $('#math-keyboard').getBoundingClientRect();
+        if (
+            !$('#math-keyboard').hidden &&
+            r.bottom > k.top &&
+            r.top < k.bottom &&
+            r.right > k.left &&
+            r.left < k.right
+        ) {
+            const offset = r.top - k.bottom - 16;
+            window.scrollBy(0, offset);
+        }
+    }
 }
 function addRow() {
     if (!initialized || sheet.locked) return;
+    const current = sheet.rows.find((row) => row.id === currentRow);
+    if (current && !current.expression.trim()) {
+        focusRow(current.id);
+        return;
+    }
+    const last = sheet.rows.at(-1);
+    if (!last.expression.trim()) {
+        focusRow(last.id);
+        return;
+    }
     if (sheet.rows.length >= M.MAX_ROWS) {
         message('每张稿纸最多 200 行，请新建稿纸');
         return;
@@ -209,6 +291,38 @@ function addRow() {
     changed();
     renderRows(row.id);
 }
+$('#undo-row').onclick = () => {
+    if (!deletedRow || deletedRow.sheetId !== sheet.id || sheet.locked) {
+        message('请切回原稿纸并解锁后撤销');
+        return;
+    }
+    if (sheet.rows.length >= M.MAX_ROWS) {
+        message('稿纸已满，无法恢复');
+        return;
+    }
+    const saved = deletedRow;
+    if (
+        saved.placeholderId &&
+        sheet.rows.length === 1 &&
+        sheet.rows[0].id === saved.placeholderId &&
+        !sheet.rows[0].expression &&
+        !sheet.rows[0].note
+    )
+        sheet.rows = [];
+    sheet.rows.splice(Math.min(saved.position, sheet.rows.length), 0, saved.row);
+    currentRow = saved.row.id;
+    deletedRow = null;
+    clearTimeout(undoTimer);
+    $('#undo-row').hidden = true;
+    changed();
+    renderRows(currentRow);
+    message('已恢复公式与备注，行引用已重新计算');
+};
+$('#result-digits').onchange = () => {
+    index.resultDigits = Number($('#result-digits').value);
+    recalculate();
+    void persist().catch(() => {});
+};
 function title(item) {
     return item.title.trim() || '未命名稿纸';
 }
@@ -253,6 +367,7 @@ function renderSheets() {
     }
 }
 function renderPaper() {
+    $('#result-digits').value = [2, 4].includes(index.resultDigits) ? String(index.resultDigits) : '12';
     $('#paper-title').value = sheet.title;
     $('#paper-title').readOnly = sheet.locked;
     $('#paper-date').textContent = '创建于 ' + new Date(sheet.createdAt).toLocaleString();
@@ -261,6 +376,7 @@ function renderPaper() {
     $('#locked-notice').hidden = !sheet.locked;
     $('#add-row').disabled = sheet.locked;
     $('#clear-paper').disabled = sheet.locked;
+    refreshKeyboard();
     renderRows();
     renderSheets();
 }
@@ -369,6 +485,154 @@ $('#examples-toggle').onclick = () => {
     $('#examples').hidden = !open;
     $('#examples-toggle').setAttribute('aria-expanded', String(open));
 };
+function refreshKeyboard() {
+    if (!initialized || keyboardOnly) return;
+    const rowIndex = sheet.rows.findIndex((r) => r.id === currentRow);
+    $('#keyboard-target').textContent = sheet.locked ? '稿纸已锁定' : `输入到第 ${rowIndex + 1} 行`;
+    $('#math-keyboard')
+        .querySelectorAll('.keyboard-layout button')
+        .forEach((b) => (b.disabled = sheet.locked));
+    keyboardChannel.postMessage({
+        type: 'state',
+        owner: keyboardSession,
+        rowId: currentRow,
+        row: rowIndex + 1,
+        locked: sheet.locked || operation
+    });
+}
+async function setKeyboard(open) {
+    if (keyboardOnly) {
+        if (!open) window.close();
+        return;
+    }
+    if (open) {
+        try {
+            await api.windows.open({ title: '数学键盘', width: 720, height: 370, minWidth: 360, minHeight: 280 });
+        } catch (error) {
+            message(error.message);
+            return;
+        }
+    } else keyboardChannel.postMessage({ type: 'close', owner: keyboardSession });
+    keyboardOpen = open;
+    if (initialized && index.keyboardOpen !== open) {
+        index.keyboardOpen = open;
+        void persist().catch(() => {});
+    }
+    $('#keyboard-toggle').setAttribute('aria-expanded', String(open));
+    refreshKeyboard();
+}
+function keyboardInput(key) {
+    if (keyboardOnly) {
+        sendKeyboard('input', key[1] ?? key[0]);
+        return;
+    }
+    if (!initialized || operation || sheet.locked || compose) return;
+    const node = [...$('#rows').children].find((n) => n.dataset.rowId === currentRow),
+        input = node?.querySelector('.expression');
+    if (!input) return;
+    try {
+        const next = CalcKeyboard.edit(input.value, input.selectionStart, input.selectionEnd, key);
+        input.focus({ preventScroll: true });
+        input.setRangeText(next.text, 0, input.value.length, 'end');
+        input.setSelectionRange(next.caret, next.caret);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.scrollIntoView({ block: 'nearest' });
+    } catch (error) {
+        message(error.message);
+    }
+}
+function keyboardGroup(group) {
+    $('#keyboard-keys').replaceChildren();
+    $('#keyboard-tabs')
+        .querySelectorAll('button')
+        .forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.group === group.id)));
+    for (const key of group.keys) {
+        const button = document.createElement('button');
+        button.textContent = key[0];
+        button.title = key[2] || key[0];
+        button.setAttribute('aria-label', button.title);
+        button.dataset.key = key[1] ?? key[0];
+        button.onclick = () => keyboardInput(key);
+        $('#keyboard-keys').append(button);
+    }
+    refreshKeyboard();
+}
+for (const group of CalcKeyboard.groups) {
+    const button = document.createElement('button');
+    button.textContent = group.name;
+    button.dataset.group = group.id;
+    button.onclick = () => keyboardGroup(group);
+    $('#keyboard-tabs').append(button);
+}
+keyboardGroup(CalcKeyboard.groups[0]);
+function sendKeyboard(action, key) {
+    if (keyboardOwner && keyboardTarget)
+        keyboardChannel.postMessage({ type: 'command', owner: keyboardOwner, rowId: keyboardTarget, action, key });
+}
+keyboardChannel.onmessage = (event) => {
+    const data = event.data;
+    if (!data || typeof data !== 'object') return;
+    if (keyboardOnly) {
+        if (data.type === 'state') {
+            keyboardOwner = data.owner;
+            keyboardTarget = data.rowId;
+            $('#keyboard-target').textContent = data.locked ? '稿纸已锁定' : `输入到第 ${data.row} 行`;
+            $('#math-keyboard')
+                .querySelectorAll('.keyboard-layout button')
+                .forEach((b) => (b.disabled = !!data.locked));
+        } else if (data.type === 'close' && data.owner === keyboardOwner) window.close();
+        return;
+    }
+    if (!initialized) return;
+    if (data.type === 'ready') {
+        refreshKeyboard();
+        return;
+    }
+    if (data.owner !== keyboardSession) return;
+    if (data.type === 'closed') {
+        keyboardOpen = false;
+        index.keyboardOpen = false;
+        $('#keyboard-toggle').setAttribute('aria-expanded', 'false');
+        void persist().catch(() => {});
+        return;
+    }
+    if (data.type !== 'command' || data.rowId !== currentRow || sheet.locked || operation) {
+        refreshKeyboard();
+        return;
+    }
+    if (data.action === 'input') {
+        const key = CalcKeyboard.groups.flatMap((g) => g.keys).find((key) => (key[1] ?? key[0]) === data.key);
+        if (key) keyboardInput(key);
+    } else if (data.action === 'backspace') keyboardInput(['', '', '', 'delete']);
+    else if (data.action === 'clear') keyboardInput(['', '', '', 'clear']);
+    else if (data.action === 'next') $('#keyboard-next').click();
+};
+window.addEventListener('beforeunload', () => {
+    keyboardChannel.postMessage({
+        type: keyboardOnly ? 'closed' : 'close',
+        owner: keyboardOnly ? keyboardOwner : keyboardSession
+    });
+    keyboardChannel.close();
+});
+$('#math-keyboard').onpointerdown = (event) => {
+    if (event.button === 0 && event.target.closest('button')) event.preventDefault();
+};
+$('#keyboard-toggle').onclick = () => void setKeyboard(!keyboardOpen);
+$('#keyboard-close').onclick = () => setKeyboard(false);
+$('#keyboard-reset').hidden = true;
+$('#keyboard-backspace').onclick = () =>
+    keyboardOnly ? sendKeyboard('backspace') : keyboardInput(['', '', '', 'delete']);
+$('#keyboard-clear').onclick = () => (keyboardOnly ? sendKeyboard('clear') : keyboardInput(['', '', '', 'clear']));
+$('#keyboard-next').onclick = () => {
+    if (keyboardOnly) {
+        sendKeyboard('next');
+        return;
+    }
+    if (!initialized || operation || sheet.locked || compose) return;
+    const rowIndex = sheet.rows.findIndex((r) => r.id === currentRow);
+    if (sheet.rows[rowIndex + 1]) focusRow(sheet.rows[rowIndex + 1].id);
+    else addRow();
+};
 for (const group of CalcExamples) {
     const section = document.createElement('div');
     section.className = 'example-group';
@@ -430,9 +694,23 @@ api.onNavigate(() => {
 });
 $('.workspace').inert = true;
 $('.toolbar').inert = true;
+$('#math-keyboard').inert = true;
 (async () => {
     try {
-        applyTheme(await api.context());
+        const context = await api.context();
+        applyTheme(context);
+        if (context.windowMode === 'floating') {
+            keyboardOnly = true;
+            document.documentElement.classList.add('keyboard-only');
+            $('#math-keyboard').hidden = false;
+            $('#math-keyboard').inert = false;
+            $('#math-keyboard')
+                .querySelectorAll('.keyboard-layout button')
+                .forEach((b) => (b.disabled = true));
+            $('#keyboard-target').textContent = '正在连接当前稿纸…';
+            keyboardChannel.postMessage({ type: 'ready' });
+            return;
+        }
         index = await api.storage.get('index');
         if (index === null) {
             sheet = M.createSheet();
@@ -449,12 +727,15 @@ $('.toolbar').inert = true;
             sheet = M.validate(await api.storage.get('sheet:' + index.active));
         }
         currentRow = sheet.rows.at(-1).id;
+        $('#result-digits').value = [2, 4].includes(index.resultDigits) ? String(index.resultDigits) : '12';
         setFont(Number.isInteger(index.fontSize) ? index.fontSize : 22);
         initialized = true;
         renderPaper();
+        void setKeyboard(index.keyboardOpen !== false);
         await persist();
         $('.workspace').inert = false;
         $('.toolbar').inert = false;
+        $('#math-keyboard').inert = false;
     } catch (error) {
         message(error.message);
         $('#save-status').textContent = '读取失败，请重新打开插件';

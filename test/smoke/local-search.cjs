@@ -74,6 +74,16 @@ app.whenReady().then(async () => {
             throw Error('Local search UI timeout');
         };
         await until(() => js('!!settings'));
+        const dividerPoint = await js(
+            "(()=>{const r=document.querySelector('#preview-divider').getBoundingClientRect();return {x:Math.round(r.x+r.width/2),y:Math.round(r.y+30)}})()"
+        );
+        wc.sendInputEvent({ type: 'mouseDown', ...dividerPoint, button: 'left' });
+        wc.sendInputEvent({ type: 'mouseMove', x: dividerPoint.x + 120, y: dividerPoint.y });
+        wc.sendInputEvent({ type: 'mouseUp', x: dividerPoint.x + 120, y: dividerPoint.y, button: 'left' });
+        await until(() => js('settings.splitRatio>0.42'));
+        await js("document.querySelector('#preview-expand').click()");
+        assert.equal(await js("document.querySelector('.search-layout').classList.contains('preview-expanded')"), true);
+        await js("document.querySelector('#preview-expand').click()");
         assert.equal(await js("document.querySelector('#filters')"), null);
         const navigation = services.navigation('collectify.local-search');
         assert.equal(navigation.length, 11);

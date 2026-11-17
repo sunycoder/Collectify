@@ -9,6 +9,149 @@ body {
     color: var(--ink);
     overflow-x: hidden;
 }
+#math-keyboard {
+    cursor: grab;
+    touch-action: none;
+    position: fixed;
+    z-index: 10;
+    left: 12px;
+    top: 12px;
+    width: min(720px, calc(100% - 24px));
+    max-height: calc(100dvh - 24px);
+    overflow: auto;
+    margin: 0;
+    padding: 12px 16px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: 0 -4px 24px #00000012;
+}
+.keyboard-only body > :not(#math-keyboard):not(script) {
+    display: none !important;
+}
+.keyboard-only body {
+    background: var(--surface);
+    overflow: hidden;
+}
+.keyboard-only #math-keyboard {
+    inset: 0 !important;
+    width: 100% !important;
+    max-height: 100dvh;
+    height: 100dvh;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    -webkit-app-region: drag;
+    cursor: move;
+}
+.keyboard-only #math-keyboard button {
+    -webkit-app-region: no-drag;
+}
+.keyboard-only #math-keyboard #keyboard-drag {
+    -webkit-app-region: drag;
+    cursor: move;
+}
+.keyboard-only #keyboard-target {
+    display: inline !important;
+}
+.keyboard-heading,
+#keyboard-tabs {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.keyboard-heading {
+    margin-bottom: 10px;
+    position: sticky;
+    top: -12px;
+    background: var(--surface);
+    padding: 4px 0;
+    z-index: 1;
+}
+#keyboard-tabs {
+    margin-bottom: 10px;
+}
+#keyboard-drag {
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    border-color: transparent;
+    font-weight: 600;
+}
+#math-keyboard.dragging #keyboard-drag {
+    cursor: grabbing;
+}
+#math-keyboard.dragging {
+    user-select: none;
+}
+#keyboard-tabs button[aria-pressed='true'],
+#keyboard-toggle[aria-expanded='true'] {
+    background: var(--soft);
+    color: var(--accent-text, var(--accent));
+    border-color: var(--accent);
+}
+#keyboard-target {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--muted);
+}
+.keyboard-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 110px;
+    gap: 10px;
+}
+#keyboard-keys {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 6px;
+}
+.keyboard-layout button {
+    cursor: pointer;
+    touch-action: manipulation;
+    min-width: 0;
+    min-height: 34px;
+    padding: 6px 4px;
+    white-space: normal;
+}
+.keyboard-actions {
+    display: grid;
+    gap: 6px;
+    grid-template-rows: repeat(3, 1fr);
+}
+.keyboard-hint {
+    margin: 8px 0 0;
+    font-size: 10px;
+    color: var(--muted);
+    line-height: 1.6;
+}
+@media (max-width: 560px) {
+    #math-keyboard {
+        left: 6px;
+        right: 6px;
+        padding: 10px;
+    }
+    .keyboard-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .keyboard-actions {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-rows: auto;
+    }
+    #keyboard-target {
+        display: none;
+    }
+    #keyboard-close {
+        margin-left: auto;
+    }
+    .keyboard-hint {
+        display: none;
+    }
+    #keyboard-keys button {
+        font-size: 11px;
+    }
+}
 button {
     border-radius: 8px;
     font-size: 12px;
@@ -193,11 +336,56 @@ kbd {
     background: var(--surface);
     border-radius: 12px;
     margin-bottom: 12px;
-    padding: 16px 18px 12px;
+    padding: 10px 14px 8px;
     transition: border-color 0.12s;
 }
 .calc-row:focus-within {
     border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+}
+.calc-row.active-row {
+    box-shadow: inset 3px 0 var(--accent);
+    border-color: var(--accent);
+}
+.calc-row.empty-row .row-tools {
+    margin-top: 0;
+}
+.row-error.pending {
+    color: var(--muted);
+    min-height: 20px;
+}
+.precision-control {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    font-size: 12px;
+}
+.precision-control select {
+    max-width: 150px;
+    font: inherit;
+    padding: 6px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--ink);
+}
+.row-tools .add-note {
+    border: 0;
+    background: transparent;
+    padding: 3px;
+    font-size: 11px;
+    color: var(--muted);
+}
+.row-tools .row-delete {
+    margin-left: auto;
+    min-width: 32px;
+    min-height: 28px;
+    font-size: 18px;
+}
+#undo-row {
+    position: sticky;
+    bottom: 10px;
+    background: var(--surface);
+    border: 1px solid var(--accent);
 }
 .expression-line {
     display: flex;
@@ -239,8 +427,8 @@ kbd {
     justify-content: end;
     gap: 9px;
     align-items: baseline;
-    min-height: 44px;
-    padding-top: 6px;
+    min-height: 32px;
+    padding-top: 0;
 }
 .equals {
     color: var(--subtle, var(--muted));
@@ -291,11 +479,74 @@ kbd {
     color: var(--subtle, var(--muted));
 }
 .row-delete {
-    padding: 1px 6px;
+    padding: 4px 10px;
+    min-width: 32px;
+    min-height: 30px;
+    margin-left: auto;
     color: var(--muted);
     border-color: transparent;
     background: transparent;
-    opacity: 0.4;
+    opacity: 0.8;
+}
+.calc-row.empty-row {
+    padding-block: 8px;
+}
+.row-error.pending {
+    color: var(--muted);
+    min-height: 0;
+}
+.row-error {
+    min-height: 0;
+}
+.result-line {
+    min-height: 0;
+    padding-top: 0;
+}
+.row-tools {
+    min-height: 0;
+    margin-top: 0;
+}
+.add-note {
+    border: 0;
+    padding: 3px 0;
+    font-size: 11px;
+    color: var(--muted);
+    background: transparent;
+}
+.active-row {
+    border-color: var(--accent);
+    box-shadow: inset 3px 0 var(--accent);
+}
+.precision-control {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--muted);
+}
+.precision-control select {
+    max-width: 126px;
+    font-size: 12px;
+    padding: 5px;
+}
+#keyboard-target {
+    display: inline;
+}
+#math-keyboard.dragging {
+    cursor: grabbing;
+}
+.keyboard-heading,
+.keyboard-layout,
+#keyboard-keys,
+#keyboard-tabs,
+.keyboard-hint {
+    touch-action: none;
+}
+.keyboard-layout button,
+.keyboard-heading button,
+#keyboard-tabs button {
+    cursor: pointer;
+    touch-action: manipulation;
 }
 .calc-row:hover .row-delete,
 .calc-row:focus-within .row-delete {

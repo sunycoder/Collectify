@@ -18,6 +18,8 @@ class PluginRegistry {
                 'CREATE TABLE IF NOT EXISTS installed_plugins(id TEXT PRIMARY KEY,enabled INTEGER NOT NULL CHECK(enabled IN (0,1)),version TEXT NOT NULL,installed_at TEXT NOT NULL) STRICT; CREATE TABLE IF NOT EXISTS host_settings(key TEXT PRIMARY KEY,value_json TEXT NOT NULL CHECK(json_valid(value_json))) STRICT; PRAGMA user_version=2;'
             );
         });
+        const order = this.getSetting('pluginOrder', []);
+        this.pluginOrder = Array.isArray(order) ? [...new Set(order.filter((id) => typeof id === 'string'))] : [];
         this.discover();
     }
     database(action) {
@@ -36,6 +38,7 @@ class PluginRegistry {
         });
     }
     setSetting(key, value) {
+        if (key === 'pluginOrder') value = require('./navigation-order').validateOrder(value);
         this.database((db) =>
             db
                 .prepare(
@@ -43,6 +46,7 @@ class PluginRegistry {
                 )
                 .run(key, JSON.stringify(value))
         );
+        if (key === 'pluginOrder') this.pluginOrder = [...value];
     }
     readMcpConfig() {
         return this.getSetting('mcp');
@@ -157,12 +161,34 @@ class PluginRegistry {
         }
     }
     list() {
+        const positions = new Map(this.pluginOrder.map((id, index) => [id, index]));
         return [...this.plugins.values()]
-            .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
+            .sort(
+                (a, b) =>
+                    (positions.get(a.id) ?? Infinity) - (positions.get(b.id) ?? Infinity) ||
+                    a.order - b.order ||
+                    a.name.localeCompare(b.name)
+            )
             .map(({ directory, entry, backend, ...publicInfo }) => ({
                 ...publicInfo,
                 distributable: !publicInfo.builtin
             }));
+    }
+    move(id, targetId, placement = 'before') {
+        this.get(id);
+        this.get(targetId);
+        if (!['before', 'after'].includes(placement)) throw Error('插件排序位置无效');
+        const ids = this.list().map((p) => p.id);
+        if (id === targetId) return ids;
+        ids.splice(ids.indexOf(id), 1);
+        ids.splice(ids.indexOf(targetId) + (placement === 'after' ? 1 : 0), 0, id);
+        this.setSetting('pluginOrder', ids);
+        this.pluginOrder = ids;
+        return [...ids];
+    }
+    resetOrder() {
+        this.setSetting('pluginOrder', []);
+        this.pluginOrder = [];
     }
     setEnabled(id, enabled) {
         const plugin = this.get(id);
@@ -259,7 +285,7 @@ class PluginRegistry {
             const target = path.resolve(plugin.directory),
                 root = path.resolve(this.userRoot);
             if (path.dirname(target) !== root) throw Error('插件卸载路径越界');
-            fs.rmSync(target, { recursive: true });
+            fs.rmSync(target, { recursive: true, maxRetries: 5, retryDelay: 80 });
         }
         this.plugins.delete(id);
         this.database((db) => db.prepare('UPDATE installed_plugins SET enabled=0 WHERE id=?').run(id));

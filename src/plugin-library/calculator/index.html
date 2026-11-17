@@ -14,11 +14,19 @@
                 <h1>计算稿纸</h1>
             </div>
             <div class="toolbar-actions">
+                <label class="precision-control"
+                    >小数位<select id="result-digits" aria-label="结果小数位">
+                        <option value="12">自动（最多12位）</option>
+                        <option value="2">2 位</option>
+                        <option value="4">4 位</option>
+                    </select></label
+                >
                 <div class="font-controls" aria-label="字号">
                     <button id="font-down" title="缩小字号" aria-label="缩小字号">A−</button
                     ><span id="font-size">22</span
                     ><button id="font-up" title="增大字号" aria-label="增大字号">A＋</button>
                 </div>
+                <button id="keyboard-toggle" aria-expanded="true" aria-controls="math-keyboard">数学键盘</button>
                 <button id="examples-toggle" aria-expanded="false">公式示例</button
                 ><button id="copy-paper">复制稿纸</button><button id="clear-paper">清空</button>
             </div>
@@ -48,6 +56,7 @@
                     ><button id="retry-save" hidden>重试保存</button>
                 </div>
                 <p id="message" role="status" aria-live="polite"></p>
+                <button id="undo-row" hidden>撤销删除</button>
             </main>
             <aside class="sheets-panel" aria-label="稿纸列表">
                 <div class="sheets-heading">
@@ -59,6 +68,28 @@
                 <p class="local-note">离线计算 · 数据仅保存在本机<br />支持宿主全局备份</p>
             </aside>
         </div>
+        <section id="math-keyboard" aria-label="数学键盘" hidden>
+            <div class="keyboard-heading">
+                <button id="keyboard-drag" aria-label="移动数学键盘" title="拖动调整位置；聚焦后用方向键微调">
+                    ⠿ 数学键盘
+                </button>
+                <span id="keyboard-target">输入到当前公式</span>
+                <button id="keyboard-reset" title="恢复到右下角">恢复位置</button>
+                <button id="keyboard-close" aria-label="收起数学键盘">收起</button>
+            </div>
+            <div id="keyboard-tabs" role="group" aria-label="键盘分类"></div>
+            <div class="keyboard-layout">
+                <div id="keyboard-keys"></div>
+                <div class="keyboard-actions">
+                    <button id="keyboard-backspace" title="删除选中内容或光标前一个字符">⌫ 退格</button>
+                    <button id="keyboard-clear">清空本行</button>
+                    <button id="keyboard-next" class="primary">下一行 ↵</button>
+                </div>
+            </div>
+            <p class="keyboard-hint">
+                在光标处插入，选中文字后可用函数包裹。三角函数使用弧度；百分比为 ÷100，取余使用 %。
+            </p>
+        </section>
         <dialog id="confirm-dialog">
             <form method="dialog">
                 <h2 id="confirm-title"></h2>
@@ -72,6 +103,7 @@
         <script src="engine.js"></script>
         <script src="model.js"></script>
         <script src="examples.js"></script>
+        <script src="keyboard.js"></script>
         <script src="app.js"></script>
     </body>
 </html>

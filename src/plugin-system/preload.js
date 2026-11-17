@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 const call = async (action, payload) => {
     const result = await ipcRenderer.invoke('plugin-sdk', action, payload);
     if (!result.ok) throw Error(result.error);
@@ -12,8 +12,30 @@ const subscribe = (channel, callback) => {
 // 不提供通用 invoke、文件系统、业务 Store 或 Electron 对象。
 contextBridge.exposeInMainWorld('collectify', {
     context: () => call('context'),
+    confirmUnsaved: () => call('dialog.unsaved'),
     selectNavigation: (route) => call('navigation.select', route),
     invoke: (action, data) => call('backend.call', { action, data }),
+    onPrepareClose: (callback) => {
+        const unsubscribe = subscribe('plugin-prepare-close', async ({ id }) => {
+            try {
+                await callback();
+                await call('lifecycle.response', { id });
+            } catch (error) {
+                await call('lifecycle.response', { id, error: error.message }).catch(() => {});
+            }
+        });
+        void call('lifecycle.register').catch(() => {});
+        return unsubscribe;
+    },
+    files: {
+        paths: async (files) => {
+            await call('files.drop-authorize');
+            return Array.from(files)
+                .slice(0, 2)
+                .map((file) => webUtils.getPathForFile(file))
+                .filter(Boolean);
+        }
+    },
     storage: {
         get: (key) => call('storage.get', { key }),
         set: (key, value) => call('storage.set', { key, value }),

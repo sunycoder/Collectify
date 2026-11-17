@@ -27,6 +27,76 @@ exports.run = async ({ win, registry, runtime, services, hostAction, withTestTra
     assert.ok(rail.scrollHeight <= rail.height);
     assert.equal(rail.select, 'none');
     assert.match(rail.icon, /svg/);
+    const originalOrder = registry
+            .list()
+            .filter((p) => p.enabled)
+            .map((p) => p.id),
+        activeBefore = runtime.activeId;
+    const bounds = await host(
+        "[...document.querySelectorAll('#plugin-rail [data-plugin-id]')].map(n=>{const r=n.getBoundingClientRect();return{id:n.dataset.pluginId,x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2),bottom:Math.round(r.bottom-3)}})"
+    );
+    const source = bounds[0],
+        target = bounds.at(-1);
+    win.webContents.sendInputEvent({ type: 'mouseDown', button: 'left', clickCount: 1, x: source.x, y: source.y });
+    win.webContents.sendInputEvent({ type: 'mouseMove', x: source.x, y: source.y + 12 });
+    await delay(40);
+    win.webContents.sendInputEvent({ type: 'mouseMove', x: target.x, y: target.bottom });
+    await delay(100);
+    assert.equal(await host("document.body.classList.contains('plugin-sorting')"), true);
+    win.webContents.sendInputEvent({ type: 'mouseUp', button: 'left', clickCount: 1, x: target.x, y: target.bottom });
+    await until(
+        () =>
+            registry
+                .list()
+                .filter((p) => p.enabled)
+                .at(-1).id === source.id
+    );
+    assert.equal(runtime.activeId, activeBefore, '排序不应打开其他插件');
+    assert.equal(registry.getSetting('pluginOrder').at(-1), source.id);
+    await until(() =>
+        host("document.querySelector('#plugin-rail').lastElementChild.dataset.pluginId===" + JSON.stringify(source.id))
+    );
+    await host("document.querySelector('#plugin-rail').lastElementChild.focus()");
+    win.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Up', modifiers: ['alt'] });
+    win.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Up', modifiers: ['alt'] });
+    await until(
+        () =>
+            registry
+                .list()
+                .filter((p) => p.enabled)
+                .at(-2).id === source.id
+    );
+    await hostAction('plugin-order-reset');
+    await until(() =>
+        host(
+            "[...document.querySelectorAll('#plugin-rail [data-plugin-id]')].map(n=>n.dataset.pluginId).join(',')===" +
+                JSON.stringify(originalOrder.join(','))
+        )
+    );
+    const dragAgain = await host(
+        "(()=>{const r=document.querySelector('#plugin-rail').firstElementChild.getBoundingClientRect();return{x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)}})()"
+    );
+    win.webContents.sendInputEvent({ type: 'mouseDown', button: 'left', clickCount: 1, ...dragAgain });
+    win.webContents.sendInputEvent({ type: 'mouseMove', x: dragAgain.x, y: dragAgain.y + 15 });
+    await delay(40);
+    win.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Escape' });
+    win.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Escape' });
+    win.webContents.sendInputEvent({
+        type: 'mouseUp',
+        button: 'left',
+        clickCount: 1,
+        x: dragAgain.x,
+        y: dragAgain.y + 15
+    });
+    assert.deepEqual(
+        registry
+            .list()
+            .filter((p) => p.enabled)
+            .map((p) => p.id),
+        originalOrder,
+        'Esc 取消不保存顺序'
+    );
+    assert.equal(await host("!!document.querySelector('.plugin-sort-ghost')"), false);
     // 原生插件视图不能在两个宿主弹窗之间的空档重新显示。
     const layout = runtime.layout.bind(runtime),
         visibility = [];
@@ -75,6 +145,10 @@ exports.run = async ({ win, registry, runtime, services, hostAction, withTestTra
         );
         await host("selectSettingsPanel('plugins')");
         await host("document.querySelector('[data-plugin-tab=installed]').click()");
+        await host("document.querySelector('#plugin-manager .plugin-info-button').click()");
+        await until(() => host("document.querySelector('#plugin-details-dialog').open"));
+        assert.match(await host("document.querySelector('#plugin-details-body').textContent"), /功能范围/);
+        await host("document.querySelector('#plugin-details-close').click()");
         assert.equal(
             await host(
                 "document.querySelector('[data-plugin-tab=installed]').classList.contains('selected') && document.querySelector('#catalog-plugins').hidden"

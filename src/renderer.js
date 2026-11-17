@@ -58,7 +58,9 @@ function pluginMarketHeader(plugin, badge) {
         logo.replaceChildren(image);
     }
     title.append(el('strong', '', plugin.name), el('span', 'plugin-card-badge', badge));
-    header.append(logo, title);
+    const info = button('详情', null, () => openPluginDetails(plugin.id), 'plugin-info-button');
+    info.setAttribute('aria-label', plugin.name + ' 详情');
+    header.append(logo, title, info);
     // 连接 DOM 后再交付异步图标，避免快速切换设置页时更新过期节点。
     if (plugin.icon) queueMicrotask(() => renderPluginIcon(plugin, logo, true));
     return header;
@@ -184,9 +186,14 @@ async function withDialogTransition(action) {
         await syncOverlayState();
     }
 }
+const singleNavigationExpanded = new Set();
 function renderShell(next) {
+    finishPluginDrag?.();
     state = next;
-    const collapsed = state.settings.navigationCollapsed === true;
+    const activeNavigation = state.plugins.find((plugin) => plugin.id === state.active?.id)?.navigation || [];
+    const collapsed =
+        state.settings.navigationCollapsed === true ||
+        (activeNavigation.length <= 1 && !!state.active && !singleNavigationExpanded.has(state.active.id));
     document.body.classList.toggle('navigation-collapsed', collapsed);
     $('#toggle-navigation').setAttribute('aria-expanded', String(!collapsed));
     $('#toggle-navigation').setAttribute('aria-label', collapsed ? '展开导航' : '收起导航');
@@ -203,6 +210,8 @@ function renderShell(next) {
     for (const plugin of enabled.filter((p) => [p.name, p.description].some((s) => s.toLowerCase().includes(query)))) {
         const node = button(plugin.name, null, () => call('plugin-open', { id: plugin.id }), 'plugin-entry');
         node.dataset.pluginId = plugin.id;
+        node.title = plugin.name + ' · 拖动调整顺序；Alt + ↑ / ↓ 移动';
+        node.setAttribute('aria-keyshortcuts', 'Alt+ArrowUp Alt+ArrowDown');
         node.classList.toggle('selected', state.active?.id === plugin.id);
         node.setAttribute('aria-pressed', String(state.active?.id === plugin.id));
         node.replaceChildren(el('span', 'plugin-glyph', plugin.glyph), el('span', 'plugin-name', plugin.name));
@@ -220,6 +229,8 @@ function renderShell(next) {
         }
     }
     $('#plugin-rail').scrollTop = railScroll;
+    $('#plugin-search-empty').hidden =
+        !query || enabled.some((p) => [p.name, p.description].some((s) => s.toLowerCase().includes(query)));
     const active = state.plugins.find((p) => p.id === state.active?.id);
     $('#navigation-title').textContent = active?.name || '工作台';
     $('#navigation-description').textContent = active?.description || '启用所需的插件';
@@ -280,6 +291,7 @@ function renderShell(next) {
     $('#plugin-retry').hidden = !failed;
     $('#enable-plugins').hidden = !!state.active;
     renderPluginManager();
+    renderPluginTasks();
     requestAnimationFrame(reportBounds);
 }
 let pluginManagerSignature = '';
@@ -300,6 +312,7 @@ function renderPluginManager() {
             })
         ),
         restorable: state.restorableDefaults,
+        catalog: catalogState.plugins.map((p) => [p.id, p.version, p.compatible]),
         diagnostics: state.diagnostics
     });
     if (signature === pluginManagerSignature) {
@@ -308,6 +321,9 @@ function renderPluginManager() {
     }
     pluginManagerSignature = signature;
     $('#plugin-manager').replaceChildren();
+    const checkUpdates = button('检查插件更新', 'reload', () => managePlugin('plugin-catalog-refresh'), 'subtle');
+    checkUpdates.style.gridColumn = '1 / -1';
+    $('#plugin-manager').append(checkUpdates);
     for (const plugin of state.plugins) {
         const row = el('article', 'plugin-manager-row plugin-market-card'),
             copy = el('div', 'plugin-card-body'),
@@ -324,7 +340,8 @@ function renderPluginManager() {
         input.onchange = task(async () => {
             input.disabled = true;
             try {
-                await call('plugin-enable', { id: plugin.id, enabled: input.checked });
+                const changed = await call('plugin-enable', { id: plugin.id, enabled: input.checked });
+                if (changed === false) input.checked = plugin.enabled;
             } catch (error) {
                 input.checked = plugin.enabled;
                 throw error;
@@ -349,6 +366,14 @@ function renderPluginManager() {
             )
         );
         actions.firstChild.disabled = !plugin.enabled;
+        const remote = catalogState.plugins.find((item) => item.id === plugin.id);
+        if (remote && !plugin.builtin && comparePluginVersion(remote.version, plugin.version) > 0) {
+            copy.append(el('small', 'plugin-update-hint', `可更新：${plugin.version} → ${remote.version}`));
+            const update = button('更新', null, () => managePlugin('plugin-catalog-install', plugin.id), 'primary');
+            update.disabled = pluginBusy || remote.compatible === false;
+            update.title = remote.compatibilityReason || `更新至 ${remote.version}`;
+            actions.append(update);
+        }
         const menu = el('div', 'plugin-action-menu');
         menu.setAttribute('popover', 'auto');
         menu.setAttribute('role', 'menu');
@@ -513,6 +538,181 @@ function comparePluginVersion(a, b) {
     for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] > y[i] ? 1 : -1;
     return 0;
 }
+async function openPluginDetails(id) {
+    const installed = state.plugins.find((p) => p.id === id),
+        remote = catalogState.plugins.find((p) => p.id === id),
+        plugin = remote || installed;
+    if (!plugin) return;
+    const body = $('#plugin-details-body');
+    body.replaceChildren();
+    const head = el('div', 'plugin-details-heading');
+    head.append(
+        el('h2', '', plugin.name),
+        el(
+            'p',
+            '',
+            `v${plugin.version}${installed ? ' · 已安装 ' + installed.version : ''}${plugin.size ? ' · ' + Math.ceil(plugin.size / 1024) + ' KB' : ''}`
+        )
+    );
+    body.append(head, el('p', '', plugin.description));
+    const details = plugin.details || installed?.details || {};
+    const section = (title, items) => {
+        const heading = el('h3', '', title),
+            list = el('ul');
+        for (const value of items) list.append(el('li', '', value));
+        body.append(heading, list);
+    };
+    section(
+        '功能范围',
+        details.features?.length ? details.features : ['发布者暂未提供详细功能说明，请以插件页面与说明文档为准。']
+    );
+    section(
+        '使用限制',
+        details.limitations?.length
+            ? details.limitations
+            : ['未提供格式限制详情，安装前请确认是否适合自己的文件和系统。']
+    );
+    const permissions = details.permissions || installed?.permissions;
+    section(
+        '权限',
+        permissions?.length
+            ? permissions.map(
+                  (p) =>
+                      ({
+                          native: '可信原生后台：可访问本机文件并运行本地程序',
+                          'clipboard.read': '主动读取剪贴板',
+                          'clipboard.write': '写入剪贴板',
+                          storage: '隔离本地存储',
+                          background: '后台页面',
+                          'clipboard.background': '后台剪贴板采集',
+                          window: '插件独立窗口',
+                          'desktop.paste': '向前台应用执行粘贴'
+                      })[p] || p
+              )
+            : permissions
+              ? ['无额外权限。']
+              : ['目录未声明权限；安装确认以实际包清单为准。']
+    );
+    body.append(
+        el(
+            'p',
+            'plugin-detail-requirements',
+            `最低宿主：${plugin.minHostVersion || '未额外声明'} · 支持系统：${plugin.platforms?.join(' / ') || '未限制（不代表均已验证）'}`
+        )
+    );
+    section(
+        '平台验证',
+        details.verification?.length
+            ? details.verification.map(
+                  (v) =>
+                      `${{ win32: 'Windows', darwin: 'macOS', linux: 'Linux' }[v.platform]} · ${{ local: '本机验证', ci: 'CI 验证', unverified: '尚未实测' }[v.status]} · ${v.date}：${v.scope}`
+              )
+            : ['发布者尚未提供逐平台验证记录。']
+    );
+    section('版本说明', details.changelog?.length ? details.changelog : ['未提供单独的版本说明。']);
+    if (details.screenshots?.length) {
+        body.append(el('h3', '', '界面预览'));
+        for (const source of details.screenshots) {
+            const image = el('img', 'plugin-detail-screenshot');
+            image.src = source;
+            image.alt = plugin.name + ' 界面预览';
+            image.loading = 'lazy';
+            body.append(image);
+        }
+    }
+    const action = $('#plugin-details-action'),
+        update = remote && installed && comparePluginVersion(remote.version, installed.version) > 0;
+    action.textContent = installed
+        ? update
+            ? '更新到 ' + remote.version
+            : installed.enabled
+              ? '打开插件'
+              : '启用并打开'
+        : '安装插件';
+    action.disabled = plugin.compatible === false || pluginBusy;
+    action.onclick = task(async () => {
+        action.disabled = true;
+        try {
+            if (!installed || update) {
+                await managePlugin('plugin-catalog-install', id);
+                if (state.plugins.some((p) => p.id === id)) await openPluginDetails(id);
+                else action.disabled = false;
+            } else {
+                if (!installed.enabled) {
+                    const result = await call('plugin-enable', { id, enabled: true });
+                    if (result === false) {
+                        action.disabled = false;
+                        return;
+                    }
+                }
+                closeDialogsForPlugin();
+                await call('plugin-open', { id });
+            }
+        } catch (error) {
+            action.disabled = false;
+            throw error;
+        }
+    });
+    $('#plugin-details-close').onclick = () => $('#plugin-details-dialog').close();
+    await withDialogTransition(async () => {
+        if (!$('#plugin-details-dialog').open) $('#plugin-details-dialog').showModal();
+    });
+}
+let taskListSignature = '';
+function renderPluginTasks() {
+    const tasks = state.tasks || [];
+    $('#plugin-tasks-open').hidden = !tasks.length;
+    $('#plugin-tasks-open').textContent = `${tasks.length} 个任务运行中`;
+    const signature = JSON.stringify(tasks);
+    if (signature === taskListSignature) return;
+    taskListSignature = signature;
+    const target = $('#plugin-tasks-list');
+    target.replaceChildren();
+    if (!tasks.length) {
+        target.append(el('p', 'plugin-empty', '当前没有运行中的任务'));
+        return;
+    }
+    for (const taskInfo of tasks) {
+        const row = el('article', 'host-task-row'),
+            copy = el('div');
+        copy.append(el('strong', '', taskInfo.title), el('small', '', taskInfo.pluginName));
+        const progress = el('progress');
+        progress.max = 1;
+        if (taskInfo.progress !== null) progress.value = taskInfo.progress;
+        progress.setAttribute(
+            'aria-label',
+            taskInfo.progress === null ? '正在处理，进度未知' : Math.round(taskInfo.progress * 100) + '%'
+        );
+        copy.append(progress);
+        row.append(
+            copy,
+            button(
+                '查看',
+                null,
+                async () => {
+                    closeDialogsForPlugin();
+                    await call('plugin-open', { id: taskInfo.pluginId });
+                },
+                'subtle'
+            )
+        );
+        if (taskInfo.cancellable)
+            row.append(
+                button(
+                    '取消任务',
+                    null,
+                    async () => {
+                        await call('plugin-task-cancel', { pluginId: taskInfo.pluginId, id: taskInfo.id });
+                        toast('已请求取消：' + taskInfo.title);
+                        await refresh();
+                    },
+                    'subtle'
+                )
+            );
+        target.append(row);
+    }
+}
+$('#plugin-tasks-open').onclick = () => withDialogTransition(async () => $('#plugin-tasks-dialog').showModal());
 async function refresh() {
     renderShell(await call('state'));
 }
@@ -522,6 +722,165 @@ function reportBounds() {
         toast(error.message)
     );
 }
+// 导航排序由宿主管理，拖动整个入口，不向插件传递业务拖放数据。
+let pluginDrag = null,
+    pluginDragFrame = null,
+    pluginDragClickUntil = 0,
+    pluginOrderBusy = false;
+function finishPluginDrag() {
+    if (pluginDragFrame) cancelAnimationFrame(pluginDragFrame);
+    pluginDragFrame = null;
+    if (pluginDrag) {
+        pluginDrag.node.classList.remove('sorting-source');
+        pluginDrag.ghost?.remove();
+        try {
+            $('#plugin-rail').releasePointerCapture(pluginDrag.pointerId);
+        } catch {}
+        pluginDrag = null;
+    }
+    document
+        .querySelectorAll('#plugin-rail .sort-before,#plugin-rail .sort-after')
+        .forEach((n) => n.classList.remove('sort-before', 'sort-after'));
+    document.body.classList.remove('plugin-sorting');
+}
+async function moveRailPlugin(id, targetId, placement, keyboard = false) {
+    if (pluginOrderBusy) return;
+    pluginOrderBusy = true;
+    try {
+        await call('plugin-move', { id, targetId, placement });
+        await refresh();
+        toast('插件顺序已保存');
+        if (keyboard) [...$('#plugin-rail').children].find((n) => n.dataset.pluginId === id)?.focus();
+    } catch (error) {
+        toast('排序未保存：' + error.message);
+        await refresh();
+    } finally {
+        pluginOrderBusy = false;
+    }
+}
+function updatePluginDrag() {
+    const drag = pluginDrag;
+    if (!drag?.active) return;
+    const rail = $('#plugin-rail'),
+        rect = rail.getBoundingClientRect();
+    if (drag.y < rect.top + 36) rail.scrollTop -= Math.max(2, (rect.top + 36 - drag.y) / 4);
+    else if (drag.y > rect.bottom - 36) rail.scrollTop += Math.max(2, (drag.y - rect.bottom + 36) / 4);
+    drag.ghost.style.top = drag.y - drag.offset + 'px';
+    document
+        .querySelectorAll('#plugin-rail .sort-before,#plugin-rail .sort-after')
+        .forEach((n) => n.classList.remove('sort-before', 'sort-after'));
+    const candidates = [...rail.children].filter((n) => n !== drag.node),
+        inside =
+            drag.x >= rect.left - 25 &&
+            drag.x <= rect.right + 40 &&
+            drag.y >= rect.top - 20 &&
+            drag.y <= rect.bottom + 20;
+    drag.target = null;
+    if (inside && candidates.length) {
+        const target =
+                candidates.find((n) => {
+                    const r = n.getBoundingClientRect();
+                    return drag.y < r.top + r.height / 2;
+                }) || candidates.at(-1),
+            r = target.getBoundingClientRect(),
+            placement = drag.y < r.top + r.height / 2 ? 'before' : 'after';
+        target.classList.add('sort-' + placement);
+        drag.target = { id: target.dataset.pluginId, placement };
+    }
+    pluginDragFrame = requestAnimationFrame(updatePluginDrag);
+}
+$('#plugin-rail').addEventListener('pointerdown', (event) => {
+    const node = event.target.closest('[data-plugin-id]');
+    if (!node || event.button !== 0 || pluginOrderBusy || event.altKey) return;
+    const bounds = node.getBoundingClientRect();
+    pluginDrag = {
+        node,
+        id: node.dataset.pluginId,
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        x: event.clientX,
+        y: event.clientY,
+        offset: event.clientY - bounds.top,
+        active: false
+    };
+});
+document.addEventListener('pointermove', (event) => {
+    const drag = pluginDrag;
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    drag.x = event.clientX;
+    drag.y = event.clientY;
+    if (!drag.active && Math.hypot(drag.x - drag.startX, drag.y - drag.startY) > 7) {
+        drag.active = true;
+        const bounds = drag.node.getBoundingClientRect();
+        drag.ghost = drag.node.cloneNode(true);
+        drag.ghost.className += ' plugin-sort-ghost';
+        drag.ghost.setAttribute('aria-hidden', 'true');
+        drag.ghost.removeAttribute('data-plugin-id');
+        drag.ghost.tabIndex = -1;
+        Object.assign(drag.ghost.style, {
+            left: bounds.left + 'px',
+            width: bounds.width + 'px',
+            height: bounds.height + 'px'
+        });
+        document.body.append(drag.ghost);
+        drag.node.classList.add('sorting-source');
+        document.body.classList.add('plugin-sorting');
+        $('#plugin-rail').setPointerCapture(drag.pointerId);
+        updatePluginDrag();
+    }
+    if (drag.active) event.preventDefault();
+});
+document.addEventListener('pointerup', (event) => {
+    const drag = pluginDrag;
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    if (drag.active) {
+        pluginDragClickUntil = performance.now() + 300;
+        const target = drag.target;
+        finishPluginDrag();
+        if (target) void moveRailPlugin(drag.id, target.id, target.placement);
+    } else finishPluginDrag();
+});
+$('#plugin-rail').addEventListener(
+    'click',
+    (event) => {
+        if (performance.now() < pluginDragClickUntil) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+        }
+    },
+    true
+);
+$('#plugin-rail').addEventListener('dragstart', (event) => event.preventDefault());
+document.addEventListener('pointercancel', finishPluginDrag);
+window.addEventListener('blur', finishPluginDrag);
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && pluginDrag?.active) {
+        pluginDragClickUntil = performance.now() + 300;
+        finishPluginDrag();
+    }
+});
+$('#plugin-rail').addEventListener('keydown', (event) => {
+    if (!event.altKey || !['ArrowUp', 'ArrowDown'].includes(event.key)) return;
+    const node = event.target.closest('[data-plugin-id]');
+    if (!node) return;
+    event.preventDefault();
+    const nodes = [...$('#plugin-rail').children],
+        index = nodes.indexOf(node),
+        target = nodes[index + (event.key === 'ArrowUp' ? -1 : 1)];
+    if (target)
+        void moveRailPlugin(
+            node.dataset.pluginId,
+            target.dataset.pluginId,
+            event.key === 'ArrowUp' ? 'before' : 'after',
+            true
+        );
+});
+$('#reset-plugin-order').onclick = task(async () => {
+    await call('plugin-order-reset');
+    await refresh();
+    toast('已恢复插件默认顺序');
+});
 new ResizeObserver(reportBounds).observe($('#plugin-stage'));
 window.addEventListener('resize', reportBounds);
 api.onEvent('shell-state', renderShell);
@@ -529,6 +888,23 @@ api.onEvent('plugin-transfer', (value) =>
     TransferUI.render($('#plugin-download-progress'), value, () => void call('plugin-download-cancel'))
 );
 $('#plugin-search').oninput = () => renderShell(state);
+$('#plugin-search-empty').onclick = () => {
+    $('#plugin-search').value = '';
+    renderShell(state);
+    $('#plugin-search').focus();
+};
+$('#plugin-search').title = '搜索已启用插件的名称与简介 · Ctrl / ⌘ + K 聚焦，Esc 清除';
+$('#plugin-search').addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && event.target.value) {
+        event.preventDefault();
+        event.target.value = '';
+        renderShell(state);
+    }
+    if (event.key === 'Enter') {
+        const first = $('#plugin-rail [data-plugin-id]');
+        if (first) first.click();
+    }
+});
 document.addEventListener('keydown', (event) => {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
@@ -566,6 +942,7 @@ async function openSettings(panel = 'general') {
         $('#mcp-port').value = info.mcp.port;
         renderMcpStatus(info.mcp);
         catalogState = await call('plugin-catalog-status');
+        renderPluginManager();
         renderPluginCatalog();
         TransferUI.render(
             $('#plugin-download-progress'),
@@ -592,10 +969,16 @@ document.querySelectorAll('[data-settings-panel]').forEach((n) => {
     n.onclick = () => selectSettingsPanel(n.dataset.settingsPanel);
 });
 $('#collapsed-settings-button').onclick = task(() => openSettings());
-$('#expand-navigation').onclick = task(() => call('settings', { navigationCollapsed: false }));
-$('#toggle-navigation').onclick = task(() =>
-    call('settings', { navigationCollapsed: !state.settings.navigationCollapsed })
-);
+$('#expand-navigation').onclick = task(() => {
+    if (state.active) singleNavigationExpanded.add(state.active.id);
+    return call('settings', { navigationCollapsed: false });
+});
+$('#toggle-navigation').onclick = task(() => {
+    const collapsed = document.body.classList.contains('navigation-collapsed');
+    if (state.active)
+        collapsed ? singleNavigationExpanded.add(state.active.id) : singleNavigationExpanded.delete(state.active.id);
+    return call('settings', { navigationCollapsed: !collapsed });
+});
 $('#browser-open-mode').onchange = task(() => call('settings', { browserOpenMode: $('#browser-open-mode').value }));
 $('#install-plugin').onclick = () => managePlugin('plugin-install');
 $('#install-plugin-package').onclick = () => managePlugin('plugin-package-install');
@@ -684,6 +1067,18 @@ async function openTransfer(mode) {
             input.value = id;
             input.checked = true;
             copy.append(el('strong', '', plugin?.name || id), el('small', '', plugin ? id : '未安装 · 保留的数据'));
+            if (mode === 'export') {
+                const coverage = plugin?.backupCoverage;
+                copy.append(
+                    el(
+                        'small',
+                        'backup-coverage',
+                        coverage
+                            ? `内容：${coverage.content}；偏好：${coverage.preferences}；外部文件：不随备份复制`
+                            : '覆盖范围未声明；已保留的 SDK 数据可导出，原文件不会随备份复制'
+                    )
+                );
+            }
             label.append(input, copy);
             $('#transfer-options').append(label);
         }
@@ -711,7 +1106,7 @@ $('#transfer-confirm').onclick = async () => {
                 ? { ...options, includeCredentials: $('#transfer-credentials').checked }
                 : { ...options, token: transferDraft.token, mode: $('#transfer-mode').value }
         );
-        if (result !== null) {
+        if (result !== null && result !== false) {
             $('#transfer-dialog').close();
             await refresh();
             toast('所选内容已处理');

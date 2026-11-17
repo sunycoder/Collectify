@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <title>JSON 工具</title>
         <link rel="stylesheet" href="collectify-plugin://collectify.sdk/tool.css" />
+        <link rel="stylesheet" href="editor.css" />
     </head>
     <body>
         <header>
@@ -38,6 +39,7 @@
                 ><button id="copy">复制结果</button><button id="clear">清空</button>
             </div>
             <p id="message" role="status"></p>
+            <button id="jump-error" hidden>定位错误位置</button><button id="undo-clear" hidden>撤销清空</button>
         </section>
         <p class="caption">
             支持对象、数组和 JSON

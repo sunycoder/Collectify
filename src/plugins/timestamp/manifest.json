@@ -24,5 +24,9 @@
       "label": "日期转时间戳"
     }
   ],
-  "icon": "icon/icon.svg"
+  "icon": "icon/icon.svg",
+  "details": {
+    "limitations": ["输入内容不自动保存；夏令时歧义会明确提示"],
+    "features": ["秒/毫秒时间戳、时区转换与批量处理"]
+  }
 }

@@ -41,7 +41,27 @@ function renderNotes() {
             if (event.target === node && event.key === 'Enter') return showNote(note);
         });
     }
-    if (!state.notes?.length) $('#notes-grid').append(el('p', 'no-notes', '还没有便签。点击“写便签”，随手记录想法。'));
+    if (!visibleNotes.length) {
+        const empty = el('div', 'no-notes');
+        empty.append(
+            el(
+                'p',
+                '',
+                state.notes?.length
+                    ? '没有匹配的便签，可清除搜索与颜色筛选。'
+                    : '还没有便签。点击“写便签”，随手记录想法。'
+            )
+        );
+        if (state.notes?.length)
+            empty.append(
+                button('清除筛选', null, () => {
+                    $('#note-search').value = '';
+                    noteColor = 'all';
+                    renderNotes();
+                })
+            );
+        $('#notes-grid').append(empty);
+    }
 }
 
 async function showNote(note = null) {
@@ -79,6 +99,7 @@ $('#note-form').onsubmit = async (event) => {
         const value = Object.fromEntries(new FormData(form));
         if (editingNote) value.id = editingNote;
         await call('note-save', value);
+        form.markSaved?.();
         $('#note-dialog').close();
         await refresh();
         toast('便签已保存');
@@ -95,6 +116,7 @@ async function refresh() {
 }
 $('#new-note').onclick = task(() => showNote());
 $('#note-search').oninput = renderNotes;
+guardEditor($('#note-form'));
 const ready = refresh();
 collectify.onNavigate(({ route }) => {
     void ready.then(() => {

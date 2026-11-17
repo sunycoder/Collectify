@@ -1,4 +1,149 @@
 /* 两个插件页共用卡片，颜色沿用宿主主题；菜单仍使用原生 popover 顶层展示。 */
+.plugin-card-header {
+    position: relative;
+}
+.plugin-info-button {
+    margin-left: auto;
+    align-self: flex-start;
+    font-size: 10px;
+    padding: 3px 7px;
+    color: var(--muted);
+    background: transparent;
+}
+.plugin-details-dialog {
+    width: min(720px, calc(100vw - 32px));
+    max-height: 85vh;
+    padding: 0;
+}
+#plugin-details-dialog[open] {
+    display: flex;
+    flex-direction: column;
+    height: min(820px, 85vh);
+    overflow: hidden;
+}
+#plugin-details-dialog .dialog-close,
+#plugin-tasks-dialog .dialog-close {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    width: 28px;
+    height: 28px;
+    padding: 2px;
+    z-index: 2;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-size: 18px;
+}
+#plugin-details-body {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 26px 28px;
+}
+#plugin-details-body h2 {
+    font-size: 21px;
+    margin: 0 0 8px;
+}
+#plugin-details-body p,
+#plugin-details-body li {
+    font-size: 12px;
+    line-height: 1.9;
+    overflow-wrap: anywhere;
+}
+#plugin-details-body h3 {
+    font-size: 13px;
+    margin: 22px 0 9px;
+}
+#plugin-details-body ul {
+    padding-left: 18px;
+    color: var(--muted);
+}
+.plugin-details-heading p,
+.plugin-detail-requirements {
+    color: var(--muted);
+}
+.plugin-detail-screenshot {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    margin: 12px 0;
+}
+.plugin-details-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 9px;
+    padding: 15px 25px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+}
+.plugin-tasks-dialog {
+    width: min(560px, calc(100vw - 32px));
+    max-height: 80vh;
+    overflow: hidden;
+    padding: 24px;
+}
+.plugin-tasks-dialog[open] {
+    display: flex;
+    flex-direction: column;
+}
+#plugin-tasks-list {
+    overflow: auto;
+    min-height: 0;
+    max-height: 50vh;
+}
+.plugin-tasks-dialog h2 {
+    font-size: 19px;
+    margin: 0 30px 12px 0;
+}
+.plugin-tasks-dialog p {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.8;
+}
+.host-task-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--line);
+}
+.host-task-row > div {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    flex-direction: column;
+    gap: 7px;
+}
+.host-task-row strong {
+    font-size: 12px;
+}
+.host-task-row small {
+    font-size: 11px;
+    color: var(--muted);
+}
+.host-task-row progress {
+    width: 100%;
+    height: 5px;
+    accent-color: var(--accent);
+}
+.host-task-row button {
+    font-size: 11px;
+    padding: 6px 8px;
+}
+#plugin-tasks-open {
+    font-size: 11px;
+    white-space: nowrap;
+}
+.backup-coverage {
+    display: block;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.7;
+    margin-top: 5px;
+}
 #plugin-manager,
 #plugin-catalog-list {
     display: grid;

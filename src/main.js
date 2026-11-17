@@ -97,7 +97,8 @@ function settings() {
         theme: Theme.validate(saved.theme || defaults.settings.theme),
         keepInTray: saved.keepInTray === true,
         navigationCollapsed: saved.navigationCollapsed === true,
-        browserOpenMode: saved.browserOpenMode === 'external' ? 'external' : 'internal'
+        browserOpenMode: saved.browserOpenMode === 'external' ? 'external' : 'internal',
+        pluginOrder: [...registry.pluginOrder]
     };
 }
 function setSettings(input, validateOnly = false) {
@@ -108,6 +109,10 @@ function setSettings(input, validateOnly = false) {
         keepInTray: input.keepInTray === undefined ? previous.keepInTray : input.keepInTray === true,
         navigationCollapsed:
             input.navigationCollapsed === undefined ? previous.navigationCollapsed : input.navigationCollapsed === true,
+        pluginOrder:
+            input.pluginOrder === undefined
+                ? previous.pluginOrder
+                : require('./plugin-system/navigation-order').validateOrder(input.pluginOrder),
         browserOpenMode:
             input.browserOpenMode === undefined
                 ? previous.browserOpenMode
@@ -126,6 +131,7 @@ function setSettings(input, validateOnly = false) {
         registry.setSetting('keepInTray', clean.keepInTray);
         registry.setSetting('navigationCollapsed', clean.navigationCollapsed);
         registry.setSetting('browserOpenMode', clean.browserOpenMode);
+        registry.setSetting('pluginOrder', clean.pluginOrder);
         for (const id of services?.providers.keys() || []) runtime?.emit(id, 'data-changed');
         runtime?.themeChanged();
         publish();
@@ -137,7 +143,14 @@ function catalog() {
         plugins: registry.list().map((p) => ({
             ...p,
             navigation: services.navigation(p.id),
-            summary: services.providers.get(p.id)?.summary?.() || {}
+            summary: services.providers.get(p.id)?.summary?.() || {},
+            backupCoverage: services.providers.get(p.id)?.backupCoverage?.() || {
+                content: services.providers.get(p.id)?.exportData
+                    ? '插件领域数据与 SDK 数据'
+                    : 'SDK 数据；其他本地文件未声明',
+                preferences: services.providers.get(p.id)?.exportData ? '由插件导出合同覆盖' : '仅 SDK 键值偏好',
+                externalFiles: false
+            }
         })),
         dataPlugins: registry
             .database((db) => db.prepare('SELECT id FROM installed_plugins ORDER BY id').all())
@@ -146,7 +159,8 @@ function catalog() {
         diagnostics: registry.diagnostics,
         active: runtime.active(),
         lastPlugin: registry.getSetting('lastPlugin'),
-        settings: settings()
+        settings: settings(),
+        tasks: services.tasks()
     };
 }
 let publishPending = false;
@@ -189,7 +203,8 @@ async function installPrepared(prepared, sourceLabel, signal) {
         ) !== previousDigest
     )
         throw Error('确认期间插件程序已改变，请重新安装');
-    runtime.close(manifest.id);
+    if (previous && !(await confirmPluginClose([manifest.id], 'update'))) return null;
+    await runtime.close(manifest.id);
     if (previous?.backend) await services.unload(manifest.id);
     let id;
     try {
@@ -331,7 +346,8 @@ async function pluginManagement(action, payload) {
                         cancelId: 0
                     });
                 if (answer.response !== 1) return false;
-                runtime.close(payload);
+                if (!(await confirmPluginClose([payload], 'uninstall'))) return false;
+                await runtime.close(payload);
                 await services.unload(payload);
                 try {
                     registry.uninstall(payload, { deleteData: answer.checkboxChecked });
@@ -443,13 +459,14 @@ async function pick(kind) {
     return kind === 'files' ? (result.canceled ? [] : result.filePaths) : result.canceled ? '' : result.filePaths[0];
 }
 async function pluginEnabled(id, enabled) {
+    if (!enabled && !(await confirmPluginClose([id], 'disable'))) return false;
     registry.setEnabled(id, enabled);
     try {
         if (enabled) {
             await services.enable(id);
             await runtime.startBackground(id);
         } else {
-            runtime.close(id);
+            await runtime.close(id);
             await services.disable(id);
         }
     } catch (error) {
@@ -460,7 +477,34 @@ async function pluginEnabled(id, enabled) {
     layout();
     publish();
 }
+async function confirmPluginClose(ids, reason) {
+    await runtime?.prepareClose(ids);
+    return (await services?.beforeClose(ids, reason)) !== false;
+}
 async function hostAction(action, payload) {
+    if (action === 'plugin-task-cancel') {
+        await services.cancelTask(payload.pluginId, payload.id);
+        publish();
+        return;
+    }
+    if (action === 'plugin-move') {
+        registry.move(payload?.id, payload?.targetId, payload?.placement);
+        registry.setSetting('personalSettingKeys', [
+            ...new Set([...registry.getSetting('personalSettingKeys', []), 'pluginOrder'])
+        ]);
+        updateTray();
+        publish();
+        return registry.list().map((p) => p.id);
+    }
+    if (action === 'plugin-order-reset') {
+        registry.resetOrder();
+        registry.setSetting('personalSettingKeys', [
+            ...new Set([...registry.getSetting('personalSettingKeys', []), 'pluginOrder'])
+        ]);
+        updateTray();
+        publish();
+        return;
+    }
     if (action === 'plugin-icon') return registry.icon(payload.id, payload.includeDisabled === true);
     if (action === 'login-item-set') return loginItem.set(payload);
     if (action === 'plugin-download-status') return pluginTransfer?.status || null;
@@ -501,6 +545,7 @@ async function hostAction(action, payload) {
                 await distribution.previewProfile(payload);
                 return distribution.status();
             case 'distribution-apply':
+                if (!(await confirmPluginClose([...services.providers.keys()], 'import'))) return distribution.status();
                 await distribution.applyProfile(payload);
                 runtime.destroy();
                 layout();
@@ -524,6 +569,8 @@ async function hostAction(action, payload) {
                 if (answer.response !== 1) return distribution.status();
                 if ((await distribution.installer()) !== file) throw Error('安装包状态已改变，请重新确认');
                 if (process.platform === 'win32') {
+                    if (!(await confirmPluginClose([...(services?.providers.keys() || [])], 'quit')))
+                        return distribution.status();
                     const child = require('node:child_process').spawn(file, [], { detached: true, stdio: 'ignore' });
                     await new Promise((resolve, reject) => {
                         child.once('spawn', resolve);
@@ -570,14 +617,14 @@ async function hostAction(action, payload) {
         case 'plugin-reload': {
             const active = runtime.active();
             if (active) {
-                runtime.close(active.id);
+                if (!(await confirmPluginClose([active.id], 'reload'))) return false;
+                await runtime.close(active.id);
                 await openPlugin(active.id, active.route);
             }
             return;
         }
         case 'plugin-enable':
-            await pluginEnabled(payload.id, payload.enabled);
-            return;
+            return pluginEnabled(payload.id, payload.enabled);
         case 'overlay':
             overlay = payload === true;
             layout();
@@ -665,6 +712,7 @@ async function hostAction(action, payload) {
             return;
         case 'import': {
             if (!importDraft || payload.token !== importDraft.token) throw Error('导入预览失效');
+            if (!(await confirmPluginClose([...services.providers.keys()], 'import'))) return false;
             runtime.destroy();
             layout();
             backup.import(importDraft.raw, payload);
@@ -721,6 +769,8 @@ async function createWindow() {
     win.on('minimize', () => services.layout(runtime.bounds, runtime.activeId, true));
     win.on('show', layout);
     win.on('restore', layout);
+    let windowCloseApproved = false,
+        checkingWindowClose = false;
     win.on('close', (event) => {
         if (
             stayResident({
@@ -736,6 +786,21 @@ async function createWindow() {
         ) {
             event.preventDefault();
             win.hide();
+            return;
+        }
+        if (!quitting && !windowCloseApproved) {
+            event.preventDefault();
+            if (checkingWindowClose) return;
+            checkingWindowClose = true;
+            void confirmPluginClose([...services.providers.keys()], 'quit')
+                .then((allowed) => {
+                    if (allowed && win && !win.isDestroyed()) {
+                        windowCloseApproved = true;
+                        win.close();
+                    }
+                })
+                .catch((error) => dialog.showErrorBox('无法关闭工作台', error.message))
+                .finally(() => (checkingWindowClose = false));
         }
     });
     win.on('closed', () => {
@@ -773,17 +838,24 @@ app.on('before-quit', (event) => {
     if (cleanupFinished) return;
     event.preventDefault();
     if (cleanupTask) return;
-    quitting = true;
-    distribution?.dispose();
-    runtime?.destroy();
-    cleanupTask = Promise.allSettled([services?.dispose(), mcp?.stop(false)])
-        .then((results) => {
-            for (const result of results)
-                if (result.status === 'rejected') console.error('退出清理失败：', result.reason);
+    cleanupTask = (async () => {
+        if (!(await confirmPluginClose([...(services?.providers.keys() || [])], 'quit'))) return;
+        quitting = true;
+        distribution?.dispose();
+        runtime?.destroy();
+        const results = await Promise.allSettled([services?.dispose(), mcp?.stop(false)]);
+        for (const result of results) if (result.status === 'rejected') console.error('退出清理失败：', result.reason);
+        cleanupFinished = true;
+        app.quit();
+    })()
+        .catch((error) => {
+            dialog.showErrorBox('无法退出工作台', error.message);
         })
         .finally(() => {
-            cleanupFinished = true;
-            app.quit();
+            if (!cleanupFinished) {
+                cleanupTask = null;
+                quitting = false;
+            }
         });
 });
 app.whenReady()

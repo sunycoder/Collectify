@@ -202,13 +202,15 @@
         if (peek() !== 'end') throw Error('公式包含多余内容，请检查运算符和括号');
         return value;
     }
-    function format(value, grouping = true) {
+    function format(value, grouping = true, digits = 12) {
+        if (![2, 4, 12].includes(digits)) digits = 12;
         const negative = value.n < 0n,
             absolute = negative ? -value.n : value.n;
-        const scale = 10n ** 12n;
+        const scale = 10n ** BigInt(digits);
         let scaled = (absolute * scale * 2n + value.d) / (2n * value.d);
         let whole = (scaled / scale).toString(),
-            fraction = (scaled % scale).toString().padStart(12, '0').replace(/0+$/, '');
+            fraction = (scaled % scale).toString().padStart(digits, '0');
+        if (digits === 12) fraction = fraction.replace(/0+$/, '');
         const rounded = (absolute * scale) % value.d !== 0n;
         if (grouping) whole = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
         return {

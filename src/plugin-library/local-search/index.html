@@ -49,6 +49,14 @@
                     <p>连接 Everything 搜索全盘文件，或选择文件夹进行搜索。</p>
                 </div>
             </section>
+            <div
+                id="preview-divider"
+                role="separator"
+                aria-label="调整搜索结果与预览宽度"
+                aria-orientation="vertical"
+                tabindex="0"
+                title="拖动调整宽度，双击恢复；方向键微调"
+            ></div>
             <section id="preview" class="preview-panel" aria-label="文件预览">
                 <div class="preview-empty">
                     <span data-icon="file-text"></span>
@@ -69,6 +77,7 @@
             <label class="toggle"><input id="preview-toggle" type="checkbox" checked /><span></span>文件预览</label>
             <p id="message" role="status"></p>
             <span id="footer-count"></span>
+            <button id="preview-expand">放大预览</button>
         </footer>
         <div id="result-menu" popover="auto" class="result-menu">
             <button data-action="open"><span data-icon="external"></span>打开</button

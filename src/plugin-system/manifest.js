@@ -157,6 +157,7 @@ function readManifest(root, { builtin = false } = {}) {
         permissions: [...input.permissions],
         commands,
         navigation,
+        ...(input.details ? { details: require('./details').validateDetails(input.details) } : {}),
         order: Number.isFinite(input.order) ? input.order : 100,
         glyph: typeof input.glyph === 'string' ? input.glyph.slice(0, 4) : input.name.slice(0, 1),
         ...(input.backend && (builtin || publisher) ? { backend: input.backend } : {})

@@ -34948,7 +34948,7 @@ var require_package = __commonJS({
   "package.json"(exports2, module2) {
     module2.exports = {
       name: "collectify",
-      version: "5.7.9",
+      version: "5.7.13",
       description: "Collectify \xB7 \u53EF\u6269\u5C55\u7684\u4E2A\u4EBA\u63D2\u4EF6\u5DE5\u4F5C\u53F0",
       main: "src/main.js",
       author: "Collectify",
@@ -34976,6 +34976,11 @@ var require_package = __commonJS({
         "predist:linux": "npm run build:assets",
         "smoke:local-search": "electron test/smoke/local-search.cjs",
         "smoke:ip-query": "electron test/smoke/ip-query.cjs",
+        "smoke:calculator": "electron test/smoke/calculator.cjs",
+        "smoke:calendar": "electron test/smoke/chinese-calendar.cjs",
+        "calendar:build": "node scripts/build-calendar.cjs",
+        "diff:build": "node scripts/build-diff.cjs",
+        "smoke:diff": "electron test/smoke/diff.cjs",
         "test:fixtures": "node test/tools/create-local-search-fixtures.cjs"
       },
       devDependencies: {
