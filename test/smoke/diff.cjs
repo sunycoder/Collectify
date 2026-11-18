@@ -359,13 +359,13 @@ app.whenReady().then(async () => {
         await js("document.querySelector('#ocr-language').value='eng+chi_sim';DiffApp.images.recognize()");
         assert.match(await js('DiffApp.images.ocrResults[1].text'), /DIFF/, '随包中英文联合字库应能离线初始化并识别');
         await js(`DiffApp.importPaths(${JSON.stringify(images)})`);
-        await js("DiffApp.images.setMode('split')");
+        await js("DiffApp.images.setMode('split').then(()=>DiffApp.images.setZoom(4))");
         await js("document.querySelector('#image-add-region').click()");
         await delay(150);
         const frame = await js(
             "(()=>{const canvas=document.querySelector('#image-canvas'),viewport=DiffApp.images.viewport;viewport.scrollLeft=0;viewport.scrollTop=0;const r=canvas.getBoundingClientRect(),v=viewport.getBoundingClientRect();const x=Math.max(r.left,v.left)+8,y=Math.max(r.top,v.top)+8;return{x,y,w:Math.min(r.right,v.right,innerWidth)-x-8,h:Math.min(r.bottom,v.bottom,innerHeight)-y-8}})()"
         );
-        assert.ok(frame.w > 8 && frame.h > 8, '关注区域必须在可见图像范围内拖动');
+        assert.ok(frame.w > 8 && frame.h > 8, '关注区域必须在可见图像范围内拖动：' + JSON.stringify(frame));
         wc.sendInputEvent({
             type: 'mouseDown',
             button: 'left',
