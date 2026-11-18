@@ -360,28 +360,32 @@ app.whenReady().then(async () => {
         assert.match(await js('DiffApp.images.ocrResults[1].text'), /DIFF/, '随包中英文联合字库应能离线初始化并识别');
         await js(`DiffApp.importPaths(${JSON.stringify(images)})`);
         await js("DiffApp.images.setMode('split')");
-        const frame = await js(
-            "(()=>{const r=document.querySelector('#image-canvas').getBoundingClientRect();return{x:r.x,y:r.y,w:r.width,h:r.height}})()"
-        );
         await js("document.querySelector('#image-add-region').click()");
+        await delay(150);
+        const frame = await js(
+            "(()=>{const canvas=document.querySelector('#image-canvas'),viewport=DiffApp.images.viewport;viewport.scrollLeft=0;viewport.scrollTop=0;const r=canvas.getBoundingClientRect(),v=viewport.getBoundingClientRect();const x=Math.max(r.left,v.left)+8,y=Math.max(r.top,v.top)+8;return{x,y,w:Math.min(r.right,v.right,innerWidth)-x-8,h:Math.min(r.bottom,v.bottom,innerHeight)-y-8}})()"
+        );
+        assert.ok(frame.w > 8 && frame.h > 8, '关注区域必须在可见图像范围内拖动');
         wc.sendInputEvent({
             type: 'mouseDown',
             button: 'left',
             clickCount: 1,
-            x: Math.round(frame.x + 2),
-            y: Math.round(frame.y + 2)
+            x: Math.round(frame.x),
+            y: Math.round(frame.y)
         });
+        await delay(60);
         wc.sendInputEvent({
             type: 'mouseMove',
-            x: Math.round(frame.x + Math.min(12, frame.w / 3)),
-            y: Math.round(frame.y + Math.min(12, frame.h / 2))
+            x: Math.round(frame.x + Math.min(60, frame.w)),
+            y: Math.round(frame.y + Math.min(60, frame.h))
         });
+        await delay(60);
         wc.sendInputEvent({
             type: 'mouseUp',
             button: 'left',
             clickCount: 1,
-            x: Math.round(frame.x + Math.min(12, frame.w / 3)),
-            y: Math.round(frame.y + Math.min(12, frame.h / 2))
+            x: Math.round(frame.x + Math.min(60, frame.w)),
+            y: Math.round(frame.y + Math.min(60, frame.h))
         });
         await until(() => js('DiffApp.images.manual.length>0'));
         await js("document.querySelector('#image-add-region').click()");
