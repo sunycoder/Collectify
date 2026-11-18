@@ -47,19 +47,8 @@ function validateTask(input) {
     };
 }
 
-function validateNote(input) {
-    return {
-        id: input.id || randomUUID(),
-        title: string(input.title, 120) || '未命名便签',
-        content: string(input.content, 30000),
-        color: ['yellow', 'blue', 'pink', 'green'].includes(input.color) ? input.color : 'yellow',
-        updatedAt: date(input.updatedAt) || new Date().toISOString()
-    };
-}
-
 function saveTask(store, input) {
-    const data = store.snapshot(),
-        previous = data.tasks.find((t) => t.id === input.id);
+    const previous = (store.data || store.snapshot()).tasks.find((t) => t.id === input.id);
     if (input.id && !previous) throw new Error('待办不存在');
     const next = validateTask({ ...previous, ...input });
     // 修改提醒或重新打开任务会重新激活提醒；纯编辑备注不会重复提醒。
@@ -73,9 +62,13 @@ function saveTask(store, input) {
     if (next.status === 'done') next.completedAt = previous?.completedAt || new Date().toISOString();
     else next.completedAt = '';
     if (next.archived && next.status !== 'done') throw new Error('请先完成待办，再归档');
-    if (previous) data.tasks = data.tasks.map((t) => (t.id === next.id ? next : t));
-    else data.tasks.push(next);
-    store.commit(data);
+    if (store.updateEntities) store.updateEntities('tasks', [next]);
+    else {
+        const data = store.snapshot();
+        if (previous) data.tasks = data.tasks.map((t) => (t.id === next.id ? next : t));
+        else data.tasks.push(next);
+        store.commit(data);
+    }
     return next;
 }
 
@@ -85,4 +78,4 @@ function dueReminders(tasks, now = Date.now()) {
     );
 }
 
-module.exports = { validateTask, validateNote, saveTask, dueReminders, STATUSES };
+module.exports = { validateTask, saveTask, dueReminders, STATUSES };

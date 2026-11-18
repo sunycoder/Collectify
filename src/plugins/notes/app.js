@@ -1,5 +1,10 @@
 let editingNote = null,
     noteColor = 'all';
+function updatePageCache() {
+    void collectify.page
+        ?.setReclaimable(!document.querySelector('dialog[open]'), { query: $('#note-search').value, color: noteColor })
+        .catch(() => {});
+}
 function formattedDate(value) {
     return new Date(value).toLocaleString('zh-CN', {
         month: 'short',
@@ -9,6 +14,7 @@ function formattedDate(value) {
     });
 }
 function renderNotes() {
+    updatePageCache();
     $('#notes-grid').replaceChildren();
     const previousScroll = document.scrollingElement.scrollTop;
     const noteQuery = $('#note-search').value.trim().toLowerCase(),
@@ -21,7 +27,14 @@ function renderNotes() {
             .sort(state.noteSort === 'manual' ? () => 0 : (a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
     $('#note-sort').value = state.noteSort || 'updated';
     $('#note-count').textContent = `${visibleNotes.length} 张便签`;
-    for (const note of visibleNotes) {
+    const queryKey = JSON.stringify([noteQuery, noteColor, state.noteSort]);
+    if (queryKey !== noteQueryKey) {
+        noteQueryKey = queryKey;
+        noteLimit = 100;
+    }
+    $('#more-notes').hidden = visibleNotes.length <= noteLimit;
+    $('#note-count').textContent += visibleNotes.length > noteLimit ? ` · 已显示 ${noteLimit}` : '';
+    for (const note of visibleNotes.slice(0, noteLimit)) {
         const node = el('article', `sticky-note ${note.color}`);
         node.dataset.id = note.id;
         const title = el('h2', '', note.title),
@@ -97,6 +110,7 @@ function renderNotes() {
 }
 
 async function showNote(note = null) {
+    await collectify.page?.setReclaimable(false);
     await call('overlay', true);
     editingNote = note?.id || null;
     const form = $('#note-form');
@@ -147,6 +161,12 @@ async function refresh() {
     renderNotes();
 }
 $('#new-note').onclick = task(() => showNote());
+let noteLimit = 100,
+    noteQueryKey = '';
+$('#more-notes').onclick = () => {
+    noteLimit += 100;
+    renderNotes();
+};
 $('#note-search').oninput = renderNotes;
 $('#note-sort').onchange = task(async () => {
     await call('note-sort', $('#note-sort').value);
@@ -154,6 +174,18 @@ $('#note-sort').onchange = task(async () => {
 });
 guardEditor($('#note-form'));
 const ready = refresh();
+document.querySelectorAll('dialog').forEach((dialog) => {
+    dialog.addEventListener('close', updatePageCache);
+    new MutationObserver(updatePageCache).observe(dialog, { attributes: true, attributeFilter: ['open'] });
+});
+collectify.onEvent(({ name, data }) => {
+    if (name === 'page-restored')
+        void ready.then(() => {
+            $('#note-search').value = typeof data?.query === 'string' ? data.query : '';
+            noteColor = ['yellow', 'blue', 'pink', 'green'].includes(data?.color) ? data.color : 'all';
+            renderNotes();
+        });
+});
 collectify.onNavigate(({ route }) => {
     void ready.then(() => {
         noteColor = ['yellow', 'blue', 'pink', 'green'].includes(route) ? route : 'all';

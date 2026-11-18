@@ -7,6 +7,30 @@ const { FILTERS, preferences, matches, csv, queryText } = require('../src/plugin
 const { SearchEngine, folderSearch } = require('../src/plugin-library/local-search/engine');
 const { PreviewService } = require('../src/plugin-library/local-search/preview');
 const fixtures = path.join(__dirname, 'fixtures', 'local-search');
+test('搜索分批保留目录内游标，续扫不漏不重复，翻页不推进扫描，无法读取范围明确返回', async (t) => {
+    const root = temporary(t);
+    fs.mkdirSync(path.join(root, 'nested'));
+    for (let i = 0; i < 7; i++) fs.writeFileSync(path.join(root, `file-${i}.txt`), 'data');
+    fs.writeFileSync(path.join(root, 'nested', 'target.txt'), 'data');
+    const session = { queue: [root, path.join(root, 'missing')], items: [], visited: 0, skipped: [], current: null };
+    const first = await folderSearch([root], { query: 'target', session, maxVisited: 2 });
+    assert.equal(first.limited, true);
+    assert.equal(first.canContinue, true);
+    assert.equal(first.total, 0);
+    assert.ok(first.pending.includes(root));
+    const page = await folderSearch([root], { query: 'target', session, maxVisited: 0 });
+    assert.equal(page.visited, first.visited);
+    let result;
+    do {
+        result = await folderSearch([root], { query: 'target', session, maxVisited: 2 });
+    } while (result.canContinue);
+    assert.equal(result.limited, false);
+    assert.equal(result.total, 1);
+    assert.equal(result.items[0].path, path.join(root, 'nested', 'target.txt'));
+    assert.equal(result.visited, 9);
+    assert.equal(result.skippedCount, 1);
+    assert.equal(new Set(session.items.map((item) => item.path)).size, session.items.length);
+});
 function temporary(t) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'collectify-search-test-'));
     t.after(() => fs.rmSync(dir, { recursive: true, force: true }));

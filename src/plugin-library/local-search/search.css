@@ -901,3 +901,19 @@ dialog::backdrop {
 .result-panel {
     min-width: 0;
 }
+
+#scan-state {
+    padding: 12px;
+    margin: 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+#scan-state pre {
+    max-height: 140px;
+    overflow: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+#scan-state button {
+    margin: 6px 4px 0 0;
+}

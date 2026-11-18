@@ -54,7 +54,12 @@
             title: sheet.title,
             createdAt: sheet.createdAt,
             updatedAt: sheet.updatedAt,
-            locked: sheet.locked
+            locked: sheet.locked,
+            summary:
+                sheet.rows
+                    .map((row) => row.expression || row.note)
+                    .find((text) => text.trim())
+                    ?.slice(0, 80) || ''
         };
     }
     // 每次输入立即排队持久化完整快照；同一页写入串行，旧保存不能覆盖后来的输入。
@@ -89,7 +94,10 @@
             }
         };
     }
-    const api = { MAX_SHEETS, MAX_ROWS, uid, createSheet, validate, indexItem, createSaver };
+    function searchText(sheet) {
+        return [sheet.title, ...sheet.rows.flatMap((row) => [row.expression, row.note])].join('\n').toLocaleLowerCase();
+    }
+    const api = { MAX_SHEETS, MAX_ROWS, uid, createSheet, validate, indexItem, searchText, createSaver };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.CalcModel = api;
 })(globalThis);

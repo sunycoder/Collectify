@@ -7,7 +7,9 @@ const fs = require('node:fs'),
 const { DatabaseSync } = require('node:sqlite');
 const { Store } = require('../src/store');
 const { seed } = require('../src/plugins/.shared/seed');
-const { createStore, validateCollection, validateTask, validateNote } = require('../src/plugins/.shared/domain-store');
+const { createStore, validateCollection } = require('../src/plugins/.shared/domain-store');
+const { validateTask } = require('../src/plugins/tasks/model');
+const { validateNote } = require('../src/plugins/notes/model');
 const { PluginRegistry } = require('../src/plugin-system/registry');
 const { WorkspaceBackup } = require('../src/plugin-system/backup');
 function fixture(t) {

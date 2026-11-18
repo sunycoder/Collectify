@@ -12,6 +12,21 @@ let tabsState = { tabs: [], active: null, dashboard: true },
     viewedResource = null,
     view = 'grid';
 let lastNavigation;
+let batchMode = false;
+const selectedBookmarks = new Set();
+let bookmarkLimit = 100,
+    bookmarkQueryKey = '';
+const bookmarkCardCache = new Map();
+function renderBatch() {
+    for (const id of selectedBookmarks) if (!state.entries.some((e) => e.id === id)) selectedBookmarks.delete(id);
+    const visible = filteredEntries().filter((e) => selectedBookmarks.has(e.id)).length;
+    $('#batch-actions').hidden = !batchMode;
+    $('#batch-toggle').textContent = batchMode ? '完成整理' : '多选整理';
+    $('#batch-toggle').setAttribute('aria-pressed', String(batchMode));
+    $('#batch-summary').textContent =
+        `已选 ${selectedBookmarks.size} 条 · 当前结果 ${visible} 条 · 隐藏 ${selectedBookmarks.size - visible} 条`;
+    $('#batch-move').disabled = !selectedBookmarks.size;
+}
 function symbol(category, className = 'category-symbol') {
     const node = el('span', `${className} ${category.color}`);
     node.append(icon(category.icon));
@@ -61,6 +76,7 @@ function filteredEntries() {
 }
 
 function render() {
+    renderBatch();
     const route = filter === 'category' ? `category:${categoryId}` : filter;
     if (lastNavigation !== route) {
         lastNavigation = route;
@@ -110,8 +126,16 @@ function render() {
         overview.append(
             button('创建一个新分类', 'plus', () => showCategory(), 'category-summary category-summary-new')
         );
-    const entries = filteredEntries();
-    $('#result-count').textContent = `${entries.length} 条收藏`;
+    const allEntries = filteredEntries();
+    const key = JSON.stringify([filter, categoryId, $('#search').value, $('#sort').value]);
+    if (key !== bookmarkQueryKey) {
+        bookmarkQueryKey = key;
+        bookmarkLimit = 100;
+    }
+    const entries = allEntries.slice(0, bookmarkLimit);
+    $('#result-count').textContent =
+        `${allEntries.length} 条收藏${allEntries.length > entries.length ? ' · 已显示 ' + entries.length : ''}`;
+    $('#more-bookmarks').hidden = allEntries.length <= bookmarkLimit;
     $('#clear-search').hidden = !$('#search').value;
     $('#search-shortcut').hidden = !!$('#search').value;
     $('#sort').disabled = filter === 'recent';
@@ -143,6 +167,8 @@ function render() {
             const items = entries.filter((e) => e.categoryId === category.id);
             if (items.length) $('#entries').append(section(items, category, filter === 'all' && !$('#search').value));
         }
+    const visibleIds = new Set(entries.map((e) => e.id));
+    for (const id of bookmarkCardCache.keys()) if (!visibleIds.has(id)) bookmarkCardCache.delete(id);
 }
 
 function section(entries, category, add) {
@@ -167,22 +193,46 @@ function section(entries, category, add) {
 }
 
 function card(entry) {
+    const renderKey = JSON.stringify([
+        entry,
+        getCategory(entry.categoryId),
+        batchMode,
+        selectedBookmarks.has(entry.id),
+        $('#sort').value,
+        filter
+    ]);
+    const cached = bookmarkCardCache.get(entry.id);
+    if (cached?.renderKey === renderKey) return cached.node;
     const category = getCategory(entry.categoryId),
         node = el('article', `bookmark-card ${category.color}`);
     node.dataset.id = entry.id;
     node.tabIndex = 0;
     node.setAttribute('role', 'link');
-    node.setAttribute('aria-label', `打开 ${entry.name}`);
+    node.setAttribute('aria-label', `${batchMode ? '选择' : '打开'} ${entry.name}`);
     node.onclick = task((event) => {
-        if (!event.target.closest('button') && !window.getSelection().toString()) return open(entry);
+        if (!event.target.closest('button,input') && !window.getSelection().toString()) {
+            if (batchMode) return toggleBookmark(entry.id);
+            return open(entry);
+        }
     });
     node.onkeydown = task((event) => {
         if (event.target === node && (event.key === 'Enter' || event.key === ' ')) {
             event.preventDefault();
-            return open(entry);
+            return batchMode ? toggleBookmark(entry.id) : open(entry);
         }
     });
     const top = el('div', 'card-top');
+    if (batchMode) {
+        node.draggable = false;
+        node.setAttribute('role', 'group');
+        node.setAttribute('aria-label', entry.name);
+        const check = el('input');
+        check.type = 'checkbox';
+        check.checked = selectedBookmarks.has(entry.id);
+        check.setAttribute('aria-label', '选择 ' + entry.name);
+        check.onchange = () => toggleBookmark(entry.id);
+        top.append(check);
+    }
     top.append(symbol(category, 'site-icon'));
     const tags = el('div', 'card-tags');
     if (entry.favorite) {
@@ -272,7 +322,7 @@ function card(entry) {
         button('更多操作', 'more', (event) => entryMenu(event.currentTarget, entry), 'icon-button')
     );
     node.append(top, name, note, address, bottom);
-    node.draggable = $('#sort').value === 'manual' && filter !== 'recent';
+    node.draggable = !batchMode && $('#sort').value === 'manual' && filter !== 'recent';
     node.ondragstart = (event) => {
         dragData = { kind: 'entry', id: entry.id };
         node.classList.add('dragging');
@@ -296,6 +346,7 @@ function card(entry) {
         node.classList.remove('drop-target');
         if (dragData?.kind === 'entry' && node.draggable) await reorder('entries', dragData.id, entry.id);
     });
+    bookmarkCardCache.set(entry.id, { renderKey, node });
     return node;
 }
 
@@ -351,7 +402,25 @@ async function open(entry, mode) {
         collectionScroll = window.scrollY;
         lastOpenedEntryId = entry.id;
     }
-    await call('open', { id: entry.id, mode });
+    const outcome = await call('open', { id: entry.id, mode });
+    if (outcome?.missing) {
+        await showAction({
+            title: '找不到这个本地资源',
+            description: `${entry.name}\n原路径：${outcome.path}\n可重新选择${entry.type === 'folder' ? '文件夹' : '文件'}，保留分类、备注和登录资料。`,
+            hideTarget: true,
+            confirm: '重新定位并打开',
+            action: async () => {
+                const result = await call('relocate-resource', entry.id);
+                if (result?.canceled) return;
+                await refresh();
+                const opened = await call('open', { id: entry.id, mode });
+                if (opened?.missing) throw Error('所选资源已不存在，请重新定位');
+                await refresh();
+                toast('路径已修复');
+            }
+        });
+        return;
+    }
     await refresh();
     if (!tabsState.dashboard) window.scrollTo(0, 0);
 }
@@ -490,6 +559,8 @@ function categoryOptions(select, selected, exclude) {
             select.append(option);
         }
     select.value = getCategory(selected) && selected !== exclude ? selected : 'inbox';
+    // 打开确认框前同步自定义下拉选项，避免首帧仍沿用上次的分类列表。
+    window.OfficeUI?.refresh();
 }
 
 async function showEditor(entry = null, target = '') {
@@ -662,6 +733,47 @@ $('#add-button').onclick = $('#empty-add').onclick = task(() => showEditor());
 $('#new-category').onclick = task(() => showCategory());
 $('#category-menu-button').onclick = (event) => categoryMenu(event.currentTarget, getCategory(categoryId));
 $('#search').oninput = render;
+$('#more-bookmarks').onclick = () => {
+    bookmarkLimit += 100;
+    render();
+};
+function toggleBookmark(id) {
+    if (selectedBookmarks.has(id)) selectedBookmarks.delete(id);
+    else if (selectedBookmarks.size < 200) selectedBookmarks.add(id);
+    else toast('一次最多选择 200 条收藏');
+    render();
+}
+$('#batch-toggle').onclick = () => {
+    batchMode = !batchMode;
+    if (!batchMode) selectedBookmarks.clear();
+    render();
+};
+$('#batch-clear').onclick = () => {
+    selectedBookmarks.clear();
+    render();
+};
+$('#batch-visible').onclick = () => {
+    for (const entry of filteredEntries()) {
+        if (selectedBookmarks.size >= 200) break;
+        selectedBookmarks.add(entry.id);
+    }
+    render();
+};
+$('#batch-move').onclick = task(() => {
+    const ids = [...selectedBookmarks];
+    const names = state.entries.filter((e) => selectedBookmarks.has(e.id)).map((e) => e.name);
+    return showAction({
+        title: `移动 ${ids.length} 条收藏`,
+        description: `包含当前筛选外的已选收藏。\n${names.slice(0, 5).join('、')}${names.length > 5 ? ' 等' : ''}\n保留收藏内容和登录资料。`,
+        confirm: `移动 ${ids.length} 条`,
+        action: async (categoryId) => {
+            await call('move-many', { ids, categoryId });
+            selectedBookmarks.clear();
+            await refresh();
+            toast(`已移动 ${ids.length} 条收藏`);
+        }
+    });
+});
 $('#sort').onchange = render;
 $('#clear-search').onclick = () => {
     $('#search').value = '';

@@ -4,7 +4,7 @@
   "description": "常用资源、分类、登录资料与独立浏览会话",
   "glyph": "藏",
   "order": 10,
-  "version": "1.0.1",
+  "version": "1.0.2",
   "apiVersion": 1,
   "entry": "index.html",
   "backend": "backend.js",

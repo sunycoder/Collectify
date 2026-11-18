@@ -234,6 +234,14 @@ app.whenReady().then(async () => {
         await until(() => js("document.querySelectorAll('.sheet-item').length===2"));
         await edit(0, '10000*pow(1.05,10)');
         const secondId = await js('sheet.id');
+        await js("document.querySelector('.sheet-item.selected .sheet-pin').click()");
+        await saved();
+        assert.equal(registry.storage.get(id, 'index').sheets.find((item) => item.id === secondId).pinned, true);
+        await js("document.querySelector('#sheet-search').value='10000';renderSheets()");
+        assert.equal(await js("document.querySelectorAll('.sheet-item').length"), 1);
+        await js("document.querySelector('#sheet-search').value='没有这个公式';renderSheets()");
+        assert.match(await js("document.querySelector('#sheet-search-status').textContent"), /没有匹配/);
+        await js("document.querySelector('#sheet-search-clear').click()");
         await keyboardJs("document.querySelector('#keyboard-close').click()");
         await until(() => !keyboard());
         await saved();
@@ -249,6 +257,7 @@ app.whenReady().then(async () => {
         await saved();
         await until(() => keyboard() && keyboardJs('keyboardOnly && !!keyboardOwner'));
         assert.equal(await js('sheet.id'), secondId);
+        assert.equal(await js('index.sheets.find(item=>item.id===sheet.id).pinned'), true);
         assert.equal(await js('sheet.rows[0].expression'), '10000*pow(1.05,10)');
         await js(`document.querySelector('[data-sheet-id="${firstId}"]').click()`);
         await saved();

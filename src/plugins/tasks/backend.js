@@ -1,9 +1,9 @@
 const path = require('node:path');
 const { shell, Notification } = require('electron');
-const { createStore, validateCollection, validateTask } = require('../.shared/domain-store');
+const { createStore, validateCollection } = require('../.shared/domain-store');
 const { seed } = require('../.shared/seed');
 const definition = require('./schema');
-const { saveTask } = require('./model');
+const { saveTask, validateTask } = require('./model');
 const { deliverReminders } = require('./reminders');
 const { DesktopWidget } = require('./desktop-widget');
 const { matchesTaskDate } = require('./task-query');
@@ -103,6 +103,17 @@ exports.create = async (context) => {
                 result = store.saveTask(payload);
                 write = true;
                 break;
+            case 'task-remind': {
+                const current = store.snapshot().tasks.find((item) => item.id === payload?.id);
+                if (!current || current.archived || current.status === 'done')
+                    throw Error('待办已完成、归档或删除，请刷新后重试');
+                const time = Date.parse(payload.remindAt);
+                if (!Number.isFinite(time) || time <= Date.now()) throw Error('请选择未来的提醒时间');
+                // 只修改当前记录的提醒，保留编辑期间更新的截止日期和其他字段。
+                result = store.saveTask({ ...current, remindAt: new Date(time).toISOString() });
+                write = true;
+                break;
+            }
             case 'task-delete':
                 store.removeItem('tasks', payload);
                 write = true;
@@ -166,6 +177,7 @@ exports.create = async (context) => {
         return result;
     }
     return {
+        contracts: require('./contracts'),
         store,
         widget,
         call,

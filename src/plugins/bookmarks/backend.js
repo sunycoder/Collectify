@@ -101,6 +101,37 @@ exports.create = async (context) => {
                 break;
             case 'pick-resource':
                 return context.pick(payload === 'folder' ? 'folder' : 'file');
+            case 'relocate-resource': {
+                const original = entry(payload);
+                if (!['file', 'folder'].includes(original.type)) throw Error('不是本地资源');
+                const selectedPath = await context.pick(original.type);
+                if (!selectedPath) return { canceled: true };
+                // 选择器打开期间收藏可能已被编辑或删除，提交时重新读取，避免覆盖账密及备注。
+                const current = entry(payload);
+                if (current.type !== original.type || current.localPath !== original.localPath)
+                    throw Error('收藏已被修改，请重新打开后定位');
+                const stat = await fs.promises.stat(selectedPath);
+                if (current.type === 'folder' ? !stat.isDirectory() : !stat.isFile()) throw Error('资源类型不匹配');
+                store.save({ ...current, localPath: selectedPath });
+                write = true;
+                break;
+            }
+            case 'move-many': {
+                const ids = payload?.ids;
+                if (!Array.isArray(ids) || !ids.length || ids.length > 200 || new Set(ids).size !== ids.length)
+                    throw Error('请选择 1 至 200 条收藏');
+                const data = store.snapshot();
+                if (!data.categories.some((c) => c.id === payload.categoryId)) throw Error('目标分类不存在');
+                if (ids.some((id) => !data.entries.some((e) => e.id === id))) throw Error('部分收藏已删除，请重新选择');
+                // 整批校验后单次提交，保持原始对象的账密、备注及其他业务信息。
+                data.entries = data.entries.map((e) =>
+                    ids.includes(e.id) ? { ...e, categoryId: payload.categoryId } : e
+                );
+                store.commit(data);
+                result = { moved: ids.length };
+                write = true;
+                break;
+            }
             case 'reveal-resource': {
                 const e = entry(payload);
                 if (!['file', 'folder'].includes(e.type)) throw Error('不是本地资源');
@@ -113,7 +144,12 @@ exports.create = async (context) => {
                         ? payload.mode
                         : context.getSettings().browserOpenMode || 'internal';
                 if (['file', 'folder'].includes(e.type)) {
-                    if (!fs.existsSync(e.localPath)) throw Error('本地资源不存在');
+                    try {
+                        await fs.promises.stat(e.localPath);
+                    } catch (error) {
+                        if (['ENOENT', 'ENOTDIR'].includes(error.code)) return { missing: true, path: e.localPath };
+                        throw error;
+                    }
                     const error = await shell.openPath(e.localPath);
                     if (error) throw Error(error);
                 } else if (e.type !== 'web') throw Error('请从收藏详情查看该资源');

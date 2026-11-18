@@ -32,8 +32,10 @@ exports.create = async (context, adapters = {}) => {
         generation = 0,
         active = true,
         source = '未连接';
+    let folderSession = null;
     const engine = adapters.engine || new SearchEngine(directory),
         preview = new PreviewService(engine, {
+            startWorker: context.startWorker,
             thumbnail: async (file) => {
                 const image = await nativeImage.createThumbnailFromPath(file, { width: 1000, height: 800 });
                 return image.isEmpty() ? null : image.toDataURL();
@@ -107,6 +109,7 @@ exports.create = async (context, adapters = {}) => {
                     if (!active) throw Error('插件已停用');
                     if (!value.canceled) {
                         roots = value.filePaths.map((file) => fs.realpathSync(file));
+                        folderSession = null;
                         controller?.abort();
                         save({ ...settings, engine: 'folder' });
                         source = '文件夹搜索';
@@ -125,10 +128,35 @@ exports.create = async (context, adapters = {}) => {
                     const request = ++generation;
                     const options = { query, filter, sort, offset, signal: controller.signal };
                     if (settings.engine === 'folder' && !roots.length) throw Error('请先选择搜索文件夹');
-                    const found =
-                        settings.engine === 'folder'
-                            ? await folderSearch(roots, options)
-                            : await engine.search(options);
+                    let found;
+                    if (settings.engine === 'folder') {
+                        const key = JSON.stringify({ roots, query, filter, sort });
+                        if (!folderSession || folderSession.key !== key || (!offset && !input.continue)) {
+                            folderSession = {
+                                key,
+                                queue: [...roots],
+                                items: [],
+                                visited: 0,
+                                skipped: [],
+                                current: null
+                            };
+                        }
+                        // 翻页只读取本轮缓存；继续扫描才推进游标，不重复扫描已检查的文件。
+                        const scanSession = folderSession;
+                        const previousScan = scanSession.running;
+                        // 同一个游标串行推进；先让被取消的旧请求退出，避免并发修改目录内位置。
+                        scanSession.running = (async () => {
+                            await previousScan?.catch(() => {});
+                            if (options.signal.aborted) throw Error('搜索已取消');
+                            return folderSearch(roots, {
+                                ...options,
+                                session: scanSession,
+                                ...(offset && scanSession.result ? { maxVisited: 0 } : {})
+                            });
+                        })();
+                        found = await scanSession.running;
+                        scanSession.result = found;
+                    } else found = await engine.search(options);
                     if (!active || request !== generation) throw Error('搜索已取消');
                     if (!offset) results.clear();
                     const items = found.items.map((item) => {
@@ -167,6 +195,7 @@ exports.create = async (context, adapters = {}) => {
         },
         async deactivate() {
             active = false;
+            folderSession = null;
             controller?.abort();
             generation++;
             results.clear();
@@ -174,6 +203,7 @@ exports.create = async (context, adapters = {}) => {
             await engine.stop();
         },
         async dispose() {
+            folderSession = null;
             controller?.abort();
             preview.dispose();
             await engine.stop();

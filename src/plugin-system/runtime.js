@@ -1,16 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const {
-    app,
-    BrowserWindow,
-    WebContentsView,
-    session,
-    ipcMain,
-    clipboard,
-    nativeImage,
-    ClipboardItem,
-    screen
-} = require('electron');
+const { app, WebContentsView, session, ipcMain, clipboard, nativeImage, ClipboardItem, screen } = require('electron');
 const { pasteToPreviousApplication } = require('./desktop-paste');
 const { randomUUID } = require('node:crypto');
 const { captureClipboard, writeSnapshot } = require('./clipboard-formats');
@@ -37,8 +27,10 @@ const CSP =
     "default-src 'none'; script-src 'self' collectify-plugin://collectify.sdk; style-src 'self' collectify-plugin://collectify.sdk 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
 const { SDK_FILES, SHARED_FILES } = require('./contract');
 
-class PluginRuntime {
+const { PluginWindows } = require('./plugin-windows');
+class PluginRuntime extends PluginWindows {
     constructor({ registry, getWindow, getTheme, changed, openPlugin, smoke = false }) {
+        super();
         Object.assign(this, { registry, getWindow, getTheme, changed, openPlugin, smoke });
         this.clipboard = clipboard;
         this.views = new Map();
@@ -52,12 +44,17 @@ class PluginRuntime {
         this.activeId = null;
         this.prepared = new Set();
         this.generation = 0;
+        this.suspendedPages = new Map();
         this.bounds = { x: 248, y: 72, width: 800, height: 600 };
         ipcMain.handle('plugin-sdk', async (event, action, payload) => {
             try {
                 return { ok: true, data: await this.invoke(event, action, payload) };
             } catch (error) {
-                return { ok: false, error: error.message };
+                return {
+                    ok: false,
+                    error: error.message,
+                    code: typeof error.code === 'string' ? error.code : 'PLUGIN_OPERATION_FAILED'
+                };
             }
         });
     }
@@ -110,6 +107,18 @@ class PluginRuntime {
                   : plugin;
         if (event.senderFrame.url !== this.url(page)) throw Error('插件页面来源不正确');
         if (Buffer.byteLength(JSON.stringify(payload ?? null)) > 10 * 1024 * 1024) throw Error('插件请求过大');
+        if (action === 'page.reclaimable') {
+            if (isBackground || pair[1].window) throw Error('只有插件主页面可声明回收状态');
+            if (
+                !payload ||
+                typeof payload.safe !== 'boolean' ||
+                Buffer.byteLength(JSON.stringify(payload.state ?? null)) > 16384
+            )
+                throw Error('页面恢复状态无效');
+            pair[1].reclaimable = payload.safe;
+            pair[1].resumeState = payload.state;
+            return;
+        }
         if (action === 'lifecycle.register') {
             if (isBackground) throw Error('后台不能注册页面离开钩子');
             pair[1].prepareClose = true;
@@ -416,6 +425,7 @@ class PluginRuntime {
         if (this.services?.errors.has(id)) throw Error(`插件后台加载失败：${this.services.errors.get(id)}`);
         if (commandId && !plugin.commands.some((c) => c.id === commandId)) throw Error('插件命令不存在');
         this.activeId = id;
+        const resumed = this.suspendedPages.get(id);
         this.layoutOwnedWindows();
         let record = this.views.get(id);
         if (!record) {
@@ -430,7 +440,7 @@ class PluginRuntime {
                     offscreen: this.smoke && !process.argv.includes('--smoke-visible')
                 }
             });
-            record = { view, loading: true, error: '', errors: [], diagnostics: [] };
+            record = { view, loading: true, error: '', errors: [], diagnostics: [], lastUsed: Date.now() };
             this.views.set(id, record);
             view.webContents.on('console-message', (event) => {
                 if (event.level === 3) {
@@ -481,14 +491,42 @@ class PluginRuntime {
         this.changed();
         await record.ready;
         await backgroundReady;
+        record.lastUsed = Date.now();
         if (generation !== this.generation || this.views.get(id) !== record || record.view.webContents.isDestroyed())
             return;
         if (!record.error) record.view.webContents.send('plugin-command', { id: commandId || plugin.commands[0].id });
         if (!record.error) {
+            if (resumed) {
+                record.view.webContents.send('plugin-event', { name: 'page-restored', data: resumed.state });
+                this.suspendedPages.delete(id);
+            }
             record.route = typeof route === 'string' ? route : record.route || plugin.navigation[0]?.id || 'home';
             record.view.webContents.send('plugin-navigate', { route: record.route, payload });
         }
         this.changed();
+        await this.prunePages();
+    }
+    async prunePages({ maxPages = 4, idleMs = 15 * 60 * 1000 } = {}) {
+        const candidates = [...this.views]
+            .filter(
+                ([id, record]) =>
+                    id !== this.activeId &&
+                    record.reclaimable === true &&
+                    !record.loading &&
+                    !this.backgrounds.has(id) &&
+                    !this.resourceReads.get(id)?.size &&
+                    ![...this.popouts.values()].some((p) => p.pluginId === id) &&
+                    !this.services?.tasks().some((t) => t.pluginId === id)
+            )
+            .sort(([, a], [, b]) => a.lastUsed - b.lastUsed);
+        for (const [id, record] of candidates) {
+            if (this.views.size <= maxPages && Date.now() - record.lastUsed < idleMs) continue;
+            this.suspendedPages.set(id, { state: record.resumeState, route: record.route });
+            this.views.delete(id);
+            const win = this.getWindow();
+            if (win && !win.isDestroyed()) win.contentView.removeChildView(record.view);
+            if (!record.view.webContents.isDestroyed()) record.view.webContents.close();
+        }
     }
     emit(id, name, data) {
         const record = this.views.get(id);
@@ -497,183 +535,6 @@ class PluginRuntime {
         for (const record of this.popouts.values())
             if (record.pluginId === id && !record.window.isDestroyed())
                 record.view.webContents.send('plugin-event', { name, data });
-    }
-    async openWindow(plugin, payload = {}) {
-        const size = (value, fallback, min, max) =>
-            Number.isFinite(value) ? Math.max(min, Math.min(max, Math.round(value))) : fallback;
-        const existing = [...this.popouts.values()].find(
-            (record) => record.pluginId === plugin.id && record.mode !== 'shortcut'
-        );
-        if (existing) {
-            if (!existing.followActivePlugin || (this.ownerVisible && this.activeId === plugin.id)) {
-                existing.window.show();
-                existing.window.focus();
-            }
-            existing.view.webContents.send('plugin-navigate', { route: plugin.navigation[0]?.id, payload });
-            return;
-        }
-        const window = new BrowserWindow({
-            width: size(payload.width, 800, 360, 1400),
-            height: size(payload.height, 650, 240, 1000),
-            minWidth: size(payload.minWidth, 520, 360, 800),
-            minHeight: size(payload.minHeight, 360, 240, 600),
-            title: plugin.name + ' · ' + (typeof payload.title === 'string' ? payload.title.slice(0, 60) : '悬浮中转'),
-            alwaysOnTop: true,
-            autoHideMenuBar: true,
-            show: !this.smoke && payload.followActivePlugin !== true,
-            webPreferences: {
-                partition: this.prepare(plugin),
-                preload: path.join(__dirname, 'preload.js'),
-                sandbox: true,
-                nodeIntegration: false,
-                contextIsolation: true,
-                webSecurity: true,
-                offscreen: this.smoke
-            }
-        });
-        const key = randomUUID(),
-            record = {
-                pluginId: plugin.id,
-                window,
-                view: { webContents: window.webContents },
-                errors: [],
-                followActivePlugin: payload.followActivePlugin === true,
-                loading: true
-            };
-        this.popouts.set(key, record);
-        const savedBounds = this.registry.getSetting('windowBounds:' + plugin.id);
-        if (
-            savedBounds &&
-            [savedBounds.x, savedBounds.y, savedBounds.width, savedBounds.height].every(Number.isFinite)
-        ) {
-            const area = screen.getDisplayMatching(savedBounds).workArea;
-            const width = Math.min(area.width, Math.max(window.getMinimumSize()[0], savedBounds.width));
-            const height = Math.min(area.height, Math.max(window.getMinimumSize()[1], savedBounds.height));
-            window.setBounds({
-                x: Math.max(area.x, Math.min(area.x + area.width - width, savedBounds.x)),
-                y: Math.max(area.y, Math.min(area.y + area.height - height, savedBounds.y)),
-                width,
-                height
-            });
-        }
-        window.on('close', () => {
-            if (!window.isDestroyed()) this.registry.setSetting('windowBounds:' + plugin.id, window.getBounds());
-        });
-        window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-        for (const event of ['will-navigate', 'will-redirect', 'will-frame-navigate'])
-            window.webContents.on(event, (e) => e.preventDefault());
-        window.webContents.on('console-message', (event) => {
-            if (event.level === 3) record.errors.push(String(event.message).slice(0, 300));
-        });
-        window.on('closed', () => this.popouts.delete(key));
-        try {
-            await window.loadURL(this.url(plugin));
-            if (window.isDestroyed()) return;
-            record.loading = false;
-            this.layoutOwnedWindows();
-            window.webContents.send('plugin-navigate', { route: plugin.navigation[0]?.id, payload });
-        } catch (error) {
-            if (!window.isDestroyed()) window.destroy();
-            throw error;
-        }
-    }
-    async shortcut(plugin, enabled) {
-        const key = 'shortcut:' + plugin.id,
-            existing = this.popouts.get(key);
-        if (!enabled) {
-            existing?.window.destroy();
-            return;
-        }
-        if (existing) return;
-        const work = screen.getPrimaryDisplay().workArea;
-        const saved = this.registry.getSetting(key + ':position', {});
-        const display =
-            Number.isFinite(saved.x) && Number.isFinite(saved.y)
-                ? screen.getDisplayNearestPoint({ x: saved.x, y: saved.y }).workArea
-                : work;
-        const x = Math.round(
-            Math.max(
-                display.x,
-                Math.min(display.x + display.width - 48, Number.isFinite(saved.x) ? saved.x : work.x + work.width - 64)
-            )
-        );
-        const y = Math.round(
-            Math.max(
-                display.y,
-                Math.min(
-                    display.y + display.height - 48,
-                    Number.isFinite(saved.y) ? saved.y : work.y + Math.round(work.height * 0.45)
-                )
-            )
-        );
-        const window = new BrowserWindow({
-            width: 48,
-            height: 48,
-            x,
-            y,
-            frame: false,
-            transparent: true,
-            backgroundColor: '#00000000',
-            resizable: false,
-            skipTaskbar: true,
-            alwaysOnTop: true,
-            hasShadow: false,
-            show: false,
-            title: plugin.name + ' · 快捷按钮',
-            webPreferences: {
-                partition: this.prepare(plugin),
-                preload: path.join(__dirname, 'preload.js'),
-                sandbox: true,
-                nodeIntegration: false,
-                contextIsolation: true,
-                webSecurity: true,
-                offscreen: this.smoke
-            }
-        });
-        const record = {
-            pluginId: plugin.id,
-            mode: 'shortcut',
-            window,
-            view: { webContents: window.webContents },
-            errors: []
-        };
-        this.popouts.set(key, record);
-        window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-        for (const name of ['will-navigate', 'will-redirect', 'will-frame-navigate'])
-            window.webContents.on(name, (event) => event.preventDefault());
-        window.webContents.on('console-message', (event) => {
-            if (event.level === 3) record.errors.push(String(event.message).slice(0, 300));
-        });
-        let positionTimer, pendingPosition;
-        const savePosition = () => {
-            clearTimeout(positionTimer);
-            if (pendingPosition) {
-                this.registry.setSetting(key + ':position', pendingPosition);
-                pendingPosition = null;
-            }
-        };
-        window.on('move', () => {
-            const [x, y] = window.getPosition();
-            pendingPosition = { x, y };
-            clearTimeout(positionTimer);
-            positionTimer = setTimeout(savePosition, 100);
-        });
-        window.on('closed', () => {
-            savePosition();
-            this.popouts.delete(key);
-        });
-        try {
-            await window.loadURL(this.url({ ...plugin, entry: plugin.shortcut }));
-            if (window.isDestroyed() || this.popouts.get(key) !== record) return;
-            if (!this.registry.plugins.get(plugin.id)?.enabled) {
-                window.destroy();
-                return;
-            }
-            if (!this.smoke) window.showInactive();
-        } catch (error) {
-            window.destroy();
-            throw error;
-        }
     }
     async startBackgrounds() {
         for (const p of this.registry.plugins.values())
@@ -771,6 +632,7 @@ class PluginRuntime {
         }
     }
     close(id) {
+        this.suspendedPages.delete(id);
         const pending = [];
         const waitForDestroyed = (contents) => {
             if (!contents.isDestroyed()) pending.push(new Promise((resolve) => contents.once('destroyed', resolve)));

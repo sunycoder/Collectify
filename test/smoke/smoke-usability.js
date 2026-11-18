@@ -1,6 +1,8 @@
 ﻿const assert = require('node:assert/strict');
 const { dialog } = require('electron');
 const path = require('node:path');
+const fs = require('node:fs'),
+    os = require('node:os');
 exports.run = async ({ registry, services, runtime, hostAction, win }) => {
     const host = (code) =>
         win.webContents.executeJavaScript(code).catch((error) => {
@@ -15,7 +17,13 @@ exports.run = async ({ registry, services, runtime, hostAction, win }) => {
     };
     const open = async (id) => {
         await hostAction('plugin-open', { id });
-        return (code) => runtime.views.get(id).view.webContents.executeJavaScript(code);
+        return async (code) => {
+            try {
+                return await runtime.views.get(id).view.webContents.executeJavaScript(code);
+            } catch (error) {
+                throw Error(id + ': ' + code + '\n' + error.message);
+            }
+        };
     };
     await host('shellReady');
     const previous = dialog.showMessageBox;
@@ -26,6 +34,96 @@ exports.run = async ({ registry, services, runtime, hostAction, win }) => {
         return { response: choice };
     };
     try {
+        const bookmarkPage = await open('collectify.bookmarks');
+        await bookmarkPage('refresh()');
+        const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'collectify-repair-'));
+        const originalPick = dialog.showOpenDialog;
+        try {
+            const replacement = path.join(directory, 'moved.txt');
+            fs.writeFileSync(replacement, 'repair fixture');
+            const resource = await services.call('collectify.bookmarks', 'save', {
+                name: '待修复文件',
+                type: 'file',
+                categoryId: 'inbox',
+                localPath: path.join(directory, 'missing.txt'),
+                note: '保留备注',
+                username: '账号',
+                password: 'repair-test-password'
+            });
+            await bookmarkPage('refresh()');
+            await bookmarkPage(`open(state.entries.find(e=>e.id===${JSON.stringify(resource.id)}))`);
+            assert.match(await bookmarkPage("document.querySelector('#action-title').textContent"), /找不到/);
+            dialog.showOpenDialog = async () => ({ canceled: true, filePaths: [] });
+            await bookmarkPage("document.querySelector('#action-confirm').click()");
+            await until(() => bookmarkPage("!document.querySelector('#action-confirm').disabled"));
+            assert.equal(
+                (await services.call('collectify.bookmarks', 'state')).entries.find((e) => e.id === resource.id)
+                    .localPath,
+                resource.localPath
+            );
+            await bookmarkPage(`open(state.entries.find(e=>e.id===${JSON.stringify(resource.id)}))`);
+            dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [replacement] });
+            // 后台真实修复并核对持久化；不在冒烟中启动用户的外部编辑器。
+            await services.call('collectify.bookmarks', 'relocate-resource', resource.id);
+            await bookmarkPage("document.querySelector('#action-dialog').close()");
+            const repaired = (await services.call('collectify.bookmarks', 'state')).entries.find(
+                (e) => e.id === resource.id
+            );
+            assert.equal(repaired.localPath, replacement);
+            assert.equal(repaired.note, '保留备注');
+            assert.equal(await services.call('collectify.bookmarks', 'password', resource.id), 'repair-test-password');
+            const target = await services.call('collectify.bookmarks', 'category-save', {
+                name: '批量目标',
+                color: 'sage',
+                icon: 'link'
+            });
+            await assert.rejects(
+                services.call('collectify.bookmarks', 'move-many', {
+                    ids: [resource.id, 'missing'],
+                    categoryId: target.id
+                }),
+                /已删除/
+            );
+            assert.equal(
+                (await services.call('collectify.bookmarks', 'state')).entries.find((e) => e.id === resource.id)
+                    .categoryId,
+                'inbox'
+            );
+            await bookmarkPage('refresh()');
+            await bookmarkPage(
+                `document.querySelector('#batch-toggle').click();toggleBookmark(${JSON.stringify(resource.id)});document.querySelector('#search').value='不会匹配';render()`
+            );
+            assert.match(await bookmarkPage("document.querySelector('#batch-summary').textContent"), /隐藏 1 条/);
+            await runtime.views
+                .get('collectify.bookmarks')
+                .view.webContents.capturePage()
+                .then((image) => fs.writeFileSync(path.resolve('dist/bookmark-batch-preview.png'), image.toPNG()));
+            await bookmarkPage("document.querySelector('#batch-move').click()");
+            await until(() => bookmarkPage("document.querySelector('#action-dialog').open"));
+            await until(() =>
+                bookmarkPage(
+                    `!!document.querySelector('#target-category').tomselect.options[${JSON.stringify(target.id)}]`
+                )
+            );
+            await bookmarkPage(
+                `document.querySelector('#target-category').tomselect.setValue(${JSON.stringify(target.id)});document.querySelector('#action-confirm').click()`
+            );
+            await until(async () => {
+                const error = await bookmarkPage("document.querySelector('#action-dialog .form-error').textContent");
+                if (error) throw Error('批量移动失败：' + error);
+                return (
+                    (await services.call('collectify.bookmarks', 'state')).entries.find((e) => e.id === resource.id)
+                        .categoryId === target.id
+                );
+            });
+            assert.equal(await services.call('collectify.bookmarks', 'password', resource.id), 'repair-test-password');
+            await bookmarkPage(
+                "document.querySelector('#batch-toggle').click();document.querySelector('#search').value='';render()"
+            );
+        } finally {
+            dialog.showOpenDialog = originalPick;
+            fs.rmSync(directory, { recursive: true, force: true });
+        }
         const notes = await open('collectify.notes');
         await notes('ready');
         await notes('showNote();');
@@ -55,8 +153,64 @@ exports.run = async ({ registry, services, runtime, hostAction, win }) => {
         }
         await notes("document.querySelector('#note-search').value='does not exist';renderNotes()");
         assert.match(await notes("document.querySelector('#notes-grid').textContent"), /清除筛选/);
+        const noteStore = services.providers.get('collectify.notes').store;
+        noteStore.commit({
+            ...noteStore.data,
+            notes: [
+                ...noteStore.data.notes,
+                ...Array.from({ length: 201 }, (_, i) => ({
+                    id: 'performance-note-' + i,
+                    title: '批量便签' + i,
+                    content: '内容',
+                    color: 'yellow',
+                    updatedAt: new Date().toISOString()
+                }))
+            ]
+        });
+        await notes("document.querySelector('#note-search').value='';renderNotes();refresh()");
+        assert.equal(await notes("document.querySelectorAll('.sticky-note').length"), 100);
+        await notes("document.querySelector('#more-notes').click()");
+        assert.equal(await notes("document.querySelectorAll('.sticky-note').length"), 200);
+        await notes("document.querySelector('#note-search').value='未保存测试';renderNotes()");
+        await until(() => runtime.views.get('collectify.notes')?.reclaimable === true);
+        const previousNotePage = runtime.views.get('collectify.notes').view.webContents.id;
+        await open('collectify.json');
+        await runtime.prunePages({ maxPages: 0, idleMs: 0 });
+        assert.equal(runtime.views.has('collectify.notes'), false);
+        const restoredNotes = await open('collectify.notes');
+        await restoredNotes('ready');
+        await until(() => restoredNotes("document.querySelector('#note-search').value==='未保存测试'"));
+        assert.notEqual(runtime.views.get('collectify.notes').view.webContents.id, previousNotePage);
         const tasks = await open('collectify.tasks');
         await tasks('ready');
+        const dueAt = new Date(Date.now() + 86400000).toISOString();
+        const reminder = await services.call('collectify.tasks', 'task-save', { title: '提醒改期测试', dueAt });
+        await tasks('refresh()');
+        await tasks(
+            `document.querySelector('.checklist-row[data-id="${reminder.id}"] button[title="调整提醒时间"]').click()`
+        );
+        await until(() => tasks("document.querySelector('#reminder-dialog').open"));
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        await runtime.views
+            .get('collectify.tasks')
+            .view.webContents.capturePage()
+            .then((image) => fs.writeFileSync(path.resolve('dist/task-reminder-preview.png'), image.toPNG()));
+        await tasks(
+            "document.querySelector('[data-remind-delay=\"tomorrow\"]').click();document.querySelector('#reminder-save').click()"
+        );
+        await until(() => tasks("!document.querySelector('#reminder-dialog').open"));
+        const adjusted = (await services.call('collectify.tasks', 'state')).tasks.find((t) => t.id === reminder.id);
+        assert.equal(adjusted.dueAt, dueAt);
+        assert.equal(new Date(adjusted.remindAt).getHours(), 9);
+        await assert.rejects(
+            services.call('collectify.tasks', 'task-remind', { id: reminder.id, remindAt: '2000-01-01' }),
+            /未来/
+        );
+        await services.call('collectify.tasks', 'task-save', { ...adjusted, status: 'done' });
+        await assert.rejects(
+            services.call('collectify.tasks', 'task-remind', { id: reminder.id, remindAt: dueAt }),
+            /完成/
+        );
         await tasks('showTask()');
         await until(() => tasks("document.querySelector('#task-dialog').open"));
         choice = 0;

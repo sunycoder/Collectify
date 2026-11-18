@@ -28,9 +28,10 @@ const IMAGES = {
     '.webp': 'image/webp'
 };
 class PreviewService {
-    constructor(engine, { thumbnail = null } = {}) {
+    constructor(engine, { thumbnail = null, startWorker = null } = {}) {
         this.engine = engine;
         this.thumbnail = thumbnail;
+        this.startWorker = startWorker || ((file, options) => new Worker(file, options));
         this.tokens = new Map();
         this.workers = new Set();
     }
@@ -43,7 +44,7 @@ class PreviewService {
     }
     async document(file, type, sheetIndex) {
         return new Promise((resolve, reject) => {
-            const worker = new Worker(path.join(__dirname, 'vendor', 'preview-worker.cjs'), {
+            const worker = this.startWorker(path.join(__dirname, 'vendor', 'preview-worker.cjs'), {
                 workerData: { file, type, sheetIndex },
                 resourceLimits: { maxOldGenerationSizeMb: 192 }
             });

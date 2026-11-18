@@ -195,34 +195,53 @@ class SearchEngine {
         this.owned = false;
     }
 }
-async function folderSearch(roots, { query = '', filter, sort = 'modified', offset = 0, signal } = {}) {
-    const queue = [...roots],
-        items = [];
-    let visited = 0,
-        limited = false;
+async function folderSearch(
+    roots,
+    {
+        query = '',
+        filter,
+        sort = 'modified',
+        offset = 0,
+        signal,
+        session = { queue: [...roots], items: [], visited: 0, skipped: [], current: null },
+        maxVisited = 30000,
+        maxMs = 5000
+    } = {}
+) {
+    const { queue, items } = session;
+    const initialVisited = session.visited;
     const started = Date.now();
-    while (queue.length) {
+    while (queue.length || session.current) {
         if (signal?.aborted) throw Error('搜索已取消');
-        if (visited >= 30000 || Date.now() - started > 5000) {
-            limited = true;
+        if (session.visited - initialVisited >= maxVisited || Date.now() - started > maxMs || items.length >= 100000)
             break;
-        }
-        const directory = queue.shift();
-        let entries;
-        try {
-            entries = await fs.promises.readdir(directory, { withFileTypes: true });
-        } catch {
-            continue;
-        }
-        for (const entry of entries) {
-            if (signal?.aborted) throw Error('搜索已取消');
-            if (++visited > 30000) {
-                limited = true;
-                break;
+        if (!session.current) {
+            const directory = queue.shift();
+            try {
+                session.current = {
+                    directory,
+                    entries: await fs.promises.readdir(directory, { withFileTypes: true }),
+                    index: 0
+                };
+            } catch {
+                session.skipped.push(directory);
+                continue;
             }
+        }
+        const current = session.current;
+        while (current.index < current.entries.length) {
+            if (signal?.aborted) throw Error('搜索已取消');
+            if (
+                session.visited - initialVisited >= maxVisited ||
+                Date.now() - started > maxMs ||
+                items.length >= 100000
+            )
+                break;
+            const entry = current.entries[current.index++];
+            session.visited++;
             if (entry.isSymbolicLink()) continue;
             const file = {
-                path: path.join(directory, entry.name),
+                path: path.join(current.directory, entry.name),
                 directory: entry.isDirectory(),
                 size: 0,
                 modified: 0
@@ -238,14 +257,27 @@ async function folderSearch(roots, { query = '', filter, sort = 'modified', offs
             }
             items.push(file);
         }
+        if (current.index === current.entries.length) session.current = null;
     }
-    items.sort(
+    const sorted = [...items].sort(
         sort === 'name'
             ? (a, b) => path.basename(a.path).localeCompare(path.basename(b.path))
             : sort === 'size'
               ? (a, b) => b.size - a.size
               : (a, b) => b.modified - a.modified
     );
-    return { items: items.slice(offset, offset + 150), total: items.length, limited, engine: 'folder', visited };
+    const pending = [...(session.current ? [session.current.directory] : []), ...queue];
+    return {
+        items: sorted.slice(offset, offset + 150),
+        total: items.length,
+        limited: pending.length > 0,
+        canContinue: pending.length > 0 && items.length < 100000,
+        pending: pending.slice(0, 5),
+        pendingCount: pending.length,
+        skipped: session.skipped.slice(0, 5),
+        skippedCount: session.skipped.length,
+        engine: 'folder',
+        visited: session.visited
+    };
 }
 module.exports = { SearchEngine, folderSearch, run };

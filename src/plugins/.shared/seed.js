@@ -35,9 +35,12 @@ function seed(context, definition) {
                         )
                     );
             if (definition.attachments) {
-                const rows = db.prepare('SELECT * FROM task_attachments ORDER BY position').all();
-                for (const task of data.tasks)
-                    task.attachments = rows.filter((r) => r.task_id === task.id).map((r) => r.path);
+                const relation = definition.attachments;
+                const rows = db.prepare(`SELECT * FROM ${relation.table} ORDER BY ${relation.position}`).all();
+                for (const item of data[relation.owner])
+                    item[relation.field] = rows
+                        .filter((row) => row[relation.foreignKey] === item.id)
+                        .map((row) => row[relation.value]);
             }
             for (const row of db.prepare('SELECT * FROM settings').all())
                 data.settings[row.key] = JSON.parse(row.value_json);

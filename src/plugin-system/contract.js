@@ -87,7 +87,9 @@ function reference(templates) {
             'collectify.onCommand(callback)': '收到 {id}；返回取消订阅函数',
             'collectify.onContextChanged(callback)': '收到新主题上下文；返回取消订阅函数',
             'collectify.onPrepareClose(callback)':
-                '原生插件前台可注册关闭前刷新钩子；callback 完成前宿主不销毁页面，失败或 5 秒超时取消操作。用户确认与业务清理由后台 beforeClose(reason) 处理。',
+                '页面关闭前完成保存与刷新钩子；callback 完成前宿主不销毁页面，失败或 5 秒超时取消操作。用户确认与业务清理由后台 beforeClose(reason) 处理。',
+            'collectify.page.setReclaimable(safe,state)':
+                '主页面主动声明所有修改已保存且无编辑弹窗后才允许回收。state 最多 16KiB，不含凭据；页面恢复通过 page-restored 事件接收。无声明的页面永不自动回收。',
             'ToolUI.run(asyncAction)': '公共 toolkit.js 的错误展示辅助函数',
             'ToolUI.message(text,isError=false)': '显示到 #message',
             'collectify.invoke': '仅可信默认后台插件可用，自有页面插件不能调用业务后台'

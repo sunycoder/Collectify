@@ -34948,7 +34948,7 @@ var require_package = __commonJS({
   "package.json"(exports2, module2) {
     module2.exports = {
       name: "collectify",
-      version: "5.7.16",
+      version: "5.7.17",
       description: "Collectify \xB7 \u53EF\u6269\u5C55\u7684\u4E2A\u4EBA\u63D2\u4EF6\u5DE5\u4F5C\u53F0",
       main: "src/main.js",
       author: "Collectify",
@@ -34981,7 +34981,10 @@ var require_package = __commonJS({
         "calendar:build": "node scripts/build-calendar.cjs",
         "diff:build": "node scripts/build-diff.cjs",
         "smoke:diff": "electron test/smoke/diff.cjs",
-        "test:fixtures": "node test/tools/create-local-search-fixtures.cjs"
+        "test:fixtures": "node test/tools/create-local-search-fixtures.cjs",
+        lint: "eslint .",
+        "check:contracts": "tsc -p tsconfig.contracts.json",
+        bench: "node scripts/benchmark.cjs"
       },
       devDependencies: {
         "@floating-ui/dom": "1.7.4",
@@ -34989,10 +34992,12 @@ var require_package = __commonJS({
         electron: "45.2.3",
         "electron-builder": "26.18.0",
         esbuild: "0.25.12",
+        eslint: "10.15.0",
         flatpickr: "4.6.13",
         fullcalendar: "6.1.19",
         prettier: "3.10.1",
         "tom-select": "2.4.3",
+        typescript: "7.0.2",
         zod: "3.25.76"
       },
       build: {

@@ -1,12 +1,9 @@
-const { createStore, validateCollection, validateNote } = require('../.shared/domain-store');
+const { createStore, validateCollection } = require('../.shared/domain-store');
+const { validateNote } = require('./model');
 const { seed } = require('../.shared/seed');
 const definition = require('./schema');
 exports.create = async (context) => {
-    const store = createStore(
-        context.file,
-        { ...definition, validate: (data) => validateCollection(data, 'notes', validateNote) },
-        seed(context, definition)
-    );
+    const store = createStore(context.file, definition, seed(context, definition));
     async function call(action, payload) {
         switch (action) {
             case 'state':
@@ -64,6 +61,7 @@ exports.create = async (context) => {
         }
     }
     return {
+        contracts: require('./contracts'),
         store,
         call,
         activate() {},

@@ -1,10 +1,5 @@
-const fs = require('node:fs');
 const path = require('node:path');
 const { randomUUID } = require('node:crypto');
-const { validateTask, validateNote, saveTask } = require('../tasks/model');
-const { validate: validateTheme } = require('../../theme');
-const { SqliteRepository } = require('./legacy-repository');
-const { withInitialExamples } = require('./initial-examples');
 const COLORS = ['sage', 'blue', 'orange', 'purple', 'rose', 'slate'];
 const ICONS = ['game', 'build', 'link', 'chart', 'server', 'book'];
 const INBOX = {
@@ -72,66 +67,7 @@ function validateId(id) {
     return typeof id === 'string' && /^[a-zA-Z0-9-]{1,80}$/.test(id);
 }
 
-class Store {
-    constructor(file, options = {}) {
-        this.file = file;
-        this.repository = new SqliteRepository(file);
-        const existing = this.repository.read();
-        if (existing) this.data = this.validate(existing);
-        else if (options.defaults || options.defaultData) {
-            const defaults = options.defaultData || JSON.parse(fs.readFileSync(options.defaults, 'utf8'));
-            this.commit({
-                ...withInitialExamples(defaults, options.now),
-                configSource: 'default',
-                sourceName: options.defaults ? path.basename(options.defaults) : 'default-config.json'
-            });
-        } else
-            this.commit({
-                version: 2,
-                categories: [
-                    {
-                        id: 'gm',
-                        name: 'GM',
-                        description: '游戏管理后台，按环境快速找到对应地址。',
-                        color: 'sage',
-                        icon: 'game'
-                    },
-                    {
-                        id: 'jenkins',
-                        name: 'Jenkins',
-                        description: '把不同服务器的构建平台集中在这里。',
-                        color: 'orange',
-                        icon: 'build'
-                    },
-                    INBOX
-                ],
-                entries: [
-                    {
-                        id: randomUUID(),
-                        name: '三国 GM · trunk',
-                        environment: 'trunk',
-                        categoryId: 'gm',
-                        url: 'https://example.com/gm/trunk/',
-                        note: '主干开发环境',
-                        mode: 'internal',
-                        favorite: true,
-                        lastOpened: 0
-                    },
-                    {
-                        id: randomUUID(),
-                        name: '三国 GM · tu2.0',
-                        environment: 'tu2.0',
-                        categoryId: 'gm',
-                        url: 'https://example.com/gm/test/',
-                        note: 'tu2.0 环境',
-                        mode: 'internal',
-                        favorite: false,
-                        lastOpened: 0
-                    }
-                ]
-            });
-    }
-
+class BookmarkStore {
     get entries() {
         return this.data.entries;
     }
@@ -180,82 +116,23 @@ class Store {
             if (!categoryIds.has(entry.categoryId)) throw new Error('收藏所属分类不存在');
             return entry;
         });
-        const tasks = (data.tasks || []).map(validateTask),
-            notes = (data.notes || []).map(validateNote);
-        // 收藏是任务的可选关联，删除收藏只解除关联，不删除任务。
-        for (const task of tasks) if (task.bookmarkId && !entryIds.has(task.bookmarkId)) task.bookmarkId = '';
-        for (const collection of [tasks, notes]) {
-            if (
-                collection.length > 5000 ||
-                new Set(collection.map((t) => t.id)).size !== collection.length ||
-                collection.some((t) => !validateId(t.id))
-            )
-                throw new Error('待办或便签格式不正确');
-        }
-        const widget = data.settings?.widget || {};
-        const bounds =
-            widget.bounds && ['x', 'y', 'width', 'height'].every((k) => Number.isFinite(widget.bounds[k]))
-                ? {
-                      x: Math.round(widget.bounds.x),
-                      y: Math.round(widget.bounds.y),
-                      width: Math.max(300, Math.min(700, Math.round(widget.bounds.width))),
-                      height: Math.max(300, Math.min(1000, Math.round(widget.bounds.height)))
-                  }
-                : null;
         return {
             version: 2,
             categories,
             entries,
-            tasks,
-            notes,
-            settings: {
-                designVersion: 5,
-                keepInTray: data.settings?.keepInTray === true,
-                theme: validateTheme(data.settings?.theme),
-                widget: {
-                    visible: widget.visible === true,
-                    autoRestore: widget.autoRestore === true,
-                    mode: widget.mode === 'desktop' ? 'desktop' : 'floating',
-                    bounds
-                }
-            },
             configSource: ['default', 'imported'].includes(data.configSource) ? data.configSource : 'local',
             sourceName: text(data, 'sourceName', 200)
         };
     }
 
-    commit(data) {
-        const clean = this.validate(data);
-        // 导入时 undefined 表示未提供密码；持久化后统一为空串，重启前后类型一致。
-        for (const entry of clean.entries) entry.password ??= '';
-        this.repository.write(clean, this.auditTool);
-        // 只有磁盘提交成功才发布内存状态，界面与 AI 不会看到写盘失败的假结果。
-        this.data = clean;
-    }
-
-    backup(target) {
-        this.repository.backup(target);
-    }
-
-    // MCP 每个写工具只有一次业务提交，审计与业务数据进入同一个 SQLite 事务。
-    withAudit(tool, action) {
-        this.auditTool = tool;
-        try {
-            return action();
-        } finally {
-            this.auditTool = undefined;
-        }
-    }
-
     save(input) {
         const value = validateEntry(input),
-            data = this.snapshot(),
-            previous = data.entries.find((e) => e.id === input.id);
+            previous = this.entries.find((e) => e.id === input.id);
         if (input.id && !previous) throw new Error('收藏已被删除，请刷新后重试');
         const entry = { id: previous?.id || randomUUID(), ...value, lastOpened: previous?.lastOpened || 0 };
-        if (previous) data.entries = data.entries.map((e) => (e.id === entry.id ? entry : e));
-        else data.entries.push(entry);
-        this.commit(data);
+        if (!this.categories.some((c) => c.id === entry.categoryId)) throw Error('收藏所属分类不存在');
+        entry.password ??= '';
+        this.updateEntities('entries', [entry]);
         return entry;
     }
 
@@ -266,14 +143,17 @@ class Store {
 
     saveCategory(input) {
         const value = validateCategory(input),
-            data = this.snapshot(),
-            previous = data.categories.find((c) => c.id === input.id);
+            previous = this.categories.find((c) => c.id === input.id);
         if (input.id && !previous) throw new Error('分类不存在');
         if (input.id === 'inbox' || value.name === '未分类') throw new Error('未分类为系统保留分类');
         const category = { id: previous?.id || randomUUID(), ...value };
-        if (previous) data.categories = data.categories.map((c) => (c.id === category.id ? category : c));
-        else data.categories.push(category);
-        this.commit(data);
+        if (
+            this.categories.some(
+                (c) => c.id !== category.id && c.name.toLocaleLowerCase() === category.name.toLocaleLowerCase()
+            )
+        )
+            throw Error('分类名称重复');
+        this.updateEntities('categories', [category]);
         return category;
     }
 
@@ -302,34 +182,9 @@ class Store {
     }
 
     markOpened(id) {
-        const data = this.snapshot(),
-            entry = data.entries.find((e) => e.id === id);
+        const entry = this.entries.find((e) => e.id === id);
         if (!entry) throw new Error('收藏不存在');
-        entry.lastOpened = Date.now();
-        this.commit(data);
-    }
-
-    saveTask(input) {
-        return saveTask(this, input);
-    }
-
-    saveNote(input) {
-        const data = this.snapshot(),
-            previous = data.notes.find((n) => n.id === input.id);
-        if (input.id && !previous) throw new Error('便签不存在');
-        const note = validateNote({ ...input, updatedAt: new Date().toISOString() });
-        if (previous) data.notes = data.notes.map((n) => (n.id === note.id ? note : n));
-        else data.notes.push(note);
-        this.commit(data);
-        return note;
-    }
-
-    removeItem(kind, id) {
-        if (!['tasks', 'notes'].includes(kind) || !this.data[kind].some((item) => item.id === id))
-            throw new Error('内容不存在');
-        const data = this.snapshot();
-        data[kind] = data[kind].filter((item) => item.id !== id);
-        this.commit(data);
+        this.updateEntities('entries', [{ ...entry, lastOpened: Date.now() }]);
     }
 
     import(raw, options = {}) {
@@ -422,4 +277,4 @@ class Store {
     }
 }
 
-module.exports = { Store, validateEntry };
+module.exports = { BookmarkStore, validateEntry };

@@ -1,6 +1,8 @@
 const path = require('node:path');
 const fs = require('node:fs');
 const { EventEmitter } = require('node:events');
+const { validateRequest, failure } = require('./request-contract');
+const { OperationMetrics } = require('./operation-metrics');
 
 // 宿主只认识清单和生命周期，不包含任何具体业务插件的名称或数据表。
 class PluginServices extends EventEmitter {
@@ -14,6 +16,9 @@ class PluginServices extends EventEmitter {
         this.stopping = new Set();
         this.pending = new Map();
         this.activating = new Map();
+        this.taskPools = new Map();
+        this.metrics = new OperationMetrics();
+        this.cleanups = new Map();
     }
     async load({ activate = true } = {}) {
         // 保留数据的默认插件仍需提供领域备份处理器，但不激活页面、提醒或 MCP。
@@ -39,6 +44,17 @@ class PluginServices extends EventEmitter {
                 available: (id) =>
                     this.registry.plugins.get(id)?.enabled === true && this.providers.has(id) && !this.errors.has(id),
                 open: (id, route, payload) => this.environment.openPlugin(id, route, payload)
+            };
+            context.startWorker = (file, options) => {
+                if (!this.active.has(plugin.id) || this.stopping.has(plugin.id)) throw Error('插件未启用或正在停用');
+                let pool = this.taskPools.get(plugin.id);
+                if (!pool) {
+                    const { PluginTaskPool } = require('./process-task');
+                    pool = new PluginTaskPool(plugin.directory);
+                    this.taskPools.set(plugin.id, pool);
+                }
+                pool.activate();
+                return pool.start(file, options);
             };
             try {
                 const provider = await require(path.join(plugin.directory, plugin.backend)).create(context);
@@ -76,24 +92,57 @@ class PluginServices extends EventEmitter {
         const p = this.providers.get(id);
         if (p && this.active.has(id)) {
             this.active.delete(id);
+            await this.taskPools.get(id)?.stop();
             await p.deactivate?.();
         }
     }
     async unload(id) {
         this.stopping.add(id);
         try {
-            await this.disable(id);
+            await this.waitForCleanup(id, '停用', () => this.disable(id));
             // 已开始的业务写入必须先结束，避免卸载后旧异步任务重新创建已删除的数据库。
-            await Promise.allSettled([...(this.pending.get(id) || [])]);
-            await this.providers.get(id)?.dispose?.();
+            await this.waitForCleanup(id, '在途数据提交', () => Promise.allSettled([...(this.pending.get(id) || [])]));
+            await this.waitForCleanup(id, '释放资源', () => this.providers.get(id)?.dispose?.());
             const directory = this.registry.plugins.get(id)?.directory;
             if (directory)
                 for (const file of Object.keys(require.cache))
                     if (file.startsWith(directory + path.sep)) delete require.cache[file];
             this.providers.delete(id);
+            this.taskPools.delete(id);
             this.errors.delete(id);
-        } finally {
             this.stopping.delete(id);
+        } catch (error) {
+            // 超时不能继续卸载或删除数据库；保留停止状态，可在任务结束后重试卸载。
+            this.emit('cleanup-error', { pluginId: id, code: error.code || 'PLUGIN_CLEANUP_FAILED' });
+            throw error;
+        }
+    }
+    async waitForCleanup(id, phase, action) {
+        const key = id + ':' + phase;
+        let work = this.cleanups.get(key);
+        if (!work) {
+            work = Promise.resolve().then(action);
+            this.cleanups.set(key, work);
+            void work.finally(() => this.cleanups.delete(key)).catch(() => {});
+        }
+        let timer;
+        try {
+            return await Promise.race([
+                work,
+                new Promise((_, reject) => {
+                    timer = setTimeout(
+                        () =>
+                            reject(
+                                Object.assign(Error(`插件${phase}超时，已保留程序和数据；稍后可重试`), {
+                                    code: 'PLUGIN_CLEANUP_TIMEOUT'
+                                })
+                            ),
+                        this.environment.cleanupTimeoutMs || 15000
+                    );
+                })
+            ]);
+        } finally {
+            clearTimeout(timer);
         }
     }
     async perform(id, action) {
@@ -115,7 +164,19 @@ class PluginServices extends EventEmitter {
         const provider = this.providers.get(id);
         if (!provider?.call)
             throw Error(this.errors.has(id) ? `插件后台加载失败：${this.errors.get(id)}` : '插件没有声明后台能力');
-        return this.perform(id, () => provider.call(action, payload));
+        validateRequest(provider.contracts, action, payload);
+        const end = this.metrics.start(id, action);
+        try {
+            const result = await this.perform(id, () => provider.call(action, payload));
+            try {
+                provider.contracts?.[action]?.validateResult?.(result);
+            } catch {
+                throw failure('INVALID_RESPONSE', '插件返回的数据不符合接口契约');
+            }
+            return result;
+        } finally {
+            end();
+        }
     }
     navigation(id) {
         return this.providers.get(id)?.navigation?.() || this.registry.get(id).navigation;
@@ -158,6 +219,8 @@ class PluginServices extends EventEmitter {
             }
         this.active.clear();
         this.providers.clear();
+        this.taskPools.clear();
+        this.cleanups.clear();
         if (failures.length) throw new AggregateError(failures, '部分插件退出失败');
     }
     async beforeClose(ids, reason) {

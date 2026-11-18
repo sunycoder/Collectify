@@ -196,12 +196,14 @@ function renderResultColumns() {
         $('#result-columns').append(column);
     });
 }
-async function search(append = false) {
+async function search(append = false, continueScan = false) {
     const revision = ++searchRevision;
     loading = true;
     $('#load-more').disabled = true;
+    $('#continue-scan').disabled = true;
     $('#results').classList.add('busy');
     if (!append) {
+        $('#scan-state').hidden = true;
         items = [];
         selected = null;
         previewRevision++;
@@ -213,20 +215,32 @@ async function search(append = false) {
             query: $('#query').value,
             filter,
             sort: $('#sort').value,
-            offset: append ? items.length : 0
+            offset: append ? items.length : 0,
+            continue: continueScan
         });
         if (revision !== searchRevision) return;
         items = append ? [...items, ...result.items] : result.items;
         total = result.total;
         renderResults(append);
+        const incomplete = result.limited || result.skippedCount > 0;
+        $('#scan-state').hidden = !incomplete;
+        $('#continue-scan').hidden = !result.canContinue;
+        $('#scan-summary').textContent =
+            `${result.limited ? `搜索尚未完成，已检查 ${result.visited.toLocaleString()} 项，仍有 ${result.pendingCount} 个目录待检查。` : '扫描已结束。'}${result.skippedCount ? `有 ${result.skippedCount} 个目录无法读取。` : ''}${result.limited && !result.canContinue ? '结果已达 10 万条，请缩小搜索范围。' : ''}`;
+        $('#scan-paths').textContent = [
+            ...(result.pending || []).map((p) => '待检查：' + p),
+            ...(result.skipped || []).map((p) => '无法读取：' + p)
+        ].join('\n');
         message(
             result.limited
                 ? `文件夹搜索达到范围或时间上限，当前为 ${result.visited.toLocaleString()} 个已检查项目中的结果。`
                 : `${result.engine === 'everything' ? 'Everything' : '文件夹搜索'} · ${total.toLocaleString()} 条结果`
         );
         if (!items.length) {
-            $('#empty').querySelector('h2').textContent = '没有找到匹配文件';
-            $('#empty').querySelector('p').textContent = '试试更短的关键词、其他分类，或检查搜索范围。';
+            $('#empty').querySelector('h2').textContent = incomplete ? '已检查范围内暂无匹配文件' : '没有找到匹配文件';
+            $('#empty').querySelector('p').textContent = incomplete
+                ? '搜索范围尚未完整检查，请继续扫描或缩小范围。'
+                : '试试更短的关键词、其他分类，或检查搜索范围。';
         }
     } catch (error) {
         if (revision === searchRevision) {
@@ -235,11 +249,13 @@ async function search(append = false) {
             message(error.message, true);
             $('#empty').querySelector('h2').textContent = '搜索尚未准备好';
             $('#empty').querySelector('p').textContent = error.message;
+            $('#scan-state').hidden = true;
         }
     } finally {
         if (revision === searchRevision) {
             loading = false;
             $('#load-more').disabled = false;
+            $('#continue-scan').disabled = false;
             $('#results').classList.remove('busy');
         }
     }
@@ -504,6 +520,10 @@ $('#preview-divider').onkeydown = (event) => {
     setSplitRatio(event.key === 'Home' ? 0.39 : settings.splitRatio + (event.key === 'ArrowLeft' ? -0.03 : 0.03));
     void saveSplitRatio();
 };
+$('#continue-scan').onclick = () => {
+    if (!loading) void search(false, true);
+};
+$('#narrow-scope').onclick = () => $('#choose-folder').click();
 $('#choose-folder').onclick = run(async () => {
     await call('choose-folder');
     updateState(await call('state'));

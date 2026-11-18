@@ -18,6 +18,7 @@ exports.run = async (context) => {
         }
     };
     if (process.argv.includes('--smoke-usability')) await require('./smoke-usability').run(context);
+    else if (process.argv.includes('--smoke-architecture')) await require('./smoke-architecture').run(context);
     else if (process.argv.includes('--smoke-shutdown')) {
         await require('./smoke-shutdown').run(context);
         return false;

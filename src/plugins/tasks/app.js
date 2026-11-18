@@ -1,5 +1,49 @@
 let pluginRoute = 'list',
     initialTask = null;
+let reminderTaskId = null;
+async function showReminder(item) {
+    reminderTaskId = item.id;
+    await call('overlay', true);
+    $('#reminder-title').textContent = item.title;
+    $('#reminder-current').textContent =
+        `当前提醒：${item.remindAt ? new Date(item.remindAt).toLocaleString() : '未设置'} · 截止时间保持不变`;
+    $('#reminder-dialog .form-error').textContent = '';
+    setReminderTime(new Date(Date.now() + 600000));
+    $('#reminder-dialog').showModal();
+}
+function setReminderTime(date) {
+    const input = $('#reminder-time');
+    input.value = localInput(date);
+    input._flatpickr?.setDate(date, false);
+}
+document.querySelectorAll('[data-remind-delay]').forEach((button) => {
+    button.onclick = () => {
+        const next = new Date();
+        if (button.dataset.remindDelay === 'tomorrow') {
+            next.setDate(next.getDate() + 1);
+            next.setHours(9, 0, 0, 0);
+        } else next.setTime(next.getTime() + Number(button.dataset.remindDelay) * 60000);
+        setReminderTime(next);
+    };
+});
+$('#reminder-form').onsubmit = async (event) => {
+    event.preventDefault();
+    const submit = $('#reminder-save');
+    submit.disabled = true;
+    try {
+        const remindAt = new Date($('#reminder-time').value);
+        if (!Number.isFinite(remindAt.getTime()) || remindAt.getTime() <= Date.now())
+            throw Error('请选择未来的提醒时间');
+        await call('task-remind', { id: reminderTaskId, remindAt: remindAt.toISOString() });
+        $('#reminder-dialog').close();
+        await refresh();
+        toast(`下次提醒：${remindAt.toLocaleString()}`);
+    } catch (error) {
+        $('#reminder-dialog .form-error').textContent = error.message;
+    } finally {
+        submit.disabled = false;
+    }
+};
 const TASK_STATUSES = { inbox: '收集箱', todo: '待处理', doing: '进行中', done: '已完成' };
 const PRIORITIES = { high: '高优先级', medium: '普通', low: '低优先级' };
 let editingTask = null,
@@ -252,12 +296,10 @@ function taskCard(t, board = false) {
         else
             actions.append(
                 button(
-                    '稍后 10 分钟',
+                    '调整提醒时间',
                     'clock',
                     async () => {
-                        await call('task-save', { ...t, remindAt: new Date(Date.now() + 600000).toISOString() });
-                        await refresh();
-                        toast('将在 10 分钟后提醒');
+                        await showReminder(t);
                     },
                     'icon-button'
                 )
@@ -313,6 +355,8 @@ function checklistRow(t) {
     if (t.urgent) tags.append(el('span', 'flag-urgent', '紧急'));
     tags.append(el('span', `task-status ${t.status}`, TASK_STATUSES[t.status]));
     const actions = el('div', 'checklist-actions');
+    if (t.status !== 'done' && !t.archived)
+        actions.append(button('调整提醒时间', 'clock', () => showReminder(t), 'icon-button'));
     if (t.status === 'done')
         actions.append(
             button(

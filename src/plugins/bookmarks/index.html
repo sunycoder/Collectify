@@ -12,6 +12,7 @@
         <link rel="stylesheet" href="collectify-plugin://collectify.sdk/readability.css" />
         <link rel="stylesheet" href="collectify-plugin://collectify.sdk/board.css" />
         <link rel="stylesheet" href="collectify-plugin://collectify.sdk/plugin-page.css" />
+        <link rel="stylesheet" href="bookmarks.css" />
     </head>
     <body class="bookmark-plugin">
         <main>
@@ -26,12 +27,19 @@
                         <p id="description">常用的工作地址，按你的习惯整理。</p>
                     </div>
                     <div class="heading-actions">
+                        <button id="batch-toggle" class="subtle" aria-pressed="false">多选整理</button>
                         <button id="new-category" class="subtle">新建分类</button>
                         <button id="category-menu-button" class="subtle" hidden>
                             <i data-icon="sliders"></i>管理分类
                         </button>
                         <button id="add-button" class="primary"><i data-icon="plus"></i>添加收藏</button>
                     </div>
+                </div>
+                <div id="batch-actions" class="collection-toolbar" hidden>
+                    <span id="batch-summary" role="status"></span>
+                    <button id="batch-visible" class="subtle">选择当前结果</button>
+                    <button id="batch-clear" class="quiet">清空选择</button>
+                    <button id="batch-move" class="primary">移动到分类…</button>
                 </div>
                 <div id="category-overview" class="category-overview"></div>
                 <div class="collection-toolbar">
@@ -79,6 +87,7 @@
                     </div>
                 </div>
                 <div id="entries" class="collections"></div>
+                <button id="more-bookmarks" class="subtle" hidden>加载更多收藏</button>
                 <div id="empty" class="empty" hidden>
                     <div class="empty-illustration"><i data-icon="folder"></i><span>＋</span></div>
                     <h2 id="empty-title">给这个分类收下第一个地址</h2>

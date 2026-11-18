@@ -60,9 +60,15 @@ class EntityRepository {
                             )
                         );
                 if (this.attachments) {
-                    const rows = db.prepare('SELECT * FROM task_attachments ORDER BY position').all();
-                    for (const task of data.tasks)
-                        task.attachments = rows.filter((r) => r.task_id === task.id).map((r) => r.path);
+                    const relation = this.attachments;
+                    const rows = db.prepare(`SELECT * FROM ${relation.table} ORDER BY ${relation.position}`).all();
+                    const byOwner = new Map();
+                    for (const row of rows) {
+                        const items = byOwner.get(row[relation.foreignKey]) || [];
+                        items.push(row[relation.value]);
+                        byOwner.set(row[relation.foreignKey], items);
+                    }
+                    for (const item of data[relation.owner]) item[relation.field] = byOwner.get(item.id) || [];
                 }
                 db.exec('COMMIT');
                 return data;
@@ -72,59 +78,53 @@ class EntityRepository {
             }
         });
     }
-    write(data, tool) {
+    upsert(db, table, writes) {
+        const d = this.tables[table];
+        if (!d) throw Error('插件实体表不存在');
+        if (!writes.length) return;
+        // 只为本次改动的名称释放唯一键，支持导入交换名称；未改动记录不产生写入。
+        if (d.nameKey) {
+            const reserve = db.prepare(`UPDATE ${table} SET name_key=? WHERE id=?`);
+            for (const { item } of writes) reserve.run(`reserved:${item.id}`, item.id);
+        }
+        const columns = [...Object.values(d.fields), ...(d.nameKey ? ['name_key'] : []), 'sort_order'];
+        const update = columns
+            .filter((c) => c !== 'id')
+            .map((c) => `${c}=excluded.${c}`)
+            .join(',');
+        const statement = db.prepare(
+            `INSERT INTO ${table}(${columns.join(',')}) VALUES(${columns.map(() => '?').join(',')}) ON CONFLICT(id) DO UPDATE SET ${update}`
+        );
+        for (const { item, position } of writes) {
+            statement.run(
+                ...Object.keys(d.fields).map((field) =>
+                    d.booleans?.includes(field)
+                        ? Number(!!item[field])
+                        : d.nullable?.includes(field)
+                          ? item[field] || null
+                          : (item[field] ?? '')
+                ),
+                ...(d.nameKey ? [item.name.toLocaleLowerCase()] : []),
+                position
+            );
+            if (this.attachments && table === this.attachments.owner) {
+                const relation = this.attachments;
+                db.prepare(`DELETE FROM ${relation.table} WHERE ${relation.foreignKey}=?`).run(item.id);
+                const attach = db.prepare(
+                    `INSERT INTO ${relation.table}(${relation.foreignKey},${relation.position},${relation.value}) VALUES(?,?,?)`
+                );
+                (item[relation.field] || []).forEach((value, i) => attach.run(item.id, i, value));
+            }
+        }
+    }
+    transaction(tool, action) {
         this.database((db) => {
             db.exec('BEGIN IMMEDIATE');
             try {
                 const revision = db.prepare('SELECT revision FROM domain_state WHERE id=1').get()?.revision || 0;
                 if (revision !== this.revision) throw Error('插件数据库已被其他实例更新，请重启重试');
-                for (const table of Object.keys(this.tables).reverse()) {
-                    const keep = new Set(data[table].map((v) => v.id)),
-                        remove = db.prepare(`DELETE FROM ${table} WHERE id=?`);
-                    for (const row of db.prepare(`SELECT id FROM ${table}`).all())
-                        if (!keep.has(row.id)) remove.run(row.id);
-                }
-                for (const [table, d] of Object.entries(this.tables)) {
-                    if (d.nameKey)
-                        for (const row of db.prepare(`SELECT id FROM ${table}`).all())
-                            db.prepare(`UPDATE ${table} SET name_key=? WHERE id=?`).run(`reserved:${row.id}`, row.id);
-                    const columns = [...Object.values(d.fields), ...(d.nameKey ? ['name_key'] : []), 'sort_order'];
-                    const update = columns
-                        .filter((c) => c !== 'id')
-                        .map((c) => `${c}=excluded.${c}`)
-                        .join(',');
-                    const changed = columns
-                        .filter((c) => c !== 'id')
-                        .map((c) => `${c} IS NOT excluded.${c}`)
-                        .join(' OR ');
-                    const statement = db.prepare(
-                        `INSERT INTO ${table}(${columns.join(',')}) VALUES(${columns.map(() => '?').join(',')}) ON CONFLICT(id) DO UPDATE SET ${update} WHERE ${changed}`
-                    );
-                    data[table].forEach((item, index) =>
-                        statement.run(
-                            ...Object.keys(d.fields).map((field) =>
-                                d.booleans?.includes(field)
-                                    ? Number(!!item[field])
-                                    : d.nullable?.includes(field)
-                                      ? item[field] || null
-                                      : (item[field] ?? '')
-                            ),
-                            ...(d.nameKey ? [item.name.toLocaleLowerCase()] : []),
-                            index
-                        )
-                    );
-                }
-                if (this.attachments) {
-                    db.exec('DELETE FROM task_attachments');
-                    const add = db.prepare('INSERT INTO task_attachments VALUES(?,?,?)');
-                    for (const task of data.tasks)
-                        task.attachments.forEach((file, index) => add.run(task.id, index, file));
-                }
-                const metadata = { ...data };
-                for (const table of Object.keys(this.tables)) delete metadata[table];
-                db.prepare(
-                    'INSERT INTO domain_state VALUES(1,?,?) ON CONFLICT(id) DO UPDATE SET revision=excluded.revision,payload=excluded.payload'
-                ).run(revision + 1, JSON.stringify(metadata));
+                const entities = action(db);
+                db.prepare('UPDATE domain_state SET revision=? WHERE id=1').run(revision + 1);
                 if (tool)
                     db.prepare('INSERT INTO domain_audit(tool,created_at) VALUES(?,?)').run(
                         tool,
@@ -132,10 +132,45 @@ class EntityRepository {
                     );
                 db.exec('COMMIT');
                 this.revision = revision + 1;
+                this.lastWrite = { entities };
             } catch (error) {
                 db.exec('ROLLBACK');
                 throw error;
             }
+        });
+    }
+    patch(table, writes, tool) {
+        this.transaction(tool, (db) => {
+            this.upsert(db, table, writes);
+            return writes.length;
+        });
+    }
+    write(data, tool, previous) {
+        this.transaction(tool, (db) => {
+            let entities = 0;
+            for (const table of Object.keys(this.tables).reverse()) {
+                const keep = new Set(data[table].map((v) => v.id)),
+                    remove = db.prepare(`DELETE FROM ${table} WHERE id=?`);
+                for (const row of previous?.[table] || db.prepare(`SELECT id FROM ${table}`).all())
+                    if (!keep.has(row.id)) remove.run(row.id);
+            }
+            for (const table of Object.keys(this.tables)) {
+                const old = new Map((previous?.[table] || []).map((item, position) => [item.id, { item, position }]));
+                const writes = data[table].flatMap((item, position) => {
+                    const prior = old.get(item.id);
+                    return prior && prior.position === position && JSON.stringify(prior.item) === JSON.stringify(item)
+                        ? []
+                        : [{ item, position }];
+                });
+                this.upsert(db, table, writes);
+                entities += writes.length;
+            }
+            const metadata = { ...data };
+            for (const table of Object.keys(this.tables)) delete metadata[table];
+            db.prepare(
+                'INSERT INTO domain_state VALUES(1,?,?) ON CONFLICT(id) DO UPDATE SET revision=excluded.revision,payload=excluded.payload'
+            ).run(this.revision + 1, JSON.stringify(metadata));
+            return entities;
         });
     }
 }

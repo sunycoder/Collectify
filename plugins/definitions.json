@@ -11,7 +11,7 @@
       "source": "src/plugin-library/local-search",
       "id": "collectify.local-search",
       "name": "本地搜索",
-      "version": "1.2.3"
+      "version": "1.2.4"
     },
     {
       "source": "src/plugin-library/ip-query",
@@ -23,7 +23,7 @@
       "source": "src/plugin-library/calculator",
       "id": "collectify.calculator",
       "name": "计算稿纸",
-      "version": "1.0.7"
+      "version": "1.0.8"
     },
     {
       "source": "src/plugin-library/chinese-calendar",
@@ -35,7 +35,7 @@
       "source": "src/plugin-library/diff",
       "id": "collectify.diff",
       "name": "Diff",
-      "version": "1.0.6"
+      "version": "1.0.7"
     }
   ]
 }

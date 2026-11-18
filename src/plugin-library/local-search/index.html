@@ -43,6 +43,15 @@
                 <div class="result-heading"><span>搜索结果</span><span id="result-count"></span></div>
                 <div id="result-columns" class="result-columns" aria-label="结果列宽"></div>
                 <div id="results" role="listbox" tabindex="0" aria-label="搜索结果"></div>
+                <div id="scan-state" role="status" hidden>
+                    <p id="scan-summary"></p>
+                    <details>
+                        <summary>查看未检查或无法读取的范围</summary>
+                        <pre id="scan-paths"></pre>
+                    </details>
+                    <button id="continue-scan" hidden>继续扫描未检查范围</button>
+                    <button id="narrow-scope">重新选择更小的搜索范围</button>
+                </div>
                 <button id="load-more" hidden>加载更多</button>
                 <div id="empty" class="empty-state">
                     <span data-icon="search"></span>

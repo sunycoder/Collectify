@@ -11,6 +11,7 @@ let index,
     compose = false;
 let latestSave, deletedRow, undoTimer;
 const editHistory = new Map();
+const sheetSearch = new Map();
 function historyKey(row) {
     return sheet.id + ':' + row.id;
 }
@@ -78,7 +79,8 @@ function persist() {
         const metadata = M.indexItem(sheet),
             position = index.sheets.findIndex((s) => s.id === sheet.id);
         if (position < 0) index.sheets.unshift(metadata);
-        else index.sheets[position] = metadata;
+        else index.sheets[position] = { ...metadata, pinned: !!index.sheets[position].pinned };
+        sheetSearch.set(sheet.id, M.searchText(sheet));
         index.active = sheet.id;
         latestSave = saver.save({ set: { index, ['sheet:' + sheet.id]: sheet } });
         latestSave.catch(() => {});
@@ -383,7 +385,17 @@ function title(item) {
 function renderSheets() {
     $('#sheet-count').textContent = `${index.sheets.length} / ${M.MAX_SHEETS}`;
     $('#sheets').replaceChildren();
-    for (const item of index.sheets) {
+    const query = $('#sheet-search').value.trim().toLocaleLowerCase();
+    const matches = index.sheets.filter(
+        (item) => !query || (sheetSearch.get(item.id) || item.title.toLocaleLowerCase()).includes(query)
+    );
+    matches.sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned));
+    $('#sheet-search-status').hidden = !query;
+    $('#sheet-search-status').textContent = matches.length
+        ? `找到 ${matches.length} 张稿纸`
+        : '没有匹配的稿纸，请更换关键词';
+    $('#sheet-search-clear').hidden = !query;
+    for (const item of matches) {
         const row = document.createElement('div');
         row.className = 'sheet-item' + (item.id === sheet.id ? ' selected' : '');
         const open = document.createElement('button');
@@ -399,6 +411,13 @@ function renderSheets() {
             minute: '2-digit'
         });
         open.append(name, date);
+        if (item.summary) {
+            const summary = document.createElement('small');
+            summary.className = 'sheet-summary';
+            summary.textContent = item.summary;
+            summary.title = item.summary;
+            open.append(summary);
+        }
         open.onclick = () =>
             void run(async () => {
                 if (item.id === sheet.id) return;
@@ -411,15 +430,39 @@ function renderSheets() {
                 await persist();
             });
         const remove = document.createElement('button');
+        const pin = document.createElement('button');
+        pin.className = 'sheet-pin';
+        pin.textContent = item.pinned ? '★' : '☆';
+        pin.title = item.pinned ? '取消固定' : '固定常用稿纸';
+        pin.setAttribute('aria-label', pin.title + ' ' + title(item));
+        pin.setAttribute('aria-pressed', String(!!item.pinned));
+        pin.onclick = () =>
+            void run(async () => {
+                const previous = item.pinned;
+                item.pinned = !item.pinned;
+                try {
+                    await persist();
+                } catch (error) {
+                    item.pinned = previous;
+                    throw error;
+                }
+                renderSheets();
+            });
         remove.className = 'sheet-delete';
         remove.textContent = '×';
         remove.title = '删除稿纸';
         remove.setAttribute('aria-label', '删除稿纸 ' + title(item));
         remove.onclick = () => void run(() => deleteSheet(item));
-        row.append(open, remove);
+        row.append(open, pin, remove);
         $('#sheets').append(row);
     }
 }
+$('#sheet-search').oninput = renderSheets;
+$('#sheet-search-clear').onclick = () => {
+    $('#sheet-search').value = '';
+    renderSheets();
+    $('#sheet-search').focus();
+};
 function renderPaper() {
     const digits = [2, 4].includes(index.resultDigits) ? String(index.resultDigits) : '12';
     $('#result-digits').value = digits;
@@ -464,6 +507,7 @@ async function deleteSheet(item) {
     await saver.save({ set: { index: nextIndex, ['sheet:' + nextSheet.id]: nextSheet }, delete: ['sheet:' + item.id] });
     index = nextIndex;
     sheet = nextSheet;
+    sheetSearch.delete(item.id);
     currentRow = sheet.rows.at(-1).id;
     renderPaper();
 }
@@ -477,6 +521,8 @@ $('#new-paper').onclick = () =>
         await saver.save({ set: { index: nextIndex, ['sheet:' + nextSheet.id]: nextSheet } });
         sheet = nextSheet;
         index = nextIndex;
+        $('#sheet-search').value = '';
+        sheetSearch.set(sheet.id, M.searchText(sheet));
         currentRow = sheet.rows[0].id;
         renderPaper();
         focusRow(currentRow);
@@ -819,6 +865,12 @@ $('#math-keyboard').inert = true;
             )
                 throw Error('稿纸目录格式不受支持，已保留原始数据');
             sheet = M.validate(await api.storage.get('sheet:' + index.active));
+        }
+        // 仅插件首次打开时建立内存搜索索引，不向目录重复持久化整份公式内容。
+        for (const item of index.sheets) {
+            const saved = item.id === sheet.id ? sheet : M.validate(await api.storage.get('sheet:' + item.id));
+            sheetSearch.set(item.id, M.searchText(saved));
+            Object.assign(item, M.indexItem(saved));
         }
         currentRow = sheet.rows.at(-1).id;
         $('#result-digits').value = [2, 4].includes(index.resultDigits) ? String(index.resultDigits) : '12';

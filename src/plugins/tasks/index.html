@@ -153,6 +153,27 @@
             </dialog>
             <input id="keep-in-tray" type="checkbox" hidden /><span id="notification-status" hidden></span>
         </main>
+        <dialog id="reminder-dialog">
+            <form id="reminder-form">
+                <div class="dialog-head">
+                    <h2>调整提醒时间</h2>
+                    <button type="button" class="dialog-close quiet" aria-label="关闭">×</button>
+                </div>
+                <h3 id="reminder-title"></h3>
+                <p id="reminder-current" class="dialog-intro"></p>
+                <div class="heading-actions">
+                    <button type="button" class="subtle" data-remind-delay="10">10 分钟后</button>
+                    <button type="button" class="subtle" data-remind-delay="60">1 小时后</button>
+                    <button type="button" class="subtle" data-remind-delay="tomorrow">明天上午 9 点</button>
+                </div>
+                <label>提醒时间（可自定义）<input id="reminder-time" type="datetime-local" required /></label>
+                <p class="form-error" role="alert"></p>
+                <div class="dialog-actions">
+                    <button type="button" class="cancel-dialog subtle">取消</button
+                    ><button id="reminder-save" type="submit" class="primary">保存提醒</button>
+                </div>
+            </form>
+        </dialog>
         <div id="popup-menu" class="popup-menu" role="menu" hidden></div>
         <dialog id="action-dialog">
             <div class="dialog-head">

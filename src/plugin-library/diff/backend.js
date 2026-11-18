@@ -45,7 +45,7 @@ exports.create = async (context, adapters = {}) => {
         cancel(key);
         return new Promise((resolve, reject) => {
             const { Worker } = require('node:worker_threads');
-            const worker = new Worker(
+            const worker = (context.startWorker || ((file, options) => new Worker(file, options)))(
                 path.join(__dirname, action === 'ocr' ? 'vendor/ocr-worker.cjs' : 'vendor/compare-worker.cjs'),
                 {
                     workerData: { action, data },
