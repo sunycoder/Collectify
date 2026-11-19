@@ -17,6 +17,7 @@ protocol.registerSchemesAsPrivileged([
     }
 ]);
 app.disableHardwareAcceleration();
+app.setAppPath(path.resolve(__dirname, '../..'));
 app.setPath('userData', tmp);
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 app.whenReady().then(async () => {

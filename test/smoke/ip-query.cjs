@@ -16,6 +16,7 @@ protocol.registerSchemesAsPrivileged([
     }
 ]);
 app.disableHardwareAcceleration();
+app.setAppPath(path.resolve(__dirname, '../..'));
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'collectify-ip-ui-'));
 app.setPath('userData', temporary);
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

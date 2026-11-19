@@ -14,6 +14,7 @@ protocol.registerSchemesAsPrivileged([
     }
 ]);
 app.disableHardwareAcceleration();
+app.setAppPath(path.resolve(__dirname, '../..'));
 app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'collectify-search-smoke-'));
 app.setPath('userData', temporary);
