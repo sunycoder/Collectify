@@ -27,3 +27,5 @@ config/local.json
 assets/
 *.py
 *.ps1
+
+src/default-packages/

@@ -31,8 +31,6 @@ exports.createPluginManagement = ({
             previousDigest = previous
                 ? sha256(encodeZip(collectFiles(previous.directory), { native: previous.runtime === 'native' }))
                 : null;
-        if (previous?.builtin || registry.defaults().some((p) => p.id === manifest.id))
-            throw Error('默认插件请通过恢复或更新 Collectify 安装');
         if (previous && compareVersion(manifest.version, previous.version) < 0)
             throw Error('不能安装低于当前版本的插件');
         const added = manifest.permissions.filter((p) => !previous?.permissions.includes(p));
@@ -57,7 +55,7 @@ exports.createPluginManagement = ({
             throw Error('确认期间插件程序已改变，请重新安装');
         if (previous && !(await confirmPluginClose([manifest.id], 'update'))) return null;
         await runtime.close(manifest.id);
-        if (previous?.backend) await services.unload(manifest.id);
+        if (services.providers.has(manifest.id)) await services.unload(manifest.id);
         let id;
         try {
             id = registry.install(prepared.directory, manifest);
@@ -160,7 +158,7 @@ exports.createPluginManagement = ({
                         await services.load({ activate: false });
                         await pluginEnabled(builtin.id, true);
                         await revealInstalledPlugin(builtin.id);
-                        return { id: builtin.id, builtin: true, enabled: true };
+                        return { id: builtin.id, builtin: false, defaultInstalled: true, enabled: true };
                     }
                     const { collectFiles, encodeZip } = require('../plugin-system/package'),
                         prepared = packages.prepare(
@@ -190,7 +188,7 @@ exports.createPluginManagement = ({
                         answer = await dialog.showMessageBox(getWindow(), {
                             type: 'question',
                             message: `卸载 ${p.name}？`,
-                            detail: p.builtin
+                            detail: p.defaultInstalled
                                 ? '默认插件可随时恢复。卸载后不会因重启或更新 Collectify 而自动恢复。'
                                 : '移除插件程序，重新安装后可继续使用保留的数据。',
                             checkboxLabel: '同时删除该插件的全部本机数据（不可恢复）',

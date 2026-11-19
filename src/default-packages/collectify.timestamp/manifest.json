@@ -1,0 +1,40 @@
+{
+  "id": "collectify.timestamp",
+  "name": "时间戳工具",
+  "glyph": "时",
+  "order": 40,
+  "description": "秒、毫秒时间戳与本地时间、UTC 时间互转。",
+  "version": "1.0.2",
+  "apiVersion": 1,
+  "entry": "index.html",
+  "permissions": [
+    "storage",
+    "clipboard.write"
+  ],
+  "commands": [
+    {
+      "id": "open",
+      "title": "打开时间戳工具"
+    }
+  ],
+  "navigation": [
+    {
+      "id": "to-date",
+      "label": "时间戳转日期"
+    },
+    {
+      "id": "to-timestamp",
+      "label": "日期转时间戳"
+    }
+  ],
+  "icon": "icon/icon.svg",
+  "details": {
+    "limitations": [
+      "输入内容不自动保存；夏令时歧义会明确提示"
+    ],
+    "features": [
+      "秒/毫秒时间戳、时区转换与批量处理"
+    ]
+  },
+  "minHostVersion": "5.7.18"
+}

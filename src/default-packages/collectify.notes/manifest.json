@@ -1,0 +1,55 @@
+{
+  "id": "collectify.notes",
+  "name": "便签",
+  "description": "记录想法、整理便签并转为待办",
+  "glyph": "记",
+  "order": 30,
+  "version": "1.0.4",
+  "apiVersion": 1,
+  "entry": "index.html",
+  "backend": "backend.cjs",
+  "permissions": [
+    "clipboard.write",
+    "native"
+  ],
+  "commands": [
+    {
+      "id": "open",
+      "title": "打开便签"
+    }
+  ],
+  "navigation": [
+    {
+      "id": "all",
+      "label": "全部便签"
+    },
+    {
+      "id": "yellow",
+      "label": "黄色"
+    },
+    {
+      "id": "blue",
+      "label": "蓝色"
+    },
+    {
+      "id": "pink",
+      "label": "粉色"
+    },
+    {
+      "id": "green",
+      "label": "绿色"
+    }
+  ],
+  "icon": "icon/icon.svg",
+  "details": {
+    "limitations": [
+      "桌面窗口位置在不同显示器和系统上可能需要调整"
+    ],
+    "features": [
+      "便签与桌面组件",
+      "内容保存与待办转换"
+    ]
+  },
+  "minHostVersion": "5.7.18",
+  "runtime": "native"
+}

@@ -52,17 +52,19 @@ function buildCatalog({
                 manifest = readManifest(source),
                 files = collectFiles(source);
             const native = manifest.runtime === 'native';
-            const published = native
-                ? JSON.parse(fs.readFileSync(path.join(source, 'manifest.json'), 'utf8'))
-                : {
-                      ...manifest,
-                      id: item.id,
-                      name: item.name,
-                      version: item.version,
-                      ...(item.iconAsset ? { iconAsset: item.iconAsset } : {})
-                  };
+            const initialPackage = item.source.startsWith('src/default-packages/');
+            const published =
+                native || initialPackage
+                    ? JSON.parse(fs.readFileSync(path.join(source, 'manifest.json'), 'utf8'))
+                    : {
+                          ...manifest,
+                          id: item.id,
+                          name: item.name,
+                          version: item.version,
+                          ...(item.iconAsset ? { iconAsset: item.iconAsset } : {})
+                      };
             if (
-                native &&
+                (native || initialPackage) &&
                 (published.id !== item.id || published.name !== item.name || published.version !== item.version)
             )
                 throw Error('原生插件清单与发布定义不一致，请改清单并重新签名');

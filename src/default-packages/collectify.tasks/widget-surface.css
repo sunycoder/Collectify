@@ -1,0 +1,186 @@
+/* 放在办公主题之后：背景链任一层为纯色都会遮住原生 Acrylic / Vibrancy。 */
+html,
+body {
+    background: transparent !important;
+    color-scheme: normal !important;
+}
+body {
+    border: 0 !important;
+    border-radius: 0;
+    clip-path: none;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+}
+.widget-shell {
+    position: relative;
+    isolation: isolate;
+    height: 100dvh;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--widget-corner-radius, 20px);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+}
+.widget-shell > header {
+    flex-shrink: 0;
+}
+.widget-shell > section {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+.widget-shell #tasks {
+    flex: 1;
+    min-height: 0;
+    max-height: none !important;
+}
+.widget-shell .widget-heading,
+.widget-shell .date-row,
+.widget-shell footer {
+    flex-shrink: 0;
+}
+.widget-shell footer {
+    margin-top: 12px;
+    padding-top: 10px;
+}
+html[data-native-material='acrylic'] .widget-shell,
+html[data-native-material='vibrancy'] .widget-shell {
+    background: color-mix(in srgb, #eeebff var(--glass-wash), transparent) !important;
+    border: 2px solid transparent;
+    background-clip: padding-box !important;
+    border-radius: var(--widget-corner-radius, 20px);
+    box-shadow: inset 0 0 0 1px #ffffff2b;
+    backdrop-filter: none;
+}
+html[data-native-material='acrylic'] .widget-shell:before,
+html[data-native-material='vibrancy'] .widget-shell:before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    border-radius: var(--widget-corner-radius, 20px);
+    padding: 2px;
+    background: linear-gradient(125deg, #ffebd9cc, #ffffff24 37%, #ffffff1f 65%, #ffcd26eb);
+    mask:
+        linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    -webkit-mask:
+        linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    pointer-events: none;
+}
+html[data-native-material='acrylic'] header,
+html[data-native-material='acrylic'] section,
+html[data-native-material='vibrancy'] header,
+html[data-native-material='vibrancy'] section {
+    background: transparent !important;
+}
+html[data-widget-material='glass'] header {
+    border-bottom-color: color-mix(in srgb, var(--ink) 10%, transparent);
+}
+html[data-widget-material='glass'] .timeline-day,
+html[data-widget-material='glass'] footer {
+    border-color: color-mix(in srgb, var(--ink) 12%, transparent);
+}
+html[data-widget-material='glass'] .date-row input {
+    background: color-mix(in srgb, var(--surface) 32%, transparent);
+    border-color: color-mix(in srgb, var(--ink) 12%, transparent);
+}
+/* 内容层保持不透明和清晰；玻璃的透明度只作用于背景，而不作用于文字。 */
+html[data-widget-material='glass'] {
+    --muted: #354158;
+    --subtle: #51617a;
+    --ink: #101c30;
+}
+html[data-widget-material='glass'][style*='color-scheme: dark'] {
+    --muted: #c5d0df;
+    --subtle: #b9c8da;
+    --ink: #f5f8ff;
+}
+html[data-widget-material='glass'] header {
+    height: 54px;
+    padding: 0 18px;
+    background: linear-gradient(#ffffff22, transparent) !important;
+}
+html[data-widget-material='glass'] header strong {
+    font-size: 14px;
+    font-weight: 650;
+}
+html[data-widget-material='glass'] .widget-heading h1 {
+    font-size: 25px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    text-shadow: 0 1px color-mix(in srgb, var(--surface) 40%, transparent);
+}
+html[data-widget-material='glass'] #mode-description {
+    font-size: 10px;
+    letter-spacing: 0.2px;
+}
+html[data-widget-material='glass'] #count {
+    font-size: 11px;
+}
+html[data-widget-material='glass'] .timeline-day {
+    padding: 14px 2px 10px;
+    font-weight: 650;
+    font-size: 12px;
+}
+html[data-widget-material='glass'] .widget-task {
+    padding: 10px 8px;
+    margin: 2px 0;
+    gap: 9px;
+    border-radius: 11px;
+    background: color-mix(in srgb, var(--surface) 16%, transparent);
+    box-shadow: inset 0 1px #ffffff18;
+}
+html[data-widget-material='glass'] .widget-task strong {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.6;
+}
+html[data-widget-material='glass'] .widget-task > div small {
+    font-size: 11px;
+    line-height: 1.6;
+    max-width: none;
+    margin-top: 4px;
+}
+html[data-widget-material='glass'] .timeline-time {
+    font-size: 11px;
+    color: var(--muted);
+}
+html[data-widget-material='glass'] .widget-task > div {
+    border-left-color: var(--accent);
+}
+html[data-widget-material='glass'] .date-row input {
+    background: color-mix(in srgb, var(--surface) 24%, transparent);
+    box-shadow: inset 0 1px #ffffff54;
+    font-size: 12px !important;
+    min-height: 34px;
+}
+[data-density='compact'] section {
+    padding: 14px 15px;
+}
+[data-density='compact'] header {
+    height: 44px;
+}
+[data-density='compact'] .widget-heading {
+    margin-bottom: 9px;
+}
+[data-density='compact'] .widget-task {
+    padding: 5px 0;
+}
+[data-density='compact'] .widget-task > div {
+    min-height: 28px;
+}
+[data-density='compact'] .timeline-day {
+    padding: 10px 0 7px;
+}
+[data-density='compact'] .date-row {
+    margin-bottom: 10px;
+}
+[data-density='compact'] #tasks {
+    max-height: calc(100vh - 194px);
+}

@@ -4,7 +4,7 @@
   "description": "常用资源、分类、登录资料与独立浏览会话",
   "glyph": "藏",
   "order": 10,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "apiVersion": 1,
   "entry": "index.html",
   "backend": "backend.js",
@@ -33,5 +33,6 @@
   "details": {
     "limitations": ["原始文件和浏览器 Cookie 不随数据备份复制；密码可按用户设置明文查看"],
     "features": ["收藏网页、文本、文件、目录与账号资料", "分类、搜索、内置浏览器会话与跨插件关联"]
-  }
+  },
+  "minHostVersion": "5.7.18"
 }

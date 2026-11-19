@@ -1,6 +1,6 @@
 {
   "name": "collectify",
-  "version": "5.7.17",
+  "version": "5.7.18",
   "description": "Collectify · 可扩展的个人插件工作台",
   "main": "src/main.js",
   "author": "Collectify",
@@ -21,7 +21,7 @@
     "dist:linux": "electron-builder --linux AppImage deb --x64",
     "dist:win": "electron-builder --win nsis",
     "vendor:ui": "node scripts/vendor-ui.js",
-    "build:assets": "node scripts/vendor-ui.js \u0026\u0026 node scripts/bundle-mcp.cjs",
+    "build:assets": "node scripts/vendor-ui.js && node scripts/bundle-mcp.cjs",
     "predist": "npm run build:assets",
     "predist:win": "npm run build:assets",
     "predist:mac": "npm run build:assets",
@@ -36,7 +36,9 @@
     "test:fixtures": "node test/tools/create-local-search-fixtures.cjs",
     "lint": "eslint .",
     "check:contracts": "tsc -p tsconfig.contracts.json",
-    "bench": "node scripts/benchmark.cjs"
+    "bench": "node scripts/benchmark.cjs",
+    "defaults:build": "node scripts/build-default-plugins.cjs",
+    "defaults:check": "node scripts/build-default-plugins.cjs --check"
   },
   "devDependencies": {
     "@floating-ui/dom": "1.7.4",
@@ -63,7 +65,6 @@
     },
     "files": [
       "src/**/*",
-      "src/plugins/.shared/**/*",
       "!src/plugin-library/**/*",
       "assets/**/*",
       "package.json",
@@ -71,7 +72,8 @@
       "!config/local.json",
       "!**/smoke*.js",
       "!**/*.test.js",
-      "!**/verification-output.js"
+      "!**/verification-output.js",
+      "!src/plugins/**/*"
     ],
     "win": {
       "target": [
@@ -92,7 +94,7 @@
         "deb"
       ],
       "category": "Development",
-      "maintainer": "sunycoder \u003csunycoder@users.noreply.github.com\u003e",
+      "maintainer": "sunycoder <sunycoder@users.noreply.github.com>",
       "artifactName": "Collectify-${version}-linux-${arch}.${ext}",
       "icon": "assets/icon.png"
     },

@@ -17,7 +17,8 @@ exports.run = async (context) => {
             trayAccess.set(previous);
         }
     };
-    if (process.argv.includes('--smoke-usability')) await require('./smoke-usability').run(context);
+    if (process.argv.includes('--smoke-default-plugins')) await require('./smoke-default-plugins').run(context);
+    else if (process.argv.includes('--smoke-usability')) await require('./smoke-usability').run(context);
     else if (process.argv.includes('--smoke-architecture')) await require('./smoke-architecture').run(context);
     else if (process.argv.includes('--smoke-shutdown')) {
         await require('./smoke-shutdown').run(context);

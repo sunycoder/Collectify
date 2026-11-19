@@ -1,0 +1,15 @@
+#batch-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.bookmark-card .card-top input[type='checkbox'] {
+    width: 18px;
+    height: 18px;
+    margin: 0 8px 0 0;
+    flex: 0 0 18px;
+    accent-color: var(--accent);
+}
+.bookmark-card:has(input[type='checkbox']:checked) {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}

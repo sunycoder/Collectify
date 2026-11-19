@@ -1,0 +1,63 @@
+.json-editor {
+    display: flex;
+    min-width: 0;
+    height: min(58vh, 580px);
+    min-height: 250px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--surface);
+}
+.json-editor textarea {
+    border: 0;
+    border-radius: 0;
+    resize: none;
+    margin: 0;
+    padding: 10px 8px;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    flex: 1;
+    font:
+        13px/20px ui-monospace,
+        Consolas,
+        monospace;
+    white-space: pre;
+}
+.json-gutter {
+    width: 46px;
+    flex-shrink: 0;
+    padding: 10px 6px;
+    overflow: hidden;
+    text-align: right;
+    background: var(--paper);
+    color: var(--muted);
+}
+.json-gutter pre {
+    font:
+        12px/20px ui-monospace,
+        Consolas,
+        monospace;
+    margin: 0;
+}
+.json-enlarge {
+    float: right;
+    padding: 2px 8px;
+    margin-bottom: 7px;
+    font-size: 11px;
+}
+body[data-editor-focus] .grid {
+    grid-template-columns: minmax(0, 1fr);
+}
+body[data-editor-focus='input'] .grid > label:last-child,
+body[data-editor-focus='output'] .grid > label:first-child {
+    display: none;
+}
+body[data-editor-focus] .json-editor {
+    height: 68vh;
+}
+@media (max-width: 600px) {
+    .json-editor {
+        height: 45vh;
+    }
+}

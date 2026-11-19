@@ -116,7 +116,7 @@ test('保留卸载记录的原生默认插件仍不能被外部页面包冒充',
     registry.uninstall('collectify.tasks');
     const prepared = packages.prepare(archive({ id: 'collectify.tasks' }));
     try {
-        assert.throws(() => registry.install(prepared.directory), /内置/);
+        assert.throws(() => registry.install(prepared.directory), /签名/);
     } finally {
         packages.cleanup(prepared);
     }

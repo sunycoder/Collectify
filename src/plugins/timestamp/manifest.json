@@ -4,7 +4,7 @@
   "glyph": "时",
   "order": 40,
   "description": "秒、毫秒时间戳与本地时间、UTC 时间互转。",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "apiVersion": 1,
   "entry": "index.html",
   "permissions": ["storage", "clipboard.write"],
@@ -28,5 +28,6 @@
   "details": {
     "limitations": ["输入内容不自动保存；夏令时歧义会明确提示"],
     "features": ["秒/毫秒时间戳、时区转换与批量处理"]
-  }
+  },
+  "minHostVersion": "5.7.18"
 }

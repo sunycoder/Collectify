@@ -35,6 +35,7 @@ jobs:
       - name: 核对标签与版本
         run: node scripts/release-files.cjs check-version
       - run: npm ci
+      - run: npm run defaults:check
       - run: npm test
       - run: node scripts/configure-source.cjs --ci
         env:

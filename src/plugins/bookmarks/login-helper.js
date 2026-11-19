@@ -2,7 +2,7 @@ const { BrowserWindow, ipcMain, screen } = require('electron');
 const { visibleBounds } = require('../../window-lifecycle');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
-const credentials = require('../../credentials');
+const credentials = require('./credentials');
 const { copyText } = require('../../clipboard-service');
 const { loadAuxiliary } = require('../../auxiliary-window');
 
@@ -70,7 +70,7 @@ class LoginHelper {
                 show: false,
                 backgroundColor: '#ffffff',
                 title: '登录资料卡',
-                icon: path.join(__dirname, '..', '..', '..', 'assets', 'icon.png'),
+                icon: path.join(require('electron').app.getAppPath(), 'assets', 'icon.png'),
                 webPreferences: {
                     preload: path.join(__dirname, 'login-helper-preload.js'),
                     sandbox: true,

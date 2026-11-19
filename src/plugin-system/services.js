@@ -23,7 +23,7 @@ class PluginServices extends EventEmitter {
     async load({ activate = true } = {}) {
         // 保留数据的默认插件仍需提供领域备份处理器，但不激活页面、提醒或 MCP。
         const retained = this.registry
-            .defaults()
+            .retainedDefaults()
             .filter(
                 (p) =>
                     p.backend &&

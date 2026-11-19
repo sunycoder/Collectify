@@ -3,13 +3,13 @@ let pluginManagerSignature = '';
 function renderPluginManager() {
     const signature = JSON.stringify({
         plugins: state.plugins.map(
-            ({ id, name, description, version, enabled, builtin, distributable, icon, iconAsset, glyph }) => ({
+            ({ id, name, description, version, enabled, defaultInstalled, distributable, icon, iconAsset, glyph }) => ({
                 id,
                 name,
                 description,
                 version,
                 enabled,
-                builtin,
+                defaultInstalled,
                 distributable,
                 icon,
                 iconAsset,
@@ -35,7 +35,7 @@ function renderPluginManager() {
             label = el('label', 'plugin-switch'),
             input = document.createElement('input');
         copy.append(
-            pluginMarketHeader(plugin, plugin.builtin ? '默认插件' : '可选插件'),
+            pluginMarketHeader(plugin, plugin.defaultInstalled ? '默认安装' : '可选插件'),
             el('p', 'plugin-card-description', plugin.description),
             el('small', 'plugin-card-version', `v${plugin.version}`)
         );
@@ -72,7 +72,7 @@ function renderPluginManager() {
         );
         actions.firstChild.disabled = !plugin.enabled;
         const remote = catalogState.plugins.find((item) => item.id === plugin.id);
-        if (remote && !plugin.builtin && comparePluginVersion(remote.version, plugin.version) > 0) {
+        if (remote && comparePluginVersion(remote.version, plugin.version) > 0) {
             copy.append(el('small', 'plugin-update-hint', `可更新：${plugin.version} → ${remote.version}`));
             const update = button('更新', null, () => managePlugin('plugin-catalog-install', plugin.id), 'primary');
             update.disabled = pluginBusy || remote.compatible === false;
@@ -203,23 +203,19 @@ function renderPluginCatalog() {
             row = el('article', 'catalog-plugin plugin-market-card'),
             copy = el('div', 'plugin-card-body');
         copy.append(
-            pluginMarketHeader(installed || plugin, installed ? '已在工作台' : '可选插件'),
+            pluginMarketHeader(installed || plugin, installed ? '已在工作台' : restorable ? '默认安装' : '可选插件'),
             el('p', 'plugin-card-description', plugin.description)
         );
         const action = button(
-            restorable ? '恢复默认插件' : installed ? '检查 / 更新' : '安装',
+            installed ? '检查 / 更新' : '安装',
             null,
-            () => managePlugin(restorable ? 'plugin-restore' : 'plugin-catalog-install', plugin.id),
+            () => managePlugin('plugin-catalog-install', plugin.id),
             installed && !plugin.updateAvailable ? 'subtle' : 'primary'
         );
         const upgradable = installed && comparePluginVersion(plugin.version, installed.version) > 0;
         if (installed) {
-            action.textContent = installed.builtin
-                ? '随 Collectify 更新'
-                : upgradable
-                  ? `更新 ${installed.version} → ${plugin.version}`
-                  : '已安装';
-            action.disabled = installed.builtin || !upgradable;
+            action.textContent = upgradable ? `更新 ${installed.version} → ${plugin.version}` : '已安装';
+            action.disabled = !upgradable;
         }
         if (plugin.compatible === false) {
             action.disabled = true;

@@ -19,6 +19,7 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - run: npm run defaults:check
       - run: npm run format:check
       - run: npm run lint
       - run: npm run check:contracts
@@ -52,6 +53,7 @@ jobs:
           npm run smoke -- --smoke-product
           npm run smoke -- --smoke-usability
           npm run smoke -- --smoke-architecture
+          npm run smoke -- --smoke-default-plugins
           npm run smoke -- --smoke-shutdown
       - name: Linux 桌面回归检查
         if: runner.os == 'Linux'
@@ -67,4 +69,5 @@ jobs:
           xvfb-run -a npm run smoke -- --smoke-product
           xvfb-run -a npm run smoke -- --smoke-usability
           xvfb-run -a npm run smoke -- --smoke-architecture
+          xvfb-run -a npm run smoke -- --smoke-default-plugins
           xvfb-run -a npm run smoke -- --smoke-shutdown

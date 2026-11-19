@@ -8,6 +8,8 @@ const { PluginStorage, validateValues } = require('./storage');
 class PluginRegistry {
     constructor({ builtinRoot, userRoot, dataRoot, hostFile }) {
         Object.assign(this, { builtinRoot, userRoot, dataRoot, hostFile });
+        const packaged = path.join(path.dirname(builtinRoot), 'default-packages');
+        this.seedRoot = fs.existsSync(packaged) ? packaged : builtinRoot;
         fs.mkdirSync(path.dirname(hostFile), { recursive: true });
         fs.mkdirSync(userRoot, { recursive: true });
         this.storage = new PluginStorage(dataRoot);
@@ -20,6 +22,7 @@ class PluginRegistry {
         });
         const order = this.getSetting('pluginOrder', []);
         this.pluginOrder = Array.isArray(order) ? [...new Set(order.filter((id) => typeof id === 'string'))] : [];
+        this.seedDefaults();
         this.discover();
     }
     database(action) {
@@ -74,14 +77,44 @@ class PluginRegistry {
     }
     defaults() {
         if (this.defaultManifests) return this.defaultManifests;
-        if (!fs.existsSync(this.builtinRoot)) return [];
+        if (!fs.existsSync(this.seedRoot)) return [];
         return (this.defaultManifests = fs
-            .readdirSync(this.builtinRoot, { withFileTypes: true })
+            .readdirSync(this.seedRoot, { withFileTypes: true })
             .filter((d) => d.isDirectory() && !d.isSymbolicLink() && !d.name.startsWith('.'))
             .map((d) => ({
-                ...readManifest(path.join(this.builtinRoot, d.name), { builtin: true }),
-                directory: path.join(this.builtinRoot, d.name)
+                ...readManifest(path.join(this.seedRoot, d.name)),
+                directory: path.join(this.seedRoot, d.name)
             })));
+    }
+    seedDefaults() {
+        const decided = new Set(this.getSetting('seededDefaultPlugins', []));
+        const removed = this.getSetting('removedDefaultPlugins', []);
+        for (const plugin of this.defaults()) {
+            if (decided.has(plugin.id)) continue;
+            const target = path.join(this.userRoot, plugin.id);
+            if (!removed.includes(plugin.id) && !fs.existsSync(target)) this.copyDefault(plugin.directory, plugin.id);
+            decided.add(plugin.id);
+            this.setSetting('seededDefaultPlugins', [...decided]);
+        }
+    }
+    copyDefault(source, id) {
+        const stage = path.join(this.userRoot, '.seed-' + randomUUID()),
+            target = path.join(this.userRoot, pluginId(id));
+        try {
+            fs.cpSync(source, stage, { recursive: true, dereference: false });
+            if (readManifest(stage).id !== id) throw Error('初始插件身份不一致');
+            fs.renameSync(stage, target);
+        } finally {
+            if (fs.existsSync(stage)) fs.rmSync(stage, { recursive: true, force: true });
+        }
+    }
+    retainedDefaults() {
+        return this.defaults()
+            .filter((p) => !this.plugins.has(p.id))
+            .map((p) => {
+                const saved = path.join(this.userRoot, '.retained', p.id);
+                return fs.existsSync(saved) ? { ...readManifest(saved), directory: saved } : p;
+            });
     }
     availableDefaults() {
         return this.defaults()
@@ -92,12 +125,8 @@ class PluginRegistry {
         this.defaultManifests = null;
         this.iconCache = new Map();
         const next = new Map(),
-            diagnostics = [],
-            removed = this.getSetting('removedDefaultPlugins', []);
-        for (const [root, builtin] of [
-            [this.builtinRoot, true],
-            [this.userRoot, false]
-        ]) {
+            diagnostics = [];
+        for (const [root, builtin] of [[this.userRoot, false]]) {
             if (!fs.existsSync(root)) continue;
             for (const folder of fs.readdirSync(root, { withFileTypes: true })) {
                 if (folder.name.startsWith('.')) continue;
@@ -105,9 +134,12 @@ class PluginRegistry {
                     if (!folder.isDirectory() || folder.isSymbolicLink()) throw Error('插件包必须为普通目录');
                     const directory = path.join(root, folder.name),
                         manifest = readManifest(directory, { builtin });
-                    if (builtin && removed.includes(manifest.id)) continue;
-                    if (!builtin && this.defaults().some((p) => p.id === manifest.id))
-                        throw Error('默认插件不能由外部程序覆盖，请恢复默认插件或更新 Collectify');
+                    const initial = this.defaults().find((p) => p.id === manifest.id);
+                    if (
+                        initial?.backend &&
+                        (!manifest.backend || manifest.runtime !== 'native' || manifest.publisher !== initial.publisher)
+                    )
+                        throw Error('默认原生插件必须使用可信发布者的签名包');
                     if (!builtin && folder.name !== manifest.id)
                         throw Error('已安装插件的目录名必须与插件 ID 一致，请通过插件管理安装');
                     if (next.has(manifest.id)) throw Error('插件 ID 与已安装插件冲突');
@@ -117,7 +149,13 @@ class PluginRegistry {
                         ).run(manifest.id, manifest.version, new Date().toISOString());
                         return db.prepare('SELECT enabled FROM installed_plugins WHERE id=?').get(manifest.id);
                     });
-                    next.set(manifest.id, { ...manifest, directory, builtin, enabled: !!record.enabled });
+                    next.set(manifest.id, {
+                        ...manifest,
+                        directory,
+                        builtin,
+                        defaultInstalled: !!initial,
+                        enabled: !!record.enabled
+                    });
                 } catch (error) {
                     diagnostics.push({ folder: folder.name, error: error.message });
                 }
@@ -207,8 +245,12 @@ class PluginRegistry {
             previous = this.plugins.get(manifest.id);
         if (approvedManifest && JSON.stringify(manifest) !== JSON.stringify(approvedManifest))
             throw Error('确认后插件清单发生变化，请重新选择并确认');
-        if (previous?.builtin || this.defaults().some((p) => p.id === manifest.id))
-            throw Error('内置插件随宿主更新，不能被本地插件覆盖');
+        const initial = this.defaults().find((p) => p.id === manifest.id);
+        if (
+            initial?.backend &&
+            (!manifest.backend || manifest.runtime !== 'native' || manifest.publisher !== initial.publisher)
+        )
+            throw Error('默认原生插件必须使用可信发布者的签名包');
         if (previous) {
             const { compareVersion } = require('./catalog'),
                 { collectFiles, encodeZip, sha256 } = require('./package'),
@@ -272,24 +314,36 @@ class PluginRegistry {
             if (fs.existsSync(staging)) fs.rmSync(staging, { recursive: true });
         }
         if (!previous) this.setEnabled(manifest.id, true);
+        if (initial)
+            this.setSetting(
+                'removedDefaultPlugins',
+                this.getSetting('removedDefaultPlugins', []).filter((id) => id !== manifest.id)
+            );
         return manifest.id;
     }
     uninstall(id, { deleteData = false } = {}) {
         const plugin = this.get(id);
-        // 默认包处于只读应用资源中，用持久卸载记录屏蔽；应用升级也不会自动恢复。
-        if (plugin.builtin)
+        // 默认安装身份仅决定首次安装与离线恢复，不限制后续插件更新。
+        if (plugin.defaultInstalled)
             this.setSetting('removedDefaultPlugins', [
                 ...new Set([...this.getSetting('removedDefaultPlugins', []), id])
             ]);
-        else {
+        {
             const target = path.resolve(plugin.directory),
                 root = path.resolve(this.userRoot);
             if (path.dirname(target) !== root) throw Error('插件卸载路径越界');
-            fs.rmSync(target, { recursive: true, maxRetries: 5, retryDelay: 80 });
+            if (plugin.defaultInstalled && !deleteData) {
+                const retained = path.join(root, '.retained', id);
+                fs.mkdirSync(path.dirname(retained), { recursive: true });
+                if (fs.existsSync(retained)) fs.rmSync(retained, { recursive: true, force: true });
+                fs.renameSync(target, retained);
+            } else fs.rmSync(target, { recursive: true, maxRetries: 5, retryDelay: 80 });
         }
         this.plugins.delete(id);
         this.database((db) => db.prepare('UPDATE installed_plugins SET enabled=0 WHERE id=?').run(id));
         if (deleteData) {
+            const retained = path.join(this.userRoot, '.retained', id);
+            if (fs.existsSync(retained)) fs.rmSync(retained, { recursive: true, force: true });
             const target = path.resolve(this.dataRoot, pluginId(id));
             if (path.dirname(target) !== path.resolve(this.dataRoot)) throw Error('插件数据路径越界');
             fs.rmSync(target, { recursive: true, force: true });
@@ -301,6 +355,10 @@ class PluginRegistry {
         pluginId(id);
         if (!this.defaults().some((p) => p.id === id)) throw Error('没有可恢复的默认插件');
         if (this.plugins.has(id)) throw Error('默认插件已经安装');
+        const saved = path.join(this.userRoot, '.retained', id);
+        const fallback = this.defaults().find((p) => p.id === id);
+        if (fs.existsSync(saved)) readManifest(saved);
+        this.copyDefault(fs.existsSync(saved) ? saved : fallback.directory, id);
         this.setSetting(
             'removedDefaultPlugins',
             this.getSetting('removedDefaultPlugins', []).filter((value) => value !== id)

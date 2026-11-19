@@ -207,7 +207,7 @@ class PluginDevelopment {
     create(input) {
         const id = pluginId(input.pluginId),
             existing = this.registry.plugins.get(id);
-        if (existing?.builtin) throw Error('默认插件不能通过 AI 草稿覆盖，请使用新的插件 ID');
+        if (existing?.defaultInstalled) throw Error('默认插件请通过插件市场更新，AI 草稿请使用新的插件 ID');
         if (this.get().drafts.length >= 50) throw Error('草稿已达到 50 个，请先删除不需要的草稿');
         const sourceId = input.sourcePluginId || (existing ? id : null);
         let source;
@@ -433,7 +433,7 @@ class PluginDevelopment {
         )
             throw Error('请先校验同一 revision 的原样草稿');
         const previous = this.registry.plugins.get(draft.meta.pluginId);
-        if (previous?.builtin) throw Error('不能覆盖默认插件');
+        if (previous?.defaultInstalled) throw Error('默认插件请通过插件市场更新');
         const currentDigest = previous ? digest(filesIn(previous.directory)) : null;
         if (currentDigest !== draft.meta.baseDigest)
             throw Error('已安装版本在草稿创建后发生变化，请基于最新插件重新创建草稿');

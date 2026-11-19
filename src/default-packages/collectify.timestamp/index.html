@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>时间戳转换</title>
+        <link rel="stylesheet" href="collectify-plugin://collectify.sdk/tool.css" />
+        <link rel="stylesheet" href="timestamp.css" />
+    </head>
+    <body>
+        <header>
+            <div>
+                <h1>时间戳转换</h1>
+                <p>秒、毫秒与日期时间互转，明确时区，方便核对。</p>
+            </div>
+            <span class="tag">本地计算</span>
+        </header>
+        <main class="panel timestamp-panel">
+            <section class="live-clock">
+                <div>
+                    <span class="caption">当前时间戳</span>
+                    <div class="clock-value">
+                        <strong id="clock"></strong><span id="clock-unit" class="unit-badge">毫秒</span>
+                    </div>
+                    <small id="clock-zone"></small>
+                </div>
+                <div class="toolbar">
+                    <button id="switch-clock-unit">切换单位</button><button id="copy-clock">复制</button
+                    ><button id="pause-clock" aria-pressed="false">暂停</button>
+                </div>
+            </section>
+            <nav class="conversion-tabs" aria-label="转换模式">
+                <button id="single-tab" aria-pressed="true">单个转换</button
+                ><button id="batch-tab" aria-pressed="false">批量转换</button>
+            </nav>
+            <div id="single-panel">
+                <section class="conversion-section" id="to-date-section">
+                    <h2>时间戳转日期时间</h2>
+                    <div class="conversion-inputs">
+                        <label class="grow"
+                            >时间戳<input
+                                id="timestamp"
+                                placeholder="输入整数时间戳"
+                                inputmode="numeric"
+                                autocomplete="off" /></label
+                        ><label
+                            >单位<select id="unit">
+                                <option value="milliseconds">毫秒 (ms)</option>
+                                <option value="seconds">秒 (s)</option>
+                            </select></label
+                        ><label>时区<select id="date-zone"></select></label><button id="use-now">填入当前</button
+                        ><button id="convert-timestamp" class="primary">转换</button>
+                    </div>
+                    <label class="result-label" for="date-result">转换结果</label>
+                    <div class="conversion-output">
+                        <input id="date-result" readonly placeholder="转换结果" /><button id="copy-date" disabled>
+                            复制
+                        </button>
+                    </div>
+                </section>
+                <section class="conversion-section" id="to-timestamp-section">
+                    <h2>日期时间转时间戳</h2>
+                    <div class="conversion-inputs">
+                        <label class="grow"
+                            >日期时间<input
+                                id="datetime"
+                                placeholder="YYYY-MM-DD HH:mm:ss.SSS"
+                                autocomplete="off" /></label
+                        ><label>时区<select id="zone"></select></label
+                        ><button id="convert-date" class="primary">转换</button>
+                    </div>
+                    <label class="result-label" for="timestamp-result">转换结果</label>
+                    <div class="conversion-output">
+                        <input id="timestamp-result" readonly placeholder="转换结果" /><select
+                            id="output-unit"
+                            aria-label="输出时间戳单位"
+                        >
+                            <option value="milliseconds">毫秒 (ms)</option>
+                            <option value="seconds">秒 (s)</option></select
+                        ><button id="copy-timestamp" disabled>复制</button>
+                    </div>
+                </section>
+            </div>
+            <section id="batch-panel" hidden>
+                <h2>批量转换</h2>
+                <div class="toolbar">
+                    <label
+                        >方向<select id="batch-direction">
+                            <option value="to-date">时间戳 → 日期</option>
+                            <option value="to-timestamp">日期 → 时间戳</option>
+                        </select></label
+                    ><label
+                        >单位<select id="batch-unit">
+                            <option value="milliseconds">毫秒 (ms)</option>
+                            <option value="seconds">秒 (s)</option>
+                        </select></label
+                    ><label>时区<select id="batch-zone"></select></label>
+                </div>
+                <div class="grid batch-grid">
+                    <label
+                        >每行一个值<textarea
+                            id="batch-input"
+                            spellcheck="false"
+                            placeholder="最多 500 行"
+                        ></textarea></label
+                    ><label
+                        >结果（逐行对应）<textarea
+                            id="batch-output"
+                            readonly
+                            spellcheck="false"
+                            placeholder="错误也会显示在对应行"
+                        ></textarea>
+                    </label>
+                </div>
+                <div class="toolbar">
+                    <button id="convert-batch" class="primary">批量转换</button
+                    ><button id="copy-batch" disabled>复制结果</button><button id="clear-batch">清空</button>
+                </div>
+                <p id="batch-summary" role="status"></p>
+            </section>
+            <p id="message" role="status"></p>
+        </main>
+        <p class="caption">
+            只保存单位和时区偏好，不保存输入和结果。日期按所选时区解释；夏令时歧义会明确提示。支持毫秒精度。
+        </p>
+        <script src="collectify-plugin://collectify.sdk/toolkit.js"></script>
+        <script src="convert.js"></script>
+        <script src="app.js"></script>
+    </body>
+</html>

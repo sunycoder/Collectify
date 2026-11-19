@@ -1,5 +1,14 @@
 module.exports = [
-    { ignores: ['**/vendor/**', 'dist/**', '.plugin-release/**', 'node_modules/**', 'build-tools/**'] },
+    {
+        ignores: [
+            '**/vendor/**',
+            'dist/**',
+            '.plugin-release/**',
+            'node_modules/**',
+            'build-tools/**',
+            'src/default-packages/**'
+        ]
+    },
     {
         files: [
             'src/host/**/*.js',

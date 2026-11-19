@@ -11,6 +11,7 @@ function files(directory) {
         fs
             .readdirSync(path.join(root, directory), { withFileTypes: true })
             .filter((item) => path.join(directory, item.name) !== path.join('src', 'plugin-library'))
+            .filter((item) => path.join(directory, item.name) !== path.join('src', 'plugins'))
             .filter((item) => path.join(directory, item.name) !== path.join('config', 'local.json'))
             // 构建器不打包 Git 元数据；其余业务源码、第三方库和原生组件仍逐字节核对。
             .filter((item) => !['.gitignore', '.gitattributes', '.gitkeep'].includes(item.name))
@@ -43,7 +44,18 @@ assert.equal(
 assert.equal(
     asar.listPackage(archive).some((file) => /[\\/]plugin-library[\\/]/.test(file)),
     false,
-    '市场插件程序不能随宿主打包'
+    '可选插件程序不能随宿主打包'
+);
+assert.equal(
+    asar.listPackage(archive).some((file) => /[\\/]src[\\/]plugins[\\/]/.test(file)),
+    false,
+    '业务开发源码不能随宿主打包'
+);
+assert.equal(
+    asar.listPackage(archive).filter((file) => /[\\/]default-packages[\\/][^\\/]+[\\/]manifest.json$/.test(file))
+        .length,
+    5,
+    '必须包含五个离线初始插件包'
 );
 assert.ok(
     asar

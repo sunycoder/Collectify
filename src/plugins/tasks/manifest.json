@@ -4,7 +4,7 @@
   "description": "清单、四象限、看板、日历与桌面待办",
   "glyph": "待",
   "order": 20,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "apiVersion": 1,
   "entry": "index.html",
   "backend": "backend.js",
@@ -41,5 +41,6 @@
   "details": {
     "limitations": ["附件备份保留路径，不自动复制外部文件；系统通知受系统设置影响"],
     "features": ["清单、看板、四象限、排期日历与提醒", "任务状态、附件路径、归档与跨插件关联"]
-  }
+  },
+  "minHostVersion": "5.7.18"
 }

@@ -142,7 +142,7 @@ class DesktopWidget {
                 title: 'Collectify · 桌面待办',
                 backgroundColor: '#00000000',
                 show: false,
-                icon: path.join(__dirname, '..', '..', '..', 'assets', 'icon.png'),
+                icon: path.join(require('electron').app.getAppPath(), 'assets', 'icon.png'),
                 webPreferences: {
                     preload: path.join(__dirname, 'widget-preload.js'),
                     nodeIntegration: false,

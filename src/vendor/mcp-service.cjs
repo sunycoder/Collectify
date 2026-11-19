@@ -34948,7 +34948,7 @@ var require_package = __commonJS({
   "package.json"(exports2, module2) {
     module2.exports = {
       name: "collectify",
-      version: "5.7.17",
+      version: "5.7.18",
       description: "Collectify \xB7 \u53EF\u6269\u5C55\u7684\u4E2A\u4EBA\u63D2\u4EF6\u5DE5\u4F5C\u53F0",
       main: "src/main.js",
       author: "Collectify",
@@ -34984,7 +34984,9 @@ var require_package = __commonJS({
         "test:fixtures": "node test/tools/create-local-search-fixtures.cjs",
         lint: "eslint .",
         "check:contracts": "tsc -p tsconfig.contracts.json",
-        bench: "node scripts/benchmark.cjs"
+        bench: "node scripts/benchmark.cjs",
+        "defaults:build": "node scripts/build-default-plugins.cjs",
+        "defaults:check": "node scripts/build-default-plugins.cjs --check"
       },
       devDependencies: {
         "@floating-ui/dom": "1.7.4",
@@ -35011,7 +35013,6 @@ var require_package = __commonJS({
         },
         files: [
           "src/**/*",
-          "src/plugins/.shared/**/*",
           "!src/plugin-library/**/*",
           "assets/**/*",
           "package.json",
@@ -35019,7 +35020,8 @@ var require_package = __commonJS({
           "!config/local.json",
           "!**/smoke*.js",
           "!**/*.test.js",
-          "!**/verification-output.js"
+          "!**/verification-output.js",
+          "!src/plugins/**/*"
         ],
         win: {
           target: [

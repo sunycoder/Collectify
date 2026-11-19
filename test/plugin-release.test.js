@@ -22,7 +22,7 @@ function fixture(t, all = false) {
 test('官方目录可重现构建，程序包身份、大小和校验值完全匹配', (t) => {
     const built = fixture(t, true),
         checker = new PluginPackages(null, path.join(built.output, 'check'));
-    assert.equal(built.plugins.length, 6);
+    assert.equal(built.plugins.length, 11);
     assert.equal(built.plugins[0].id, 'collectify.clipboard-history');
     for (const item of built.plugins) {
         const filename = path.basename(new URL(item.url).pathname),
