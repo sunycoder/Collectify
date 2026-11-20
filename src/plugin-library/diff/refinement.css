@@ -43,7 +43,7 @@
     font-size: 11px;
 }
 .mode-tabs {
-    padding: 8px 18px;
+    padding: 4px 12px;
     background: var(--surface);
 }
 .mode-tabs [data-mode] {
@@ -64,11 +64,11 @@ aside {
 .input-bar {
     padding: 0;
     gap: 0;
-    min-height: 68px;
+    min-height: 50px;
     border-radius: 8px 8px 0 0;
 }
 .input-side {
-    padding: 11px 12px;
+    padding: 7px 10px;
     gap: 7px;
     flex-wrap: nowrap !important;
     overflow: hidden;

@@ -179,6 +179,16 @@ exports.create = async (context) => {
     return {
         contracts: require('./contracts'),
         store,
+        search: (query) =>
+            store.data.tasks
+                .filter((t) => [t.title, t.note].some((v) => v.toLocaleLowerCase().includes(query)))
+                .map((t) => ({
+                    id: t.id,
+                    title: t.title,
+                    snippet: t.note.slice(0, 180),
+                    route: 'list',
+                    payload: { focusId: t.id }
+                })),
         widget,
         call,
         keepAlive: () => !!widget.win,

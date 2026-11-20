@@ -97,4 +97,34 @@ function read(directory, name) {
         throw Error('Diff 本地数据无法读取，原文件已保留：' + error.message);
     }
 }
-module.exports = { defaults, preferences, workspace, write, read };
+function pairs(input) {
+    if (!Array.isArray(input) || input.length > 30) throw Error('对比组合格式无效');
+    const ids = new Set();
+    return input.map((pair) => {
+        if (
+            !pair ||
+            typeof pair.id !== 'string' ||
+            !/^[a-zA-Z0-9-]{1,80}$/.test(pair.id) ||
+            ids.has(pair.id) ||
+            typeof pair.name !== 'string' ||
+            !pair.name ||
+            pair.name.length > 100 ||
+            !Array.isArray(pair.paths) ||
+            pair.paths.length !== 2 ||
+            pair.paths.some(
+                (p) =>
+                    typeof p !== 'string' || p.length > 4000 || (!path.win32.isAbsolute(p) && !path.posix.isAbsolute(p))
+            )
+        )
+            throw Error('对比组合格式无效');
+        ids.add(pair.id);
+        return {
+            id: pair.id,
+            name: pair.name,
+            paths: [...pair.paths],
+            directory: pair.directory === true,
+            settings: preferences(pair.settings || {})
+        };
+    });
+}
+module.exports = { defaults, preferences, workspace, pairs, write, read };

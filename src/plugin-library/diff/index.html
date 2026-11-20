@@ -341,6 +341,21 @@
                         ><button id="document-text">查看文本差异</button>
                     </div>
                     <div id="sheet-toolbar" hidden>
+                        <div class="sheet-result-filter">
+                            <input
+                                id="sheet-result-query"
+                                type="search"
+                                placeholder="筛选业务 ID 或行内文本"
+                                aria-label="筛选表格行"
+                            /><select id="sheet-result-column" aria-label="筛选列">
+                                <option value="">全部列</option></select
+                            ><select id="sheet-result-kind" aria-label="筛选差异类型">
+                                <option value="">全部类型</option>
+                                <option value="left">删除</option>
+                                <option value="right">增加</option>
+                                <option value="changed">修改</option></select
+                            ><span>行号旁“复制行”复制当前侧可见列；报告仍导出全部差异。</span>
+                        </div>
                         <nav class="content-tabs">
                             <button data-sheet-view="split" class="selected">双栏 Diff</button
                             ><button data-sheet-view="redline">Redline</button
@@ -430,9 +445,11 @@
         <script src="vendor/diff-text.js"></script>
         <script src="images.js"></script>
         <script src="sheet-model.js"></script>
+        <script src="collectify-plugin://collectify.sdk/dialogs.js"></script>
         <script src="sheets.js"></script>
         <script src="folders.js"></script>
         <script src="documents.js"></script>
         <script src="app.js"></script>
+        <script src="workspaces.js"></script>
     </body>
 </html>

@@ -30,7 +30,9 @@ function seed(context, definition) {
                         Object.fromEntries(
                             Object.entries(d.fields).map(([f, c]) => [
                                 f,
-                                d.booleans?.includes(f) ? !!row[c] : (row[c] ?? '')
+                                d.booleans?.includes(f)
+                                    ? !!row[c]
+                                    : (row[c] ?? (f === 'repeat' ? 'none' : f === 'repeatDay' ? 1 : ''))
                             ])
                         )
                     );

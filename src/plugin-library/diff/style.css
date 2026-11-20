@@ -760,3 +760,105 @@ body[data-scheme='dark'] {
         transition: none !important;
     }
 }
+
+.comparison-workspaces,
+.saved-comparisons,
+.sheet-result-filter {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 8px;
+}
+.comparison-workspaces {
+    flex: 1;
+    min-width: 0;
+    flex-wrap: nowrap;
+    padding: 0 12px;
+    overflow-x: auto;
+}
+.comparison-workspaces > button {
+    flex-shrink: 0;
+}
+.topbar .brand > span {
+    display: none;
+}
+.workspace-actions {
+    flex-shrink: 0;
+}
+.workspace-actions summary {
+    cursor: pointer;
+    padding: 5px 8px;
+    font-size: 11px;
+    color: var(--muted);
+}
+.workspace-actions[open] {
+    position: absolute;
+    top: 48px;
+    right: 16px;
+    z-index: 50;
+    padding: 10px;
+    width: min(440px, calc(100vw - 32px));
+    max-height: min(560px, calc(100vh - 80px));
+    overflow-y: auto;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px #0002;
+    max-width: calc(100vw - 32px);
+}
+.workspace-actions[open] input {
+    width: 100%;
+    max-width: none;
+    margin-top: 8px;
+}
+.workspace-actions[open] > button {
+    margin: 4px 4px 0 0;
+}
+.workspace-actions[open] > summary {
+    margin-bottom: 6px;
+}
+.saved-comparisons {
+    display: block;
+    padding: 8px 0 0;
+    margin-top: 10px;
+    border-top: 1px solid var(--line);
+}
+.saved-comparison-list {
+    max-height: 240px;
+    overflow-y: auto;
+    margin-top: 8px;
+}
+.saved-comparison-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 4px 0;
+}
+.saved-comparison-row button {
+    font-size: 11px;
+    padding: 5px 7px;
+}
+.saved-comparison-row > button:first-child {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
+}
+.saved-comparison-empty {
+    color: var(--muted);
+    font-size: 11px;
+}
+.topbar {
+    position: relative;
+}
+.comparison-workspaces .selected {
+    border-color: var(--accent);
+}
+.saved-comparisons:empty {
+    display: none;
+}
+.sheet-result-filter input {
+    min-width: 150px;
+}

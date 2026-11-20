@@ -52,6 +52,10 @@
                     <button id="continue-scan" hidden>继续扫描未检查范围</button>
                     <button id="narrow-scope">重新选择更小的搜索范围</button>
                 </div>
+                <div class="compare-selection">
+                    <span id="compare-count">选择两个文件可直接对比</span
+                    ><button id="compare-selected" disabled>使用 Diff 对比</button>
+                </div>
                 <button id="load-more" hidden>加载更多</button>
                 <div id="empty" class="empty-state">
                     <span data-icon="search"></span>
@@ -117,6 +121,7 @@
         <script src="collectify-plugin://collectify.sdk/toolkit.js"></script>
         <script src="vendor/pdf.js"></script>
         <script src="icons.js"></script>
+        <script src="collectify-plugin://collectify.sdk/dialogs.js"></script>
         <script src="app.js"></script>
     </body>
 </html>

@@ -1,5 +1,13 @@
 const { API_VERSION, PERMISSIONS } = require('./manifest');
-const SDK_FILES = new Set(['tool.css', 'toolkit.js', 'workspace-ui.js', 'plugin-page.css', 'select.css']);
+const SDK_FILES = new Set([
+    'tool.css',
+    'toolkit.js',
+    'workspace-ui.js',
+    'plugin-page.css',
+    'select.css',
+    'dialogs.js',
+    'dialogs.css'
+]);
 const SHARED_FILES = new Set([
     'vendor/tom-select.css',
     'vendor/flatpickr.css',

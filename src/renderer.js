@@ -201,13 +201,12 @@ function renderShell(next) {
     $('#expand-navigation').setAttribute('aria-expanded', String(!collapsed));
     $('.plugin-context').inert = collapsed;
     if ($('#theme-dialog').hidden) ShiyueTheme.apply(state.settings.theme);
-    const enabled = state.plugins.filter((p) => p.enabled),
-        query = $('#plugin-search').value.trim().toLowerCase();
+    const enabled = state.plugins.filter((p) => p.enabled);
     const currentIcons = new Set(state.plugins.map((p) => `${p.id}@${p.version}:${p.icon}`));
     for (const key of pluginIcons.keys()) if (!currentIcons.has(key)) pluginIcons.delete(key);
     const railScroll = $('#plugin-rail').scrollTop;
     $('#plugin-rail').replaceChildren();
-    for (const plugin of enabled.filter((p) => [p.name, p.description].some((s) => s.toLowerCase().includes(query)))) {
+    for (const plugin of enabled) {
         const node = button(plugin.name, null, () => call('plugin-open', { id: plugin.id }), 'plugin-entry');
         node.dataset.pluginId = plugin.id;
         node.title = plugin.name + ' · 拖动调整顺序；Alt + ↑ / ↓ 移动';
@@ -229,8 +228,6 @@ function renderShell(next) {
         }
     }
     $('#plugin-rail').scrollTop = railScroll;
-    $('#plugin-search-empty').hidden =
-        !query || enabled.some((p) => [p.name, p.description].some((s) => s.toLowerCase().includes(query)));
     const active = state.plugins.find((p) => p.id === state.active?.id);
     $('#navigation-title').textContent = active?.name || '工作台';
     $('#navigation-description').textContent = active?.description || '启用所需的插件';
@@ -523,28 +520,11 @@ api.onEvent('shell-state', renderShell);
 api.onEvent('plugin-transfer', (value) =>
     TransferUI.render($('#plugin-download-progress'), value, () => void call('plugin-download-cancel'))
 );
-$('#plugin-search').oninput = () => renderShell(state);
-$('#plugin-search-empty').onclick = () => {
-    $('#plugin-search').value = '';
-    renderShell(state);
-    $('#plugin-search').focus();
-};
-$('#plugin-search').title = '搜索已启用插件的名称与简介 · Ctrl / ⌘ + K 聚焦，Esc 清除';
-$('#plugin-search').addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && event.target.value) {
-        event.preventDefault();
-        event.target.value = '';
-        renderShell(state);
-    }
-    if (event.key === 'Enter') {
-        const first = $('#plugin-rail [data-plugin-id]');
-        if (first) first.click();
-    }
-});
+api.onSearch(() => $('#workbench-search').click());
 document.addEventListener('keydown', (event) => {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
-        $('#plugin-search').focus();
+        $('#workbench-search').click();
     }
 });
 $('#plugin-retry').onclick = task(() => call('plugin-reload'));
@@ -625,6 +605,16 @@ $('#official-plugin-catalog').onclick = task(async () => {
     if (result) await managePlugin('plugin-catalog-refresh');
 });
 $('#catalog-search').oninput = renderPluginCatalog;
+window.workbench.onEvent('plugin-market-request', ({ id }) => {
+    void task(async () => {
+        await openSettings('plugins');
+        const installed = state.plugins.some((p) => p.id === id);
+        document.querySelector(`[data-plugin-tab="${installed ? 'installed' : 'catalog'}"]`)?.click();
+        if (!installed && !catalogState.loaded) await managePlugin('plugin-catalog-refresh');
+        $('#catalog-search').value = id;
+        renderPluginCatalog();
+    })();
+});
 document.querySelectorAll('[data-plugin-tab]').forEach(
     (node) =>
         (node.onclick = task(async () => {

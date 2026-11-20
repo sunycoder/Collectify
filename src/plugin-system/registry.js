@@ -240,7 +240,7 @@ class PluginRegistry {
             .flatMap((p) => p.commands.map((c) => ({ ...c, pluginId: p.id, pluginName: p.name })));
     }
     // 自有插件使用本地目录安装；先校验并暂存全部文件，再替换目录，失败时恢复旧包。
-    install(source, approvedManifest) {
+    install(source, approvedManifest, { development = false } = {}) {
         const manifest = readManifest(source),
             previous = this.plugins.get(manifest.id);
         if (approvedManifest && JSON.stringify(manifest) !== JSON.stringify(approvedManifest))
@@ -258,6 +258,7 @@ class PluginRegistry {
             if (comparison < 0) throw Error('不能安装低于当前版本的插件');
             if (
                 comparison === 0 &&
+                !development &&
                 sha256(encodeZip(collectFiles(source), { native: manifest.runtime === 'native' })) !==
                     sha256(encodeZip(collectFiles(previous.directory), { native: previous.runtime === 'native' }))
             )

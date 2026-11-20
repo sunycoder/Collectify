@@ -1,5 +1,8 @@
 /* global state, catalogState, $, el, icon, button, call, task, toast, renderPluginIcon, pluginMarketHeader, refresh, selectSettingsPanel, openSettings */
 let pluginManagerSignature = '';
+const batchUpdates = new Set();
+let batchUpdating = false,
+    batchUpdateReport = '';
 function renderPluginManager() {
     const signature = JSON.stringify({
         plugins: state.plugins.map(
@@ -29,6 +32,57 @@ function renderPluginManager() {
     const checkUpdates = button('检查插件更新', 'reload', () => managePlugin('plugin-catalog-refresh'), 'subtle');
     checkUpdates.style.gridColumn = '1 / -1';
     $('#plugin-manager').append(checkUpdates);
+    const available = catalogState.plugins.filter(
+        (remote) =>
+            state.plugins.some((p) => p.id === remote.id && comparePluginVersion(remote.version, p.version) > 0) &&
+            remote.compatible !== false
+    );
+    for (const id of batchUpdates) if (!available.some((p) => p.id === id)) batchUpdates.delete(id);
+    const updateBar = el('div', 'plugin-update-batch');
+    const choose = button(
+        '选择全部可更新插件',
+        null,
+        () => {
+            available.forEach((p) => batchUpdates.add(p.id));
+            pluginManagerSignature = '';
+            renderPluginManager();
+        },
+        'subtle'
+    );
+    const update = button(
+        `更新已选 ${batchUpdates.size} 项`,
+        null,
+        async () => {
+            if (batchUpdating || pluginBusy) return;
+            const queue = available.filter((p) => batchUpdates.has(p.id));
+            if (!queue.length) return;
+            batchUpdating = true;
+            const report = [];
+            for (const item of queue) {
+                batchUpdateReport = `正在更新 ${item.name} · ${report.length + 1}/${queue.length}`;
+                pluginManagerSignature = '';
+                renderPluginManager();
+                try {
+                    await managePlugin('plugin-catalog-install', item.id, true);
+                    const installed = state.plugins.find((p) => p.id === item.id);
+                    report.push(
+                        `${item.name}：${installed && comparePluginVersion(installed.version, item.version) >= 0 ? '成功' : '已取消'}`
+                    );
+                    batchUpdates.delete(item.id);
+                } catch (error) {
+                    report.push(`${item.name}：失败，${error.message}`);
+                }
+            }
+            batchUpdating = false;
+            batchUpdateReport = report.join('；');
+            pluginManagerSignature = '';
+            renderPluginManager();
+        },
+        'primary'
+    );
+    choose.disabled = update.disabled = batchUpdating;
+    updateBar.append(choose, update, el('p', '', batchUpdateReport));
+    if (available.length || batchUpdateReport) $('#plugin-manager').append(updateBar);
     for (const plugin of state.plugins) {
         const row = el('article', 'plugin-manager-row plugin-market-card'),
             copy = el('div', 'plugin-card-body'),
@@ -73,6 +127,17 @@ function renderPluginManager() {
         actions.firstChild.disabled = !plugin.enabled;
         const remote = catalogState.plugins.find((item) => item.id === plugin.id);
         if (remote && comparePluginVersion(remote.version, plugin.version) > 0) {
+            const selection = el('input');
+            selection.type = 'checkbox';
+            selection.checked = batchUpdates.has(plugin.id);
+            selection.disabled = batchUpdating || remote.compatible === false;
+            selection.setAttribute('aria-label', '选择更新 ' + plugin.name);
+            selection.onchange = () => {
+                selection.checked ? batchUpdates.add(plugin.id) : batchUpdates.delete(plugin.id);
+                pluginManagerSignature = '';
+                renderPluginManager();
+            };
+            actions.append(selection);
             copy.append(el('small', 'plugin-update-hint', `可更新：${plugin.version} → ${remote.version}`));
             const update = button('更新', null, () => managePlugin('plugin-catalog-install', plugin.id), 'primary');
             update.disabled = pluginBusy || remote.compatible === false;
@@ -145,7 +210,7 @@ function renderPluginManager() {
     $('#plugin-diagnostics').textContent = state.diagnostics?.map((d) => d.folder + '：' + d.error).join('\n') || '';
     renderPluginCatalog();
 }
-async function managePlugin(action, payload) {
+async function managePlugin(action, payload, propagateError = false) {
     if (pluginBusy) return;
     pluginBusy = true;
     $('#plugin-operation-error').textContent = '';
@@ -173,6 +238,7 @@ async function managePlugin(action, payload) {
         return result;
     } catch (error) {
         $('#plugin-operation-error').textContent = error.message;
+        if (propagateError) throw error;
     } finally {
         pluginBusy = false;
         $('#plugin-operation-status').textContent = '';

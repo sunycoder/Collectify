@@ -128,6 +128,27 @@ function readManifest(root, { builtin = false } = {}) {
         if (fs.statSync(assetPath(root, input.icon)).size > 65536) throw Error('插件图标不能超过 64 KiB');
     }
     const navigation = input.navigation || [{ id: 'home', label: input.name }];
+    if (input.search) {
+        const s = input.search;
+        if (
+            !s ||
+            typeof s.keyPrefix !== 'string' ||
+            s.keyPrefix.length > 80 ||
+            !Array.isArray(s.fields) ||
+            s.fields.length > 8 ||
+            !s.fields.length ||
+            s.fields.some(
+                (f) =>
+                    typeof f !== 'string' ||
+                    !/^[a-zA-Z]+(?:\.(?:[a-zA-Z]+|\*))*$/.test(f) ||
+                    /password|secret|token|credential/i.test(f)
+            ) ||
+            typeof s.title !== 'string' ||
+            !s.fields.includes(s.title) ||
+            typeof s.route !== 'string'
+        )
+            throw Error('搜索字段声明无效');
+    }
     if (
         !Array.isArray(navigation) ||
         navigation.length > 50 ||
@@ -157,6 +178,7 @@ function readManifest(root, { builtin = false } = {}) {
         permissions: [...input.permissions],
         commands,
         navigation,
+        ...(input.search ? { search: input.search } : {}),
         ...(input.details ? { details: require('./details').validateDetails(input.details) } : {}),
         order: Number.isFinite(input.order) ? input.order : 100,
         glyph: typeof input.glyph === 'string' ? input.glyph.slice(0, 4) : input.name.slice(0, 1),

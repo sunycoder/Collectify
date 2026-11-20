@@ -195,6 +195,22 @@ exports.create = async (context) => {
     }
     return {
         store,
+        search: (query) =>
+            store.entries
+                .map((item) => {
+                    const values = [item.name, item.note, item.content, item.url, item.localPath].filter(Boolean),
+                        text = values.find((v) => v.toLocaleLowerCase().includes(query));
+                    return text
+                        ? {
+                              id: item.id,
+                              title: item.name,
+                              snippet: text.slice(Math.max(0, text.toLocaleLowerCase().indexOf(query) - 30), 180),
+                              route: 'all',
+                              payload: { focusId: item.id }
+                          }
+                        : null;
+                })
+                .filter(Boolean),
         browser,
         call,
         layout: browser.layout,

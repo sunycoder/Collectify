@@ -12,7 +12,7 @@ var require_entity_repository = __commonJS({
     var { DatabaseSync } = require("node:sqlite");
     var { ensureStorageSchema } = hostSdk.storage;
     var EntityRepository = class {
-      constructor(file, { id, schema, tables, attachments = false }) {
+      constructor(file, { id, schema, tables, attachments = false, migrate }) {
         Object.assign(this, { file, id, schema, tables, attachments });
         fs.mkdirSync(path.dirname(file), { recursive: true });
         this.database((db) => {
@@ -23,6 +23,7 @@ var require_entity_repository = __commonJS({
           db.exec("BEGIN");
           try {
             db.exec(schema);
+            migrate?.(db);
             db.exec(
               "CREATE TABLE IF NOT EXISTS domain_state(id INTEGER PRIMARY KEY CHECK(id=1),revision INTEGER NOT NULL,payload TEXT NOT NULL) STRICT;CREATE TABLE IF NOT EXISTS domain_audit(id INTEGER PRIMARY KEY,tool TEXT NOT NULL,created_at TEXT NOT NULL) STRICT;PRAGMA user_version=1"
             );
@@ -401,7 +402,7 @@ var require_seed = __commonJS({
               (row) => Object.fromEntries(
                 Object.entries(d.fields).map(([f, c]) => [
                   f,
-                  d.booleans?.includes(f) ? !!row[c] : row[c] ?? ""
+                  d.booleans?.includes(f) ? !!row[c] : row[c] ?? (f === "repeat" ? "none" : f === "repeatDay" ? 1 : "")
                 ])
               )
             );
@@ -569,6 +570,13 @@ exports.create = async (context) => {
   return {
     contracts: require_contracts(),
     store,
+    search: (query) => store.data.notes.filter((n) => [n.title, n.content].some((v) => v.toLocaleLowerCase().includes(query))).map((n) => ({
+      id: n.id,
+      title: n.title,
+      snippet: n.content.slice(0, 180),
+      route: "all",
+      payload: { focusId: n.id }
+    })),
     call,
     activate() {
     },

@@ -3,14 +3,14 @@
   "version": 1,
   "plugins": [
     {
-      "minHostVersion": "5.7.9",
+      "minHostVersion": "5.7.19",
       "platforms": ["win32", "darwin", "linux"],
       "id": "collectify.clipboard-history",
       "name": "剪贴板历史",
       "description": "后台记录文本、图片和文件，支持搜索、收藏、预览与一键复制。",
-      "version": "2.2.6",
+      "version": "2.2.7",
       "apiVersion": 1,
-      "size": 59420,
+      "size": 62296,
       "details": {
         "features": ["记录文本、图片和文件列表，支持搜索、收藏和恢复复制", "暂停采集、容量回收与独立卸载"],
         "limitations": [
@@ -29,17 +29,17 @@
         ]
       },
       "iconData": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBzdGFuZGFsb25lPSJubyI/PjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+PHN2ZyB0PSIxNzk0NTM2NDAyNjE4IiBjbGFzcz0iaWNvbiIgdmlld0JveD0iMCAwIDEwMjQgMTAyNCIgdmVyc2lvbj0iMS4xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHAtaWQ9IjM1MTU1IiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiPjxwYXRoIGQ9Ik0yOTguNjY2NjY3IDQwNS4zMzMzMzNhNDIuNjY2NjY3IDQyLjY2NjY2NyAwIDAgMCAwIDg1LjMzMzMzNGg0MjYuNjY2NjY2YTQyLjY2NjY2NyA0Mi42NjY2NjcgMCAxIDAgMC04NS4zMzMzMzRIMjk4LjY2NjY2N3pNMzQxLjMzMzMzMyA1NTQuNjY2NjY3YTQyLjY2NjY2NyA0Mi42NjY2NjcgMCAxIDAgMCA4NS4zMzMzMzNoMzQxLjMzMzMzNGE0Mi42NjY2NjcgNDIuNjY2NjY3IDAgMSAwIDAtODUuMzMzMzMzSDM0MS4zMzMzMzN6TTM4NCA3MDRhNDIuNjY2NjY3IDQyLjY2NjY2NyAwIDEgMCAwIDg1LjMzMzMzM2gyNTZhNDIuNjY2NjY3IDQyLjY2NjY2NyAwIDEgMCAwLTg1LjMzMzMzM0gzODR6IiBwLWlkPSIzNTE1NiI+PC9wYXRoPjxwYXRoIGQ9Ik00MDUuMzMzMzMzIDQyLjY2NjY2N2ExMDYuNjY2NjY3IDEwNi42NjY2NjcgMCAwIDAtMTA0LjY2MTMzMyA4NS45NzMzMzNjLTI5LjAxMzMzMyAwLjgxMDY2Ny01NC44NjkzMzMgMi41Ni03Ny40ODI2NjcgNi43NDEzMzMtMzMuNzA2NjY3IDYuMTg2NjY3LTYzLjQ4OCAxOC4yMTg2NjctODcuODkzMzMzIDQyLjYyNC0yNy45ODkzMzMgMjcuOTg5MzMzLTM5LjU5NDY2NyA2Mi45MzMzMzMtNDQuODg1MzMzIDEwMi41MjhDODUuMzMzMzMzIDMxOC4yMDggODUuMzMzMzMzIDM2NS44NjY2NjcgODUuMzMzMzMzIDQyMy41OTQ2Njd2MjYyLjE0NGMwIDU3Ljc3MDY2NyAwIDEwNS4zODY2NjcgNS4wNzczMzQgMTQzLjA2MTMzMyA1LjI5MDY2NyAzOS41OTQ2NjcgMTYuODk2IDc0LjUzODY2NyA0NC45MjggMTAyLjUyOCAyNy45ODkzMzMgMjguMDMyIDYyLjkzMzMzMyAzOS41OTQ2NjcgMTAyLjUyOCA0NC45MjggMzcuNzE3MzMzIDUuMDc3MzMzIDg1LjMzMzMzMyA1LjA3NzMzMyAxNDMuMDYxMzMzIDUuMDc3MzMzaDI2Mi4xNDRjNTcuNzcwNjY3IDAgMTA1LjM4NjY2NyAwIDE0My4wNjEzMzMtNS4wNzczMzMgMzkuNTk0NjY3LTUuMzMzMzMzIDc0LjUzODY2Ny0xNi44OTYgMTAyLjUyOC00NC45MjggMjguMDMyLTI3Ljk4OTMzMyAzOS41OTQ2NjctNjIuOTMzMzMzIDQ0LjkyOC0xMDIuNTI4IDUuMDc3MzMzLTM3LjcxNzMzMyA1LjA3NzMzMy04NS4zMzMzMzMgNS4wNzczMzQtMTQzLjA2MTMzM1Y0MjMuNTk0NjY3YzAtNTcuNzcwNjY3IDAtMTA1LjM4NjY2Ny01LjA3NzMzNC0xNDMuMDYxMzM0LTUuMzMzMzMzLTM5LjU5NDY2Ny0xNi44OTYtNzQuNTM4NjY3LTQ0LjkyOC0xMDIuNTI4LTI0LjQwNTMzMy0yNC40MDUzMzMtNTQuMTg2NjY3LTM2LjQzNzMzMy04Ny44OTMzMzMtNDIuNjI0LTIyLjU3MDY2Ny00LjEzODY2Ny00OC40MjY2NjctNS45MzA2NjctNzcuNDQtNi43NDEzMzNBMTA2LjY2NjY2NyAxMDYuNjY2NjY3IDAgMCAwIDYxOC42NjY2NjcgNDIuNjY2NjY3aC0yMTMuMzMzMzM0ek0zODQgMTQ5LjMzMzMzM2EyMS4zMzMzMzMgMjEuMzMzMzMzIDAgMCAxIDIxLjMzMzMzMy0yMS4zMzMzMzNoMjEzLjMzMzMzNGEyMS4zMzMzMzMgMjEuMzMzMzMzIDAgMCAxIDIxLjMzMzMzMyAyMS4zMzMzMzN2NDIuNjY2NjY3YTIxLjMzMzMzMyAyMS4zMzMzMzMgMCAwIDEtMjEuMzMzMzMzIDIxLjMzMzMzM2gtMjEzLjMzMzMzNGEyMS4zMzMzMzMgMjEuMzMzMzMzIDAgMCAxLTIxLjMzMzMzMy0yMS4zMzMzMzN2LTQyLjY2NjY2N3pNMjM4LjYzNDY2NyAyMTkuMzA2NjY3YzE2LjIxMzMzMy0yLjk4NjY2NyAzNi4zNTItNC41MjI2NjcgNjIuMjkzMzMzLTUuMjkwNjY3QTEwNi42NjY2NjcgMTA2LjY2NjY2NyAwIDAgMCA0MDUuMzMzMzMzIDI5OC42NjY2NjdoMjEzLjMzMzMzNGExMDYuNjY2NjY3IDEwNi42NjY2NjcgMCAwIDAgMTA0LjQwNTMzMy04NC42NTA2NjdjMjUuOTQxMzMzIDAuNzY4IDQ2LjA4IDIuMzA0IDYyLjI5MzMzMyA1LjI5MDY2NyAyMi44MjY2NjcgNC4xODEzMzMgMzQuNTYgMTAuNjY2NjY3IDQyLjk2NTMzNCAxOS4wMjkzMzMgOS41MTQ2NjcgOS40NzIgMTYuNjQgMjMuNDY2NjY3IDIwLjY5MzMzMyA1My41NDY2NjcgNC4yMjQgMzEuMzYgNC4zMDkzMzMgNzMuMjE2IDQuMzA5MzMzIDEzNC43ODR2MjU2YzAgNjEuNTY4LTAuMDg1MzMzIDEwMy40MjQtNC4yNjY2NjYgMTM0Ljc4NC00LjA5NiAzMC4wOC0xMS4yMjEzMzMgNDQuMDc0NjY3LTIwLjczNiA1My41NDY2NjYtOS40NzIgOS41MTQ2NjctMjMuNDY2NjY3IDE2LjY0LTUzLjU0NjY2NyAyMC42OTMzMzQtMzEuMzYgNC4yMjQtNzMuMjE2IDQuMzA5MzMzLTEzNC43ODQgNC4zMDkzMzNIMzg0Yy02MS41NjggMC0xMDMuNDI0LTAuMDg1MzMzLTEzNC43ODQtNC4yNjY2NjctMzAuMDgtNC4wOTYtNDQuMDc0NjY3LTExLjIyMTMzMy01My41NDY2NjctMjAuNzM2LTkuNTE0NjY3LTkuNTE0NjY3LTE2LjY0LTIzLjQ2NjY2Ny0yMC42OTMzMzMtNTMuNTg5MzMzQzE3MC43NTIgNzg2LjEzMzMzMyAxNzAuNjY2NjY3IDc0NC4yNzczMzMgMTcwLjY2NjY2NyA2ODIuNjY2NjY3di0yNTZjMC02MS41NjggMC4wODUzMzMtMTAzLjQyNCA0LjI2NjY2Ni0xMzQuNzg0IDQuMDk2LTMwLjA4IDExLjIyMTMzMy00NC4wNzQ2NjcgMjAuNzM2LTUzLjU0NjY2NyA4LjM2MjY2Ny04LjQwNTMzMyAyMC4xMzg2NjctMTQuODQ4IDQyLjk2NTMzNC0xOS4wMjkzMzN6IiBwLWlkPSIzNTE1NyI+PC9wYXRoPjwvc3ZnPg==",
-      "sha256": "da24d06847cff7c648781616171c914e33e5c268e88cef7c58ed38571f460a28",
-      "url": "https://github.com/sunycoder/Collectify/releases/download/plugin-collectify.clipboard-history-v2.2.6/collectify.clipboard-history-2.2.6.collectify-plugin"
+      "sha256": "633061a2d55c17642ea0a16176438cb06fedc13f49aec17bb6389d92ad410dea",
+      "url": "https://github.com/sunycoder/Collectify/releases/download/plugin-collectify.clipboard-history-v2.2.7/collectify.clipboard-history-2.2.7.collectify-plugin"
     },
     {
-      "minHostVersion": "5.7.17",
+      "minHostVersion": "5.7.19",
       "id": "collectify.local-search",
       "name": "本地搜索",
       "description": "Everything 文件搜索、分类筛选与本地文件预览",
-      "version": "1.2.4",
+      "version": "1.2.5",
       "apiVersion": 1,
-      "size": 14476407,
+      "size": 14480002,
       "details": {
         "features": ["Everything 文件搜索与按目录检索", "分类筛选、本地文档与媒体预览"],
         "limitations": [
@@ -57,8 +57,8 @@
         "permissions": ["clipboard.write", "native"]
       },
       "iconData": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSI+PHJlY3QgeD0iNyIgeT0iNiIgd2lkdGg9IjI3IiBoZWlnaHQ9IjM1IiByeD0iNyIgZmlsbD0iI2VlZjNmZiIgc3Ryb2tlPSIjMzQ0NzY2IiBzdHJva2Utd2lkdGg9IjIuMiIvPjxwYXRoIGQ9Ik0xNCAxNGgxMm0tMTIgNmg5IiBzdHJva2U9IiM3NDg5YWUiIHN0cm9rZS13aWR0aD0iMi4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48Y2lyY2xlIGN4PSIyOSIgY3k9IjI5IiByPSI5IiBmaWxsPSIjZmZmIiBzdHJva2U9IiMzMzcwZmYiIHN0cm9rZS13aWR0aD0iMi44Ii8+PHBhdGggZD0ibTM1LjUgMzUuNSA3IDciIHN0cm9rZT0iIzMzNzBmZiIgc3Ryb2tlLXdpZHRoPSIzLjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvc3ZnPgo=",
-      "sha256": "ca8378c075ec9c5e969df6fab4c2856fb5f815dce3899721343a284beb5d70b5",
-      "url": "https://github.com/sunycoder/Collectify/releases/download/plugin-collectify.local-search-v1.2.4/collectify.local-search-1.2.4.collectify-plugin"
+      "sha256": "e063751e2854b787273bc120529aa05f43f5835bd2bf49ae6809badd20602a1e",
+      "url": "https://github.com/sunycoder/Collectify/releases/download/plugin-collectify.local-search-v1.2.5/collectify.local-search-1.2.5.collectify-plugin"
     },
     {
       "minHostVersion": "5.7.9",
@@ -82,13 +82,13 @@
       "url": "https://github.com/sunycoder/Collectify/releases/download/plugin-collectify.ip-query-v1.0.3/collectify.ip-query-1.0.3.collectify-plugin"
     },
     {
-      "minHostVersion": "5.7.16",
+      "minHostVersion": "5.7.19",
       "id": "collectify.calculator",
       "name": "计算稿纸",
       "description": "像稿纸一样逐行记录，实时计算、自动保存，支持数学键盘、多张稿纸和公式示例。",
-      "version": "1.0.8",
+      "version": "1.0.9",
       "apiVersion": 1,
-      "size": 83616,
+      "size": 86480,
       "details": {
         "features": [
           "离线逐行计算、自动保存、多张稿纸和行引用",
@@ -110,8 +110,8 @@
         "permissions": ["storage", "clipboard.write", "window"]
       },
       "iconData": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBzdGFuZGFsb25lPSJubyI/PjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+PHN2ZyB0PSIxNzk0ODgwNzg2OTYxIiBjbGFzcz0iaWNvbiIgdmlld0JveD0iMCAwIDEwNzYgMTAyNCIgdmVyc2lvbj0iMS4xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHAtaWQ9IjEwOTM5IiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgd2lkdGg9IjIxMC4xNTYyNSIgaGVpZ2h0PSIyMDAiPjxwYXRoIGQ9Ik0xMDE3LjI2ODIyIDI3Mi4xNjY1NjcgNjM1LjQwOTk0NSAyNzIuMTY2NTY3Yy0xNy42NzU2NjQgMC0zMS45NzczMDktMTQuMzE3OTAyLTMxLjk3NzMwOS0zMS45NzczMDlzMTQuMzAxNjQ2LTMxLjk3NzMwOSAzMS45NzczMDktMzEuOTc3MzA5bDM4MS44NTgyNzUgMGMxNy42NzU2NjQgMCAzMS45NzczMDkgMTQuMzE3OTAyIDMxLjk3NzMwOSAzMS45NzczMDlTMTAzNC45NDM4ODQgMjcyLjE2NjU2NyAxMDE3LjI2ODIyIDI3Mi4xNjY1Njd6IiBmaWxsPSIjMjMxODE1IiBwLWlkPSIxMDk0MCI+PC9wYXRoPjxwYXRoIGQ9Ik0xMDE3LjI2ODIyIDkzNy45NTM1MTEgNjM1LjQwOTk0NSA5MzcuOTUzNTExYy0xNy42NzU2NjQgMC0zMS45NzczMDktMTQuMzE3OTAyLTMxLjk3NzMwOS0zMS45NzczMDkgMC0xNy42NTk0MDggMTQuMzAxNjQ2LTMxLjk3NzMwOSAzMS45NzczMDktMzEuOTc3MzA5bDM4MS44NTgyNzUgMGMxNy42NzU2NjQgMCAzMS45NzczMDkgMTQuMzE3OTAyIDMxLjk3NzMwOSAzMS45NzczMDlDMTA0OS4yNDczMzYgOTIzLjYzNTYwOSAxMDM0Ljk0Mzg4NCA5MzcuOTUzNTExIDEwMTcuMjY4MjIgOTM3Ljk1MzUxMXoiIGZpbGw9IiMyMzE4MTUiIHAtaWQ9IjEwOTQxIj48L3BhdGg+PHBhdGggZD0iTTEwMTcuMjY4MjIgNzI1LjYwMTcwNyA2MzUuNDA5OTQ1IDcyNS42MDE3MDdjLTE3LjY3NTY2NCAwLTMxLjk3NzMwOS0xNC4zMTc5MDItMzEuOTc3MzA5LTMxLjk3NzMwOSAwLTE3LjY1OTQwOCAxNC4zMDE2NDYtMzEuOTc3MzA5IDMxLjk3NzMwOS0zMS45NzczMDlsMzgxLjg1ODI3NSAwYzE3LjY3NTY2NCAwIDMxLjk3NzMwOSAxNC4zMTc5MDIgMzEuOTc3MzA5IDMxLjk3NzMwOUMxMDQ5LjI0NzMzNiA3MTEuMjgyIDEwMzQuOTQzODg0IDcyNS42MDE3MDcgMTAxNy4yNjgyMiA3MjUuNjAxNzA3eiIgZmlsbD0iIzIzMTgxNSIgcC1pZD0iMTA5NDIiPjwvcGF0aD48cGF0aCBkPSJNNDczLjY0ODU0MiAyNzIuMTY2NTY3IDU3LjkzODEwMiAyNzIuMTY2NTY3Yy0xNy42NzU2NjQgMC0zMS45NzczMDktMTQuMzE3OTAyLTMxLjk3NzMwOS0zMS45NzczMDlzMTQuMzAxNjQ2LTMxLjk3NzMwOSAzMS45NzczMDktMzEuOTc3MzA5bDQxNS43MTA0NCAwYzE3LjY3NTY2NCAwIDMxLjk3NzMwOSAxNC4zMTc5MDIgMzEuOTc3MzA5IDMxLjk3NzMwOVM0OTEuMzIyNCAyNzIuMTY2NTY3IDQ3My42NDg1NDIgMjcyLjE2NjU2N3oiIGZpbGw9IiMyMzE4MTUiIHAtaWQ9IjEwOTQzIj48L3BhdGg+PHBhdGggZD0iTTI2NS43OTI0MTkgNDgwLjAyMjY5MWMtMTcuNjc1NjY0IDAtMzEuOTc3MzA5LTE0LjMxNzkwMi0zMS45NzczMDktMzEuOTc3MzA5TDIzMy44MTUxMDkgMzIuMzM0OTQxYzAtMTcuNjU5NDA4IDE0LjMwMTY0Ni0zMS45NzczMDkgMzEuOTc3MzA5LTMxLjk3NzMwOXMzMS45NzczMDkgMTQuMzE3OTAyIDMxLjk3NzMwOSAzMS45NzczMDlsMCA0MTUuNzEwNDRDMjk3Ljc2OTcyOCA0NjUuNzA0Nzg5IDI4My40NjgwODIgNDgwLjAyMjY5MSAyNjUuNzkyNDE5IDQ4MC4wMjI2OTF6IiBmaWxsPSIjMjMxODE1IiBwLWlkPSIxMDk0NCI+PC9wYXRoPjxwYXRoIGQ9Ik00NTcuNjU4MDgxIDEwMjMuNjQyMzY5Yy04LjE4MjE3NCAwLTE2LjM2NDM0OC0zLjEyMjk1My0yMi42MDg0NDktOS4zNjg4Nkw1MS4zMTY1MDEgNjMwLjU0MjE4M2MtMTIuNDkxODE0LTEyLjQ5MTgxNC0xMi40OTE4MTQtMzIuNzI2ODkgMC00NS4yMTg3MDRzMzIuNzI2ODktMTIuNDkxODE0IDQ1LjIxODcwNCAwbDM4My43MzMxMzEgMzgzLjczMzEzMWMxMi40OTE4MTQgMTIuNDkxODE0IDEyLjQ5MTgxNCAzMi43MjY4OSAwIDQ1LjIxODcwNEM0NzQuMDIyNDMgMTAyMC41MjEyMjEgNDY1Ljg0MDI1NSAxMDIzLjY0MjM2OSA0NTcuNjU4MDgxIDEwMjMuNjQyMzY5eiIgZmlsbD0iIzIzMTgxNSIgcC1pZD0iMTA5NDUiPjwvcGF0aD48cGF0aCBkPSJNNzMuOTI2NzU2IDEwMjMuNjQyMzY5Yy04LjE4MjE3NCAwLTE2LjM2NDM0OC0zLjEyMjk1My0yMi42MDg0NDktOS4zNjg4Ni0xMi40OTE4MTQtMTIuNDkxODE0LTEyLjQ5MTgxNC0zMi43MjY4OSAwLTQ1LjIxODcwNEw0MzUuMDQ5NjMyIDU4NS4zMjM0NzljMTIuNDkxODE0LTEyLjQ5MTgxNCAzMi43MjY4OS0xMi40OTE4MTQgNDUuMjE4NzA0IDBzMTIuNDkxODE0IDMyLjcyNjg5IDAgNDUuMjE4NzA0TDk2LjUzNTIwNSAxMDE0LjI3NTMxNEM5MC4yODkyOTkgMTAyMC41MjEyMjEgODIuMTA4OTMxIDEwMjMuNjQyMzY5IDczLjkyNjc1NiAxMDIzLjY0MjM2OXoiIGZpbGw9IiMyMzE4MTUiIHAtaWQ9IjEwOTQ2Ij48L3BhdGg+PC9zdmc+",
-      "sha256": "e9af5ef35ee04837e6f497dac3fd5fce1705f398957d2bce6740870f615ed49d",
-      "url": "https://github.com/sunycoder/Collectify/releases/download/plugin-collectify.calculator-v1.0.8/collectify.calculator-1.0.8.collectify-plugin"
+      "sha256": "acabf78974aab123b77269e3b33730bcc97443054308c372aeae30b3541d43a0",
+      "url": "https://github.com/sunycoder/Collectify/releases/download/plugin-collectify.calculator-v1.0.9/collectify.calculator-1.0.9.collectify-plugin"
     },
     {
       "minHostVersion": "5.7.9",
@@ -131,13 +131,13 @@
       "url": "https://github.com/sunycoder/Collectify/releases/download/plugin-collectify.chinese-calendar-v1.0.1/collectify.chinese-calendar-1.0.1.collectify-plugin"
     },
     {
-      "minHostVersion": "5.7.17",
+      "minHostVersion": "5.7.19",
       "id": "collectify.diff",
       "name": "Diff",
       "description": "离线对比文本、图片、文件夹及 Word、Excel、PDF、PowerPoint 内容，支持差异高亮与报告导出。",
-      "version": "1.0.7",
+      "version": "1.0.8",
       "apiVersion": 1,
-      "size": 17444517,
+      "size": 17470192,
       "details": {
         "features": [
           "Monaco 文本差异、内存合并与撤销",
@@ -185,59 +185,59 @@
         ]
       },
       "iconData": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBzdGFuZGFsb25lPSJubyI/PjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+PHN2ZyB0PSIxNzk0ODg5MDM1MDA2IiBjbGFzcz0iaWNvbiIgdmlld0JveD0iMCAwIDExMzcgMTAyNCIgdmVyc2lvbj0iMS4xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHAtaWQ9IjEyODk5IiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgd2lkdGg9IjIyMi4wNzAzMTI1IiBoZWlnaHQ9IjIwMCI+PHBhdGggZD0iTTUxMiAwaDExMy43Nzc3Nzh2MTAyNEg1MTJ6TTAgMjI3LjU1NTU1NnY1NjguODg4ODg4YTExMy43Nzc3NzggMTEzLjc3Nzc3OCAwIDAgMCAxMTMuNzc3Nzc4IDExMy43Nzc3NzhoMzQxLjMzMzMzM3YtMTEzLjc3Nzc3OEgxMTMuNzc3Nzc4VjIyNy41NTU1NTZoMzQxLjMzMzMzM1YxMTMuNzc3Nzc4SDExMy43Nzc3NzhhMTEzLjc3Nzc3OCAxMTMuNzc3Nzc4IDAgMCAwLTExMy43Nzc3NzggMTEzLjc3Nzc3OHpNNjgyLjY2NjY2NyAxMTMuNzc3Nzc4aDExMy43Nzc3Nzd2MTEzLjc3Nzc3OGgtMTEzLjc3Nzc3N3pNNjgyLjY2NjY2NyA3OTYuNDQ0NDQ0aDExMy43Nzc3Nzd2MTEzLjc3Nzc3OGgtMTEzLjc3Nzc3N3pNMTAyNCAxMTMuNzc3Nzc4aC0xMTMuNzc3Nzc4djExMy43Nzc3NzhoMTEzLjc3Nzc3OHYxMTMuNzc3Nzc3aDExMy43Nzc3NzhWMjI3LjU1NTU1NmExMTMuNzc3Nzc4IDExMy43Nzc3NzggMCAwIDAtMTEzLjc3Nzc3OC0xMTMuNzc3Nzc4ek0xMDI0IDc5Ni40NDQ0NDRoLTExMy43Nzc3Nzh2MTEzLjc3Nzc3OGgxMTMuNzc3Nzc4YTExMy43Nzc3NzggMTEzLjc3Nzc3OCAwIDAgMCAxMTMuNzc3Nzc4LTExMy43Nzc3Nzh2LTExMy43Nzc3NzdoLTExMy43Nzc3Nzh6TTEwMjQgNDU1LjExMTExMWgxMTMuNzc3Nzc4djExMy43Nzc3NzhoLTExMy43Nzc3Nzh6IiBwLWlkPSIxMjkwMCI+PC9wYXRoPjwvc3ZnPg==",
-      "sha256": "79aece5ff643820af7cfec54a03255ffa7f2b0518b20390240d5b7742b5ce094",
-      "url": "https://github.com/sunycoder/Collectify/releases/download/plugin-collectify.diff-v1.0.7/collectify.diff-1.0.7.collectify-plugin"
+      "sha256": "66dccf9f077ccd91a6197006d769b63c0d109c52b14ce7c807c39ff9d29a1ae1",
+      "url": "https://github.com/sunycoder/Collectify/releases/download/plugin-collectify.diff-v1.0.8/collectify.diff-1.0.8.collectify-plugin"
     },
     {
-      "minHostVersion": "5.7.18",
+      "minHostVersion": "5.7.19",
       "id": "collectify.bookmarks",
       "name": "收藏",
       "description": "常用资源、分类、登录资料与独立浏览会话",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "apiVersion": 1,
-      "size": 175885,
+      "size": 180870,
       "details": {
         "features": ["收藏网页、文本、文件、目录与账号资料", "分类、搜索、内置浏览器会话与跨插件关联"],
         "limitations": ["原始文件和浏览器 Cookie 不随数据备份复制；密码可按用户设置明文查看"],
         "permissions": ["storage", "clipboard.write", "native"]
       },
       "iconData": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBzdGFuZGFsb25lPSJubyI/PjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+PHN2ZyB0PSIxNzk0NTM2MTc5NDgxIiBjbGFzcz0iaWNvbiIgdmlld0JveD0iMCAwIDEwMjQgMTAyNCIgdmVyc2lvbj0iMS4xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHAtaWQ9IjQ5NzYiIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+PHBhdGggZD0iTTYwNS42NjYgNTU2LjE3YzExLjA0Ni0xMy44MDYgMzEuMjE0LTE2LjA0NyA0NS4wMi01LjAwMiAxMy44MDYgMTEuMDQ1IDE2LjA0NyAzMS4yMTMgNS4wMDIgNDUuMDItNzguNDY2IDk4LjA4Mi0yMjcuNjY3IDk4LjA4Mi0zMDYuMTMzIDAtMTEuMDQ1LTEzLjgwNy04LjgwNC0zMy45NzUgNS4wMDMtNDUuMDIgMTMuODA2LTExLjA0NSAzMy45NzQtOC44MDQgNDUuMDE5IDUuMDAyIDUyLjgzNCA2Ni4wNDMgMTUzLjI1NiA2Ni4wNDMgMjA2LjA4OSAweiIgZmlsbD0iIzNCNzJGRiIgcC1pZD0iNDk3NyI+PC9wYXRoPjxwYXRoIGQ9Ik00MDYuNDY1IDE4My4zMjJjNTAuOTA2LTczLjc2MyAxNjAuNDk5LTczLjc2MyAyMTEuNDA0IDBsNDkuMzM0IDcxLjQzN2MxNi42NjUgMjQuMTQ3IDQxLjE5MyA0MS44NjkgNjkuNDY4IDUwLjE0N2w4My42NjEgMjQuNDc5Yzg2LjM3MiAyNS4yODQgMTIwLjI1MSAxMjguODA4IDY1LjM0MSAxOTkuNjhsLTUzLjE3OSA2OC42NTQtNi4zNDcgOC45NDJhMTI2LjY1MiAxMjYuNjUyIDAgMCAwLTIwLjE5NiA3Mi4xODdsMi40MDcgODYuNTY5YzIuNDc2IDg5LjM4OS04Ni4yMzEgMTUzLjM4OS0xNzEuMDc0IDEyMy40MjhsLTgyLjE5Mi0yOS4wMTJhMTI4Ljk3IDEyOC45NyAwIDAgMC04NS44NSAwbC04Mi4xOTIgMjkuMDEyLTcuOTcyIDIuNTMzYy04Mi4zMzUgMjMuNDAzLTE2NS41LTM5LjM2NC0xNjMuMTAyLTEyNS45NjFsMi40MDgtODYuNTY5YzAuODEtMjkuMjYyLTguNTY3LTU3LjkyOC0yNi41NDMtODEuMTI5bC01My4xNzktNjguNjU0Yy01My4xOTctNjguNjYxLTIzLjA3LTE2Ny45NjQgNTcuMzk5LTE5Ny4wODVsNy45NDEtMi41OTUgODMuNjYyLTI0LjQ3OWMyOC4yNzUtOC4yNzggNTIuODAzLTI2IDY5LjQ2Ny01MC4xNDdsNDkuMzM0LTcxLjQzN3ogbTE1OC43MjUgMzYuMzU5Yy0yNS40NTMtMzYuODgyLTgwLjU5Mi0zNi44ODItMTA2LjA0NiAwbC00OS4zMDIgNzEuNDM3Yy0yNS4wNTEgMzYuMjk5LTYxLjg4NiA2Mi44MzMtMTA0LjIwMiA3NS4yMmwtODMuNjYxIDI0LjUxMWMtNDMuNDY0IDEyLjcyNi01OS43MTMgNjQuMTQ5LTMyLjcwMiA5OS4wMTFsNTMuMTggNjguNjU1YzI3LjAxNSAzNC44NjggNDEuMTQyIDc3Ljk4NCAzOS45MjMgMTIyLjA4NGwtMi4zNzYgODYuNmMtMS4yMTMgNDMuNzk3IDQyLjYxMSA3Ni41MDIgODUuNzI1IDYxLjI3Nmw4Mi4xOTItMjkuMDEyYTE5Mi45OSAxOTIuOTkgMCAwIDEgMTI4LjQ5MyAwbDgyLjE5MiAyOS4wMTJjNDMuMTE0IDE1LjIyNSA4Ni45MzctMTcuNDc5IDg1LjcyNC02MS4yNzZsLTIuMzc2LTg2LjZjLTEuMjE4LTQ0LjEgMTIuOTA4LTg3LjIxNiAzOS45MjQtMTIyLjA4NGw1My4xNzktNjguNjU1YzI3LjAxMS0zNC44NjEgMTAuNzYzLTg2LjI4NS0zMi43MDEtOTkuMDExbC04My42NjItMjQuNTExYy00Mi4zMTYtMTIuMzg3LTc5LjE1MS0zOC45MjEtMTA0LjIwMS03NS4yMmwtNDkuMzAzLTcxLjQzN3oiIGZpbGw9IiMwMDAwMDAiIHAtaWQ9IjQ5NzgiPjwvcGF0aD48L3N2Zz4=",
-      "sha256": "784f6cbaa737e69af23b15df492bd413f8987a976065ba7577cc38b39cbe0b81",
-      "url": "https://github.com/sunycoder/Collectify/releases/download/plugin-collectify.bookmarks-v1.0.3/collectify.bookmarks-1.0.3.collectify-plugin"
+      "sha256": "437c52d400a99e67ae95437e8fb85285b6ad4c3b2dc016f40c5e42de5ca8ec9c",
+      "url": "https://github.com/sunycoder/Collectify/releases/download/plugin-collectify.bookmarks-v1.0.4/collectify.bookmarks-1.0.4.collectify-plugin"
     },
     {
-      "minHostVersion": "5.7.18",
+      "minHostVersion": "5.7.19",
       "id": "collectify.tasks",
       "name": "待办",
       "description": "清单、四象限、看板、日历与桌面待办",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "apiVersion": 1,
-      "size": 391989,
+      "size": 402762,
       "details": {
         "features": ["清单、看板、四象限、排期日历与提醒", "任务状态、附件路径、归档与跨插件关联"],
         "limitations": ["附件备份保留路径，不自动复制外部文件；系统通知受系统设置影响"],
         "permissions": ["clipboard.write", "native"]
       },
       "iconData": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBzdGFuZGFsb25lPSJubyI/PjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+PHN2ZyB0PSIxNzk0NTM2MTk5MjM3IiBjbGFzcz0iaWNvbiIgdmlld0JveD0iMCAwIDEwMjQgMTAyNCIgdmVyc2lvbj0iMS4xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHAtaWQ9Ijk0NDMiIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+PHBhdGggZD0iTTAgMGgxMDI0djEwMjRIMHoiIGZpbGw9IiNGRkZGRkYiIHAtaWQ9Ijk0NDQiPjwvcGF0aD48cGF0aCBkPSJNNzk2LjQ4MTgyOSAxNjYuNDE0NjI5YTYyLjAxMDUxNCA2Mi4wMTA1MTQgMCAwIDEgNjEuNTU3MDI4IDYxLjA4ODkxNHY1NjguOTc4Mjg2YTYxLjQ0IDYxLjQ0IDAgMCAxLTYxLjA4ODkxNCA2MS41NTcwMjhIMjI3Ljk3MTY1N2E2MS40NCA2MS40NCAwIDAgMS02MS41NTcwMjgtNjEuMDg4OTE0VjIyNy45NzE2NTdhNjEuNDQgNjEuNDQgMCAwIDEgNjEuMDg4OTE0LTYxLjU1NzAyOGg1NjguOTc4Mjg2bTAtOTMuMjcxNzcySDIyNy41MDM1NDNBMTU0LjU1MDg1NyAxNTQuNTUwODU3IDAgMCAwIDczLjE0Mjg1NyAyMjcuNTE4MTcxVjc5Ni45NjQ1NzFhMTU0LjU1MDg1NyAxNTQuNTUwODU3IDAgMCAwIDE1NC4zNzUzMTQgMTU0LjM3NTMxNWg1NjguOTc4Mjg2QTE1NC42NTMyNTcgMTU0LjY1MzI1NyAwIDAgMCA5NTAuODU3MTQzIDc5Ni40ODE4MjlWMjI3LjUwMzU0M0ExNTQuNTUwODU3IDE1NC41NTA4NTcgMCAwIDAgNzk2LjQ4MTgyOSA3My4xNDI4NTd6IiBmaWxsPSIjMzIzMzMzIiBwLWlkPSI5NDQ1Ij48L3BhdGg+PHBhdGggZD0iTTMzMS45ODA4IDYyMS4xMjkxNDNhMzAuMDYxNzE0IDMwLjA2MTcxNCAwIDAgMSAyOS44NDIyODYgMjkuODQyMjg2IDMwLjA2MTcxNCAzMC4wNjE3MTQgMCAwIDEtMjkuODQyMjg2IDI5Ljg0MjI4NSAzMC4wNjE3MTQgMzAuMDYxNzE0IDAgMCAxLTI5Ljg0MjI4Ni0yOS44NDIyODUgMzAuMDYxNzE0IDMwLjA2MTcxNCAwIDAgMSAyOS44NDIyODYtMjkuODQyMjg2bTAtNjkuOTUzODI5YTk5LjkxMzE0MyA5OS45MTMxNDMgMCAwIDAtOTkuODEwNzQzIDk5LjgxMDc0MyA5OS45MTMxNDMgOTkuOTEzMTQzIDAgMCAwIDk5LjgxMDc0MyA5OS44MTA3NDMgOTkuOTEzMTQzIDk5LjkxMzE0MyAwIDAgMCA5OS44MTA3NDMtOTkuODEwNzQzIDk5LjkxMzE0MyA5OS45MTMxNDMgMCAwIDAtOTkuODEwNzQzLTk5LjgxMDc0M3oiIGZpbGw9IiNBQzA0MDQiIHAtaWQ9Ijk0NDYiPjwvcGF0aD48cGF0aCBkPSJNNzU5LjE2NDM0MyA2OTcuNjA3MzE0SDU1Ni4yOTUzMTRBNDYuODExNDI5IDQ2LjgxMTQyOSAwIDAgMSA1MDkuNjU5NDI5IDY1MC45NzE0MjlhNDYuODExNDI5IDQ2LjgxMTQyOSAwIDAgMSA0Ni42MzU4ODUtNDYuNjM1ODg2aDIwMi44NjkwMjlhNDYuODExNDI5IDQ2LjgxMTQyOSAwIDAgMSA0Ni42MzU4ODYgNDYuNjM1ODg2IDQ2LjgxMTQyOSA0Ni44MTE0MjkgMCAwIDEtNDYuNjM1ODg2IDQ2LjYzNTg4NXoiIGZpbGw9IiNBQzA0MDQiIHAtaWQ9Ijk0NDciPjwvcGF0aD48cGF0aCBkPSJNNDE4LjcyODIyOSAyODMuNDg3MDg2bC0xMDQuOTMwNzQzIDEwNC45MzA3NDMtNDEuMDMzMTQzLTQxLjA0Nzc3MmEzMS4yNDY2MjkgMzEuMjQ2NjI5IDAgMCAwLTQ0Ljc3ODA1NyAwIDMxLjI0NjYyOSAzMS4yNDY2MjkgMCAwIDAgMCA0NC43NzgwNTdsNjMuODk3NiA2My44OTc2YTMxLjI0NjYyOSAzMS4yNDY2MjkgMCAwIDAgNDQuNzc4MDU3IDBsMTI2Ljg1ODk3MS0xMjcuNzgwNTcxYTMxLjI0NjYyOSAzMS4yNDY2MjkgMCAwIDAgMC00NC43NzgwNTcgMzEuMjQ2NjI5IDMxLjI0NjYyOSAwIDAgMC00NC43OTI2ODUgMHoiIGZpbGw9IiNBQzA0MDQiIHAtaWQ9Ijk0NDgiPjwvcGF0aD48cGF0aCBkPSJNNzU5LjE3ODk3MSA0MTYuMzg3NjU3SDU1Ni4zMDk5NDNhNDYuODExNDI5IDQ2LjgxMTQyOSAwIDAgMS00Ni42MzU4ODYtNDYuNjM1ODg2IDQ2LjgxMTQyOSA0Ni44MTE0MjkgMCAwIDEgNDYuNjM1ODg2LTQ2LjYzNTg4NWgyMDIuODY5MDI4YTQ2LjgxMTQyOSA0Ni44MTE0MjkgMCAwIDEgNDYuNjM1ODg2IDQ2LjYzNTg4NSA0Ni44MTE0MjkgNDYuODExNDI5IDAgMCAxLTQ2LjYzNTg4NiA0Ni42MzU4ODZ6IiBmaWxsPSIjQUMwNDA0IiBwLWlkPSI5NDQ5Ij48L3BhdGg+PC9zdmc+",
-      "sha256": "f3f28defc9b53dbbfe43e1a4ccf8f82618138f6c3f973cb988a912a4e9a3ab00",
-      "url": "https://github.com/sunycoder/Collectify/releases/download/plugin-collectify.tasks-v1.0.3/collectify.tasks-1.0.3.collectify-plugin"
+      "sha256": "a9a1d9709df13028e9e37af337f5b9511850e92d2a5869a0fd182f1130469296",
+      "url": "https://github.com/sunycoder/Collectify/releases/download/plugin-collectify.tasks-v1.0.4/collectify.tasks-1.0.4.collectify-plugin"
     },
     {
-      "minHostVersion": "5.7.18",
+      "minHostVersion": "5.7.19",
       "id": "collectify.notes",
       "name": "便签",
       "description": "记录想法、整理便签并转为待办",
-      "version": "1.0.4",
+      "version": "1.0.5",
       "apiVersion": 1,
-      "size": 52915,
+      "size": 53887,
       "details": {
         "features": ["便签与桌面组件", "内容保存与待办转换"],
         "limitations": ["桌面窗口位置在不同显示器和系统上可能需要调整"],
         "permissions": ["clipboard.write", "native"]
       },
       "iconData": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBzdGFuZGFsb25lPSJubyI/PjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+PHN2ZyB0PSIxNzk0NTM2MjQyNzYwIiBjbGFzcz0iaWNvbiIgdmlld0JveD0iMCAwIDEwMjQgMTAyNCIgdmVyc2lvbj0iMS4xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHAtaWQ9IjEzOTg4IiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiPjxwYXRoIGQ9Ik0xMzMuMTIgMzgxLjYxMDY2N3YzOTQuOTIyNjY2YTEzNi41MzMzMzMgMTM2LjUzMzMzMyAwIDAgMCAxMzYuNTMzMzMzIDEzNi41MzMzMzRoNDg0LjY5MzMzNGExMzYuNTMzMzMzIDEzNi41MzMzMzMgMCAwIDAgMTM2LjUzMzMzMy0xMzYuNTMzMzM0VjM4MS42MTA2Njd6IG02MDIuMTEyIDE1NS4zMDY2NjZsLTI0MS42NjQgMjQxLjY2NGEzNC4xMzMzMzMgMzQuMTMzMzMzIDAgMCAxLTQ4LjEyOCAwbC0xNTcuMDEzMzMzLTE1Ny4wMTMzMzNhMzQuMTMzMzMzIDM0LjEzMzMzMyAwIDAgMSAwLTQ4LjEyOCAzNC4xMzMzMzMgMzQuMTMzMzMzIDAgMCAxIDQ4LjQ2OTMzMyAwbDEzMi43Nzg2NjcgMTMyLjc3ODY2NyAyMTcuNDI5MzMzLTIxNy43NzA2NjdhMzQuMTMzMzMzIDM0LjEzMzMzMyAwIDAgMSA0OC4xMjggMCAzNC4xMzMzMzMgMzQuMTMzMzMzIDAgMCAxIDAgNDguNDY5MzMzek0zMTIuNjYxMzMzIDExMC45MzMzMzNhMzQuMTMzMzMzIDM0LjEzMzMzMyAwIDAgMC0zNC4xMzMzMzMgMzQuMTMzMzM0djExNS4zNzA2NjZhMzQuMTMzMzMzIDM0LjEzMzMzMyAwIDAgMCA2OC4yNjY2NjcgMFYxNDUuMDY2NjY3YTM0LjEzMzMzMyAzNC4xMzMzMzMgMCAwIDAtMzQuMTMzMzM0LTM0LjEzMzMzNHpNNzExLjMzODY2NyAxMTAuOTMzMzMzYTM0LjEzMzMzMyAzNC4xMzMzMzMgMCAwIDAtMzQuMTMzMzM0IDM0LjEzMzMzNHYxMTUuMzcwNjY2YTM0LjEzMzMzMyAzNC4xMzMzMzMgMCAwIDAgNjguMjY2NjY3IDBWMTQ1LjA2NjY2N2EzNC4xMzMzMzMgMzQuMTMzMzMzIDAgMCAwLTM0LjEzMzMzMy0zNC4xMzMzMzR6IiBmaWxsPSIjMjgyODI4IiBwLWlkPSIxMzk4OSI+PC9wYXRoPjxwYXRoIGQ9Ik03NTkuMTI1MzMzIDE4Mi4yNzJ2NzkuODcyYTQ4LjEyOCA0OC4xMjggMCAxIDEtOTUuOTE0NjY2IDBWMTgxLjU4OTMzM2gtMzAzLjQ0NTMzNHY4MC41NTQ2NjdhNDguMTI4IDQ4LjEyOCAwIDEgMS05NS45MTQ2NjYgMFYxODIuMjcyYTEzNi41MzMzMzMgMTM2LjUzMzMzMyAwIDAgMC0xMzAuNzMwNjY3IDEzNi41MzMzMzNWMzQxLjMzMzMzM2g3NTcuNzZ2LTIzLjIxMDY2NmExMzYuNTMzMzMzIDEzNi41MzMzMzMgMCAwIDAtMTMxLjc1NDY2Ny0xMzUuODUwNjY3eiIgZmlsbD0iIzI4MjgyOCIgcC1pZD0iMTM5OTAiPjwvcGF0aD48L3N2Zz4=",
-      "sha256": "a91c9ef0f815f4ffb4849c281a9057e60fffe2aa159bc2aff5767802590fdff8",
-      "url": "https://github.com/sunycoder/Collectify/releases/download/plugin-collectify.notes-v1.0.4/collectify.notes-1.0.4.collectify-plugin"
+      "sha256": "9fac4e8f81fb9b5908407940f0326cccff4aa6d7657ef943ededd39367d3e097",
+      "url": "https://github.com/sunycoder/Collectify/releases/download/plugin-collectify.notes-v1.0.5/collectify.notes-1.0.5.collectify-plugin"
     },
     {
       "minHostVersion": "5.7.18",

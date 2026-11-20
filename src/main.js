@@ -412,6 +412,8 @@ async function hostAction(action, payload) {
     if (
         [
             'plugin-install',
+            'plugin-local-discover',
+            'plugin-local-load',
             'plugin-package-install',
             'plugin-package-export',
             'plugin-uninstall',
@@ -435,6 +437,8 @@ async function hostAction(action, payload) {
             runtime.setBounds(payload);
             layout();
             return;
+        case 'content-search':
+            return services.searchContent(payload);
         case 'plugin-reload': {
             const active = runtime.active();
             if (active) {
@@ -750,7 +754,11 @@ app.whenReady()
             initialData: defaults.initialData,
             smoke,
             pick,
-            openPlugin
+            openPlugin,
+            openMarket: (id) => {
+                win?.show();
+                win?.webContents.send('plugin-market-request', { id });
+            }
         });
         runtime.services = services;
         services.on('event', ({ pluginId, name, data }) => runtime.emit(pluginId, name, data));

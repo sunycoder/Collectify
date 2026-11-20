@@ -178,6 +178,40 @@ class PluginServices extends EventEmitter {
             end();
         }
     }
+    async searchContent(query) {
+        query = String(query || '')
+            .trim()
+            .toLocaleLowerCase()
+            .slice(0, 200);
+        if (!query) return [];
+        const results = [];
+        for (const plugin of this.registry.list().filter((p) => p.enabled)) {
+            let found = [];
+            const provider = this.providers.get(plugin.id);
+            try {
+                if (provider?.search) found = await this.perform(plugin.id, () => provider.search(query));
+                else if (plugin.search) {
+                    const { matchRecord } = require('./content-search'),
+                        s = plugin.search;
+                    for (const [key, value] of Object.entries(this.registry.storage.export(plugin.id))) {
+                        if (!key.startsWith(s.keyPrefix)) continue;
+                        const row = matchRecord(value, query, s.fields, s.title, s.route, value?.id);
+                        if (row) found.push(row);
+                        if (found.length >= 30) break;
+                    }
+                }
+            } catch {
+                // 单个插件正在停用或数据不可读时，继续展示其他插件的搜索结果。
+                continue;
+            }
+            if (!Array.isArray(found)) continue;
+            results.push(
+                ...found.slice(0, 30).map((row) => ({ ...row, pluginId: plugin.id, pluginName: plugin.name }))
+            );
+            if (results.length >= 80) break;
+        }
+        return results.slice(0, 80);
+    }
     navigation(id) {
         return this.providers.get(id)?.navigation?.() || this.registry.get(id).navigation;
     }

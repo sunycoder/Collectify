@@ -170,17 +170,22 @@ exports.create = async (context, adapters = {}) => {
         }),
         exportData() {
             const { localDrafts, ...preferences } = prefs();
-            return { schemaVersion: 1, preferences };
+            return {
+                schemaVersion: 1,
+                preferences,
+                pairs: persistence().pairs(persistence().read(directory, 'pairs.json') || [])
+            };
         },
         planData(input) {
             if (input?.schemaVersion !== 1) throw Error('Diff 偏好备份版本不正确');
             const clean = persistence().preferences(input.preferences);
             clean.localDrafts = prefs().localDrafts;
-            return { schemaVersion: 1, preferences: clean };
+            return { schemaVersion: 1, preferences: clean, pairs: persistence().pairs(input.pairs || []) };
         },
         importData(input) {
             const next = this.planData(input);
             persistence().write(directory, 'preferences.json', next.preferences);
+            persistence().write(directory, 'pairs.json', next.pairs);
             settings = next.preferences;
             context.emit?.('preferences-changed', settings);
         },
@@ -221,6 +226,63 @@ exports.create = async (context, adapters = {}) => {
         async call(action, input = {}) {
             alive();
             switch (action) {
+                case 'workspace-roots': {
+                    if (!Array.isArray(input.paths) || input.paths.length !== 2) throw Error('目录组合无效');
+                    roots = await Promise.all(
+                        input.paths.map(async (p) => {
+                            if (!p) return null;
+                            if (
+                                typeof p !== 'string' ||
+                                !path.isAbsolute(p) ||
+                                !(await fs().promises.stat(p)).isDirectory()
+                            )
+                                throw Error('目录已不存在，请重新定位');
+                            return fs().promises.realpath(p);
+                        })
+                    );
+                    cancel('scan');
+                    return;
+                }
+                case 'pair-choose': {
+                    const result = await electron().dialog.showOpenDialog(context.getWindow?.(), {
+                        title: input.side === 1 ? '重新定位右侧内容' : '重新定位左侧内容',
+                        properties: [input.directory === true ? 'openDirectory' : 'openFile']
+                    });
+                    return result.canceled ? null : result.filePaths[0];
+                }
+                case 'pair-list':
+                    return persistence().read(directory, 'pairs.json') || [];
+                case 'pair-delete': {
+                    const list = (persistence().read(directory, 'pairs.json') || []).filter((p) => p.id !== input.id);
+                    persistence().write(directory, 'pairs.json', list);
+                    return list;
+                }
+                case 'pair-save': {
+                    if (
+                        !Array.isArray(input.paths) ||
+                        input.paths.length !== 2 ||
+                        input.paths.some((p) => typeof p !== 'string' || !path.isAbsolute(p) || p.length > 4000)
+                    )
+                        throw Error('请保存两个有效的本地路径');
+                    const list = persistence().read(directory, 'pairs.json') || [];
+                    if (list.length >= 30 && !list.some((p) => p.id === input.id)) throw Error('最多保存 30 个组合');
+                    const stats = await Promise.all(input.paths.map((p) => fs().promises.stat(p)));
+                    if (
+                        stats.some((s) => !s.isFile() && !s.isDirectory()) ||
+                        stats[0].isDirectory() !== stats[1].isDirectory()
+                    )
+                        throw Error('请选择两个文件或两个目录');
+                    const pair = {
+                        id: input.id || require('node:crypto').randomUUID(),
+                        name: String(input.name || '对比组合').slice(0, 100),
+                        paths: input.paths,
+                        settings: persistence().preferences(input.settings || {}),
+                        directory: stats[0].isDirectory()
+                    };
+                    const next = [...list.filter((p) => p.id !== pair.id), pair];
+                    persistence().write(directory, 'pairs.json', next);
+                    return next;
+                }
                 case 'state': {
                     let draft = null,
                         draftError = '';

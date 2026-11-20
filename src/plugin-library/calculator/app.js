@@ -9,6 +9,17 @@ let index,
     initialized = false,
     operation = false,
     compose = false;
+let pendingFocus;
+async function focusSheet(id) {
+    await flushChanges();
+    const target = index.sheets.find((s) => s.id === id);
+    if (!target) return;
+    sheet = M.validate(await api.storage.get('sheet:' + target.id));
+    index.active = sheet.id;
+    currentRow = sheet.rows[0].id;
+    renderPaper();
+    await persist();
+}
 let latestSave, deletedRow, undoTimer;
 const editHistory = new Map();
 const sheetSearch = new Map();
@@ -829,7 +840,11 @@ dialog.onpointerup = (e) => {
     if (outside && isOutside(e)) dialog.close('cancel');
     outside = false;
 };
-api.onNavigate(() => {
+api.onNavigate(({ payload }) => {
+    if (payload?.focusId) {
+        if (initialized) void run(() => focusSheet(payload.focusId));
+        else pendingFocus = payload.focusId;
+    }
     if (initialized) focusRow(currentRow);
 });
 $('.workspace').inert = true;
@@ -887,6 +902,10 @@ $('#math-keyboard').inert = true;
         setFont(Number.isInteger(index.fontSize) ? index.fontSize : 22);
         initialized = true;
         renderPaper();
+        if (pendingFocus) {
+            await focusSheet(pendingFocus);
+            pendingFocus = null;
+        }
         void setKeyboard(index.keyboardOpen !== false);
         await persist();
         $('.workspace').inert = false;

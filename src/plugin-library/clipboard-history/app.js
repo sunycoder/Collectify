@@ -13,7 +13,50 @@ const expanded = new Set(),
     imageCache = new Map(),
     observers = new Set();
 const fullText = new Map();
+async function inspectText(item) {
+    const content = await request('content', { id: item.id });
+    let dialog = $('#text-selection-dialog');
+    if (!dialog) {
+        dialog = node('dialog', 'text-selection-dialog');
+        dialog.id = 'text-selection-dialog';
+        const title = node('h2', '', '选取并复制文本'),
+            editor = node('textarea');
+        editor.id = 'text-selection-editor';
+        editor.readOnly = true;
+        editor.setAttribute('aria-label', '选择要复制的文本');
+        const status = node('p');
+        status.id = 'text-selection-status';
+        const copy = action('复制选中文字', '复制选中文字', async () => {
+            const input = $('#text-selection-editor'),
+                text = input.value.slice(input.selectionStart, input.selectionEnd);
+            if (!text) {
+                status.textContent = '请先在文本中选择一段内容';
+                return;
+            }
+            await collectify.clipboard.writeText(text);
+            status.textContent = `已复制 ${text.length} 个字符`;
+        });
+        const close = action('关闭', '关闭', () => dialog.close());
+        dialog.append(title, editor, status, copy, close);
+        WorkspaceDialogs.bind(dialog);
+        document.body.append(dialog);
+    }
+    $('#text-selection-editor').value = content.text;
+    $('#text-selection-status').textContent = '拖动选中文字，或使用 Shift + 方向键选择';
+    dialog.showModal();
+    resizeTextPreview();
+    $('#text-selection-editor').focus();
+}
+function resizeTextPreview() {
+    const dialog = $('#text-selection-dialog');
+    if (!dialog?.open) return;
+    const editor = $('#text-selection-editor');
+    editor.style.height = '0px';
+    editor.style.height = Math.min(Math.max(96, editor.scrollHeight + 2), Math.floor(innerHeight * 0.6)) + 'px';
+}
+window.addEventListener('resize', resizeTextPreview);
 const shapes = {
+    preview: 'M4 4h16v16H4z M8 8h8 M8 12h8 M8 16h5',
     copy: 'M8 8h12v12H8z M4 16V4h12',
     paste: 'M9 4h6v4H9z M7 6H4v15h16V6h-3 M8 13h8 M8 17h6',
     favorite: 'm12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z',
@@ -122,11 +165,15 @@ function showContext(event, item) {
     const actions = [
         ['复制', 'copy', () => copy(item), 'Ctrl+C'],
         [
-            '执行粘贴',
+            '切到上一应用并粘贴',
             'paste',
             async () => {
                 await copy(item);
-                await collectify.desktop.paste();
+                try {
+                    await collectify.desktop.paste();
+                } catch {
+                    ToolUI.message('内容已复制，请切换到目标应用手动粘贴。', true);
+                }
             },
             ''
         ],
@@ -209,7 +256,10 @@ function render() {
             `${item.kind === 'image' ? '图片' : item.kind === 'files' ? '文件' : '文本'}，${relative(item.at)}`
         );
         row.onclick = () => select(item.id);
-        row.ondblclick = () => void ToolUI.run(() => copy(item));
+        row.ondblclick = (e) => {
+            if (window.getSelection()?.toString() || e.target.closest('textarea')) return;
+            void ToolUI.run(() => copy(item));
+        };
         row.oncontextmenu = (event) => showContext(event, item);
         row.onfocus = () => select(item.id);
         const actions = node('div', 'row-actions'),
@@ -229,13 +279,12 @@ function render() {
                 );
             })
         );
-        if (['win32', 'darwin'].includes(platform))
-            actions.append(
-                action('复制并粘贴到上一应用', '粘贴', async () => {
-                    await copy(item);
-                    await collectify.desktop.paste();
-                })
-            );
+        if (item.kind === 'text') {
+            const preview = action('放大预览与局部复制', '', () => inspectText(item));
+            preview.append(symbol('preview'));
+            preview.title = '选取文本并复制';
+            actions.insertBefore(preview, actions.lastChild);
+        }
         row.append(actions);
         if (item.kind === 'image') {
             const wrap = node('div', 'image-wrap'),

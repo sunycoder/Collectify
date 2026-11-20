@@ -21,6 +21,9 @@ function validateTask(input) {
         startAt = date(input.startAt),
         endAt = date(input.endAt);
     if (endAt && (!startAt || Date.parse(endAt) <= Date.parse(startAt))) throw new Error('结束时间必须晚于开始时间');
+    const repeat = input.repeat || 'none';
+    if (!require('./recurrence').RULES.includes(repeat)) throw Error('重复规则无效');
+    if (repeat !== 'none' && !startAt && !dueAt) throw Error('重复待办需要计划时间或截止时间');
     const attachments = (input.attachments || []).map((p) => string(p, 2048));
     const path = require('node:path');
     if (attachments.length > 20 || attachments.some((p) => !path.posix.isAbsolute(p) && !path.win32.isAbsolute(p)))
@@ -43,7 +46,14 @@ function validateTask(input) {
         archived: input.archived === true,
         notifiedAt: date(input.notifiedAt),
         createdAt: date(input.createdAt) || new Date().toISOString(),
-        completedAt: date(input.completedAt)
+        completedAt: date(input.completedAt),
+        repeat,
+        repeatDay:
+            Number.isInteger(input.repeatDay) && input.repeatDay >= 1 && input.repeatDay <= 31
+                ? input.repeatDay
+                : new Date(startAt || dueAt || Date.now()).getDate(),
+        nextTaskId: string(input.nextTaskId, 80),
+        skipped: input.skipped === true
     };
 }
 
@@ -51,6 +61,15 @@ function saveTask(store, input) {
     const previous = (store.data || store.snapshot()).tasks.find((t) => t.id === input.id);
     if (input.id && !previous) throw new Error('待办不存在');
     const next = validateTask({ ...previous, ...input });
+    // 后继关系由本次完成事务维护，旧页面提交的空值不能再次生成同一轮任务。
+    next.nextTaskId = previous?.nextTaskId || '';
+    if (
+        !previous ||
+        previous.repeat !== next.repeat ||
+        previous.startAt !== next.startAt ||
+        previous.dueAt !== next.dueAt
+    )
+        next.repeatDay = new Date(next.startAt || next.dueAt || Date.now()).getDate();
     // 修改提醒或重新打开任务会重新激活提醒；纯编辑备注不会重复提醒。
     if (
         previous &&
@@ -60,8 +79,22 @@ function saveTask(store, input) {
     )
         next.notifiedAt = '';
     if (next.status === 'done') next.completedAt = previous?.completedAt || new Date().toISOString();
-    else next.completedAt = '';
+    else {
+        next.completedAt = '';
+        next.skipped = false;
+    }
     if (next.archived && next.status !== 'done') throw new Error('请先完成待办，再归档');
+    if (previous?.status !== 'done' && next.status === 'done' && next.repeat !== 'none' && !next.nextTaskId) {
+        const following = validateTask(require('./recurrence').nextOccurrence(next));
+        next.nextTaskId = following.id;
+        const data = store.snapshot();
+        const position = data.tasks.findIndex((t) => t.id === next.id);
+        if (position >= 0) data.tasks[position] = next;
+        else data.tasks.push(next);
+        data.tasks.push(following);
+        store.commit(data);
+        return next;
+    }
     if (store.updateEntities) store.updateEntities('tasks', [next]);
     else {
         const data = store.snapshot();

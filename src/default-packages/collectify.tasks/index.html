@@ -92,7 +92,18 @@
                         ></button>
                     </div>
                     <h2 id="task-dialog-title">新建待办</h2>
-                    <p class="dialog-intro">可以先只记标题，再补充安排。</p>
+                    <label
+                        >重复<select name="repeat">
+                            <option value="none">不重复</option>
+                            <option value="daily">每天</option>
+                            <option value="workdays">工作日（周一至周五）</option>
+                            <option value="weekly">每周</option>
+                            <option value="monthly">每月</option>
+                        </select></label
+                    >
+                    <p class="dialog-intro">
+                        可以先只记标题，再补充安排。重复待办在完成或跳过本次后生成下一次；每月遇到较短月份时取月底。
+                    </p>
                     <label
                         >标题 *<input name="title" required maxlength="160" placeholder="这件事的下一步是什么？"
                     /></label>

@@ -917,3 +917,17 @@ dialog::backdrop {
 #scan-state button {
     margin: 6px 4px 0 0;
 }
+
+.compare-selection {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 8px;
+}
+.result-copy input[type='checkbox'] {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 16px;
+    margin-right: 6px;
+}

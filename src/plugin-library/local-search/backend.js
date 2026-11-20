@@ -167,6 +167,19 @@ exports.create = async (context, adapters = {}) => {
                     while (results.size > 3000) results.delete(results.keys().next().value);
                     return { ...found, items, offset };
                 }
+                case 'diff-market':
+                    context.openMarket?.('collectify.diff');
+                    return;
+                case 'diff-open': {
+                    if (!Array.isArray(input.ids) || input.ids.length !== 2 || input.ids[0] === input.ids[1])
+                        throw Error('请选择两个不同的文件');
+                    const paths = input.ids.map(selected);
+                    for (const file of paths)
+                        if (!(await fs.promises.stat(file)).isFile()) throw Error('此入口仅比较两个文件');
+                    if (!context.available?.('collectify.diff')) return { missing: true };
+                    await context.open('collectify.diff', 'text', { paths });
+                    return { opened: true };
+                }
                 case 'preview': {
                     const result = await preview.preview(selected(input.id), { sheetIndex: input.sheetIndex });
                     if (!active) {

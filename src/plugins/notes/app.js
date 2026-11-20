@@ -186,8 +186,13 @@ collectify.onEvent(({ name, data }) => {
             renderNotes();
         });
 });
-collectify.onNavigate(({ route }) => {
+collectify.onNavigate(({ route, payload }) => {
     void ready.then(() => {
+        if (payload?.focusId) {
+            const item = state.notes.find((n) => n.id === payload.focusId);
+            if (item) void showNote(item);
+            return;
+        }
         noteColor = ['yellow', 'blue', 'pink', 'green'].includes(route) ? route : 'all';
         renderNotes();
     });

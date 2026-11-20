@@ -762,6 +762,7 @@ const App = (window.DiffApp = {
 // 只在内存上报离开检查状态；用户开启草稿后后台才落盘。关闭握手会刷新最后一次输入。
 App.workspaceValue = function () {
     const states = [
+        ...(this.comparisonStates?.() || []),
         ...Object.entries(this.sessions)
             .filter(([mode]) => mode !== this.mode)
             .map(([, session]) => session),
@@ -855,7 +856,14 @@ function applyTheme(context) {
     App.applySettings();
 }
 api.onContextChanged(applyTheme);
-api.onNavigate(({ route }) => {
+api.onNavigate(({ route, payload }) => {
+    if (payload?.paths) {
+        App.safe(async () => {
+            await App.ready;
+            await App.importPaths(payload.paths);
+        });
+        return;
+    }
     App.navigation = route || 'text';
     App.safe(() => App.setMode(App.navigation));
 });
@@ -1121,12 +1129,7 @@ $('#export').onclick = () => {
     void prepareExport();
 };
 $('#cancel-export').onclick = () => $('#export-dialog').close();
-$('#export-dialog').onclick = (e) => {
-    if (e.target === $('#export-dialog')) {
-        const r = e.target.getBoundingClientRect();
-        if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) e.target.close();
-    }
-};
+WorkspaceDialogs.bind($('#export-dialog'));
 $('#confirm-export').onclick = () =>
     App.safe(async () => {
         const button = $('#confirm-export');
@@ -1241,6 +1244,7 @@ App.ready = App.safe(async () => {
     await App.setMode(App.navigation || 'text');
     if (App.mode === 'text') await App.editor();
     App.status('就绪 · 全部对比在本地完成');
+    installWorkspaces(App, api);
     try {
         const snapshot = await api.clipboard.snapshot();
         if (snapshot?.kind === 'files' && snapshot.files.length) await App.importPaths(snapshot.files.slice(0, 2), 0);

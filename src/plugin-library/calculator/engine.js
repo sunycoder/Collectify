@@ -121,8 +121,7 @@
             .replace(/×/g, '*')
             .replace(/÷/g, '/')
             .replace(/−/g, '-')
-            .replace(/π/g, 'PI')
-            .replace(/(?<=[\d)])\s*[xX]\s*(?=[\d.(])/g, '*');
+            .replace(/(?<![\p{L}\p{N}_])π(?![\p{L}\p{N}_])/gu, 'PI');
         const tokens = [];
         let i = 0;
         while (i < source.length) {
@@ -135,7 +134,10 @@
             if (match) {
                 tokens.push({ type: 'number', text: match[0] });
                 i += match[0].length;
-            } else if ((match = /^(?:_[1-9]\d*|[a-zA-Z][a-zA-Z0-9]*)/.exec(part))) {
+            } else if (['number', ')'].includes(tokens.at(-1)?.type) && /^[xX]\s*(?=[\d.(])/.test(part)) {
+                tokens.push({ type: '*', text: '*' });
+                i++;
+            } else if ((match = /^(?:_[1-9]\d*|[\p{L}][\p{L}\p{N}_]*)/u.exec(part))) {
                 tokens.push({ type: 'name', text: match[0] });
                 i += match[0].length;
             } else if ((match = /^(?:\*\*|[+\-*/%^(),])/.exec(part))) {
@@ -147,7 +149,7 @@
         tokens.push({ type: 'end' });
         return tokens;
     }
-    function evaluate(source, previous = []) {
+    function evaluate(source, previous = [], variables = new Map()) {
         const tokens = tokenize(source);
         let pos = 0,
             depth = 0;
@@ -187,7 +189,10 @@
                 else if (token.text === 'E') a = Value.number(Math.E);
                 else if (token.text === 'ans') a = reference(previous.length - 1);
                 else if (/^_[1-9]\d*$/.test(token.text)) a = reference(Number(token.text.slice(1)) - 1);
-                else throw Error(`未知名称：${token.text}`);
+                else if (variables.has(token.text)) {
+                    a = variables.get(token.text);
+                    if (!a) throw Error(`变量定义无效：${token.text}`);
+                } else throw Error(`未知名称：${token.text}`);
             } else throw Error('公式未完成，请补充数字或括号');
             const precedence = { '+': 10, '-': 10, '*': 20, '/': 20, '%': 20, '^': 30 };
             while (Object.hasOwn(precedence, peek()) && precedence[peek()] >= min) {
@@ -220,14 +225,47 @@
     }
     function calculate(rows) {
         const results = [];
+        const variables = new Map();
         for (const row of rows) {
             if (!row.expression.trim()) {
                 results.push({ empty: true });
                 continue;
             }
             try {
-                const value = evaluate(row.expression, results);
-                results.push({ value, ...format(value) });
+                const definition = /^\s*([\p{L}][\p{L}\p{N}_]{0,39})\s*=\s*(.*)$/u.exec(row.expression);
+                if (
+                    definition &&
+                    (/^(?:PI|E|π|ans|__proto__|constructor|prototype)$/.test(definition[1]) ||
+                        [
+                            'sqrt',
+                            'cbrt',
+                            'log10',
+                            'log2',
+                            'asin',
+                            'acos',
+                            'atan',
+                            'atan2',
+                            'trunc',
+                            'hypot',
+                            'abs',
+                            'pow',
+                            'sin',
+                            'cos',
+                            'tan',
+                            'max',
+                            'min',
+                            'round',
+                            'floor',
+                            'ceil',
+                            'log',
+                            'exp'
+                        ].includes(definition[1]))
+                )
+                    throw Error('变量名为保留名称');
+                if (definition) variables.set(definition[1], null);
+                const value = evaluate(definition ? definition[2] : row.expression, results, variables);
+                if (definition) variables.set(definition[1], value);
+                results.push({ value, ...format(value), ...(definition ? { variable: definition[1] } : {}) });
             } catch (error) {
                 results.push({ error: error.message });
             }

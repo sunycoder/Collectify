@@ -13,3 +13,29 @@
     outline: 2px solid var(--accent);
     outline-offset: -2px;
 }
+
+.resource-environments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+.production-resource {
+    border: 2px solid #d2694e;
+}
+.resource-environments .selected {
+    outline: 1px solid var(--accent);
+}
+.browser-toolbar .resource-environments {
+    max-width: 260px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+}
+.browser-toolbar .resource-environments button {
+    flex-shrink: 0;
+}
+#environment-badge.production-environment {
+    color: #a42a1b;
+    background: #fff0eb;
+    border: 1px solid #d2694e;
+}

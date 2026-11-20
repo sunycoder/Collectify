@@ -23,7 +23,7 @@ exports.createPluginManagement = ({
     setTransfer
 }) => {
     let operation = false;
-    async function installPrepared(prepared, sourceLabel, signal) {
+    async function installPrepared(prepared, sourceLabel, signal, { batchApproved = false, development = false } = {}) {
         const { manifest } = prepared,
             previous = registry.plugins.get(manifest.id),
             previousVersion = previous?.version;
@@ -34,14 +34,16 @@ exports.createPluginManagement = ({
         if (previous && compareVersion(manifest.version, previous.version) < 0)
             throw Error('不能安装低于当前版本的插件');
         const added = manifest.permissions.filter((p) => !previous?.permissions.includes(p));
-        const answer = await dialog.showMessageBox(getWindow(), {
-            type: 'question',
-            message: `${previous ? '更新' : '安装'} ${manifest.name} ${manifest.version}？`,
-            detail: `来源：${sourceLabel}\n插件 ID：${manifest.id}${previous ? '\n当前版本：' + previous.version : ''}\n权限：${manifest.permissions.join('、') || '无'}${previous && added.length ? '\n新增权限：' + added.join('、') : ''}${manifest.runtime === 'native' ? '\n已校验发布者签名：' + manifest.publisher + '\n该插件含本机程序，可读取本机文件并运行原生后台；仅在信任发布者时安装。' : ''}\n插件数据保存在独立目录中，更新会保留数据。`,
-            buttons: ['取消', previous ? '更新' : '安装'],
-            defaultId: 0,
-            cancelId: 0
-        });
+        const answer = batchApproved
+            ? { response: 1 }
+            : await dialog.showMessageBox(getWindow(), {
+                  type: 'question',
+                  message: `${previous ? '更新' : '安装'} ${manifest.name} ${manifest.version}？`,
+                  detail: `来源：${sourceLabel}\n插件 ID：${manifest.id}${previous ? '\n当前版本：' + previous.version : ''}\n权限：${manifest.permissions.join('、') || '无'}${previous && added.length ? '\n新增权限：' + added.join('、') : ''}${manifest.runtime === 'native' ? '\n已校验发布者签名：' + manifest.publisher + '\n该插件含本机程序，可读取本机文件并运行原生后台；仅在信任发布者时安装。' : ''}\n插件数据保存在独立目录中，更新会保留数据。`,
+                  buttons: ['取消', previous ? '更新' : '安装'],
+                  defaultId: 0,
+                  cancelId: 0
+              });
         if (answer.response !== 1) return null;
         signal?.throwIfAborted();
         if (registry.plugins.get(manifest.id)?.version !== previousVersion)
@@ -58,7 +60,7 @@ exports.createPluginManagement = ({
         if (services.providers.has(manifest.id)) await services.unload(manifest.id);
         let id;
         try {
-            id = registry.install(prepared.directory, manifest);
+            id = registry.install(prepared.directory, manifest, { development });
         } finally {
             await services.load({ activate: false });
             if (registry.plugins.get(manifest.id)?.enabled) await services.enable(manifest.id);
@@ -74,6 +76,70 @@ exports.createPluginManagement = ({
         operation = true;
         try {
             switch (action) {
+                case 'plugin-local-discover': {
+                    const source =
+                        (payload?.refresh && registry.getSetting('localDevelopmentRoot', '')) || (await pick('folder'));
+                    if (!source) return null;
+                    const candidates = require('../plugin-system/source-install').discoverSources(source);
+                    registry.setSetting('localDevelopmentRoot', source);
+                    return { root: source, candidates };
+                }
+                case 'plugin-local-load': {
+                    const root = registry.getSetting('localDevelopmentRoot', '');
+                    if (!root || !Array.isArray(payload?.ids) || !payload.ids.length || payload.ids.length > 100)
+                        throw Error('请先扫描开发目录并选择插件');
+                    const selected = require('../plugin-system/source-install')
+                        .discoverSources(root)
+                        .filter((p) => !p.error && payload.ids.includes(p.id));
+                    if (selected.length !== new Set(payload.ids).size) throw Error('插件目录已改变，请重新扫描');
+                    const answer = await dialog.showMessageBox(getWindow(), {
+                        type: 'question',
+                        message: `加载 ${selected.length} 个本地开发插件？`,
+                        detail:
+                            selected
+                                .map(
+                                    (p) =>
+                                        `${p.name} ${p.version}\n${p.path}\n权限：${p.permissions.join('、') || '无'}${p.runtime === 'native' ? '\n原生后台，已校验签名：' + p.publisher : ''}`
+                                )
+                                .join('\n\n') + '\n\n开发加载允许替换同版本程序，保留插件数据与启停状态。',
+                        buttons: ['取消', '加载所选'],
+                        defaultId: 0,
+                        cancelId: 0
+                    });
+                    if (answer.response !== 1) return null;
+                    const report = [];
+                    for (const candidate of selected) {
+                        let prepared;
+                        try {
+                            const { collectFiles, encodeZip } = require('../plugin-system/package');
+                            prepared = packages.prepare(
+                                encodeZip(collectFiles(candidate.path), { native: candidate.runtime === 'native' })
+                            );
+                            if (
+                                prepared.manifest.id !== candidate.id ||
+                                prepared.manifest.version !== candidate.version ||
+                                prepared.manifest.publisher !== candidate.publisher ||
+                                JSON.stringify(prepared.manifest.permissions) !== JSON.stringify(candidate.permissions)
+                            )
+                                throw Error('确认后插件清单已改变，请重新扫描');
+                            const id = await installPrepared(prepared, '本地开发目录', undefined, {
+                                batchApproved: true,
+                                development: true
+                            });
+                            report.push({ id: candidate.id, name: candidate.name, status: id ? '已加载' : '已取消' });
+                        } catch (error) {
+                            report.push({
+                                id: candidate.id,
+                                name: candidate.name,
+                                status: '失败',
+                                error: error.message
+                            });
+                        } finally {
+                            if (prepared) packages.cleanup(prepared);
+                        }
+                    }
+                    return report;
+                }
                 case 'plugin-catalog-configure':
                     return pluginCatalog.configure(payload);
                 case 'plugin-catalog-refresh':

@@ -11,6 +11,11 @@ window.DiffSheets = class {
         this.signature = '';
         this.revision = 0;
         this.keyControlsSignature = '';
+        for (const id of ['sheet-result-query', 'sheet-result-column', 'sheet-result-kind'])
+            document.querySelector('#' + id).oninput = () => {
+                this.page = 0;
+                this.render();
+            };
         document.querySelector('#sheet-key-clear').onclick = () => {
             this.options.keyColumns = [];
             this.page = this.columnPage = 0;
@@ -177,11 +182,44 @@ window.DiffSheets = class {
     }
     render() {
         if (this.app.content !== 'document' || !this.documents.items.some((i) => i?.kind === 'sheet')) return;
-        const result = this.getResult(),
+        const original = this.getResult(),
+            result = { ...original },
             single = document.querySelector('#sheet-single'),
             pair = document.querySelector('.document-pair'),
             rail = document.querySelector('#sheet-changes');
         this.renderKeys(result);
+        const column = document.querySelector('#sheet-result-column'),
+            choice = column.value;
+        const signature = JSON.stringify(original.columns.map((c) => c.label));
+        if (column.dataset.signature !== signature) {
+            column.replaceChildren(
+                new Option('全部列', ''),
+                ...original.columns.map((c, i) => new Option(c.label || DiffSheetModel.column(i), String(i)))
+            );
+            column.value = choice;
+            column.dataset.signature = signature;
+        }
+        const query = document.querySelector('#sheet-result-query').value.trim().toLocaleLowerCase(),
+            kind = document.querySelector('#sheet-result-kind').value;
+        result.cols = original.cols.filter((c) => column.value === '' || c === Number(column.value));
+        const changes = original.changes.filter(
+            (c) => (!kind || c.state === kind) && (column.value === '' || c.col === Number(column.value))
+        );
+        const changedRows = new Set(changes.map((c) => c.row));
+        result.rows = original.rows.filter(
+            (r) =>
+                (!kind || changedRows.has(r)) &&
+                (!query ||
+                    original.cols.some((c) =>
+                        [0, 1].some((side) =>
+                            DiffSheetModel.value(original.cell(side, r, c), this.options)
+                                .toLocaleLowerCase()
+                                .includes(query)
+                        )
+                    ))
+        );
+        this.visibleChanges = changes.filter((c) => result.rows.includes(c.row));
+        this.filteredResult = result;
         pair.hidden = this.view !== 'split';
         single.hidden = this.view === 'split';
         rail.hidden = false;
@@ -266,6 +304,18 @@ window.DiffSheets = class {
             const tr = document.createElement('tr'),
                 th = document.createElement('th');
             th.textContent = result.sides[side][r] ? result.sides[side][r].index + 1 : '—';
+            const copy = document.createElement('button');
+            copy.textContent = '复制行';
+            copy.className = 'sheet-copy-row';
+            copy.title = '复制当前侧此行可见列';
+            copy.onclick = () =>
+                this.app.safe(async () => {
+                    await this.app.api.clipboard.writeText(
+                        cols.map((c) => DiffSheetModel.value(result.cell(side, r, c), this.options)).join('\t')
+                    );
+                    this.app.status('当前行已复制');
+                });
+            th.append(copy);
             tr.append(th);
             for (const c of cols) {
                 const td = document.createElement('td'),
@@ -342,10 +392,11 @@ window.DiffSheets = class {
         const result = this.result,
             target = document.querySelector('#sheet-change-list');
         target.replaceChildren();
-        const start = Math.max(0, this.changeIndex - 60),
-            end = Math.min(result.changes.length, start + 150);
-        for (let index = start; index < end; index++) {
-            const change = result.changes[index],
+        const visible = this.visibleChanges || result.changes;
+        const position = visible.indexOf(result.changes[this.changeIndex]);
+        const start = Math.max(0, position - 60);
+        for (const change of visible.slice(start, start + 150)) {
+            const index = result.changes.indexOf(change),
                 button = document.createElement('button');
             button.className = 'change-card' + (index === this.changeIndex ? ' active' : '');
             const title = document.createElement('strong');
@@ -361,28 +412,37 @@ window.DiffSheets = class {
             button.onclick = () => this.goto(index);
             target.append(button);
         }
-        if (!result.changes.length) {
+        if (!visible.length) {
             const p = document.createElement('p');
-            p.textContent = '当前比较选项下没有差异';
+            p.textContent = '当前筛选下没有差异';
             target.append(p);
         }
         document.querySelector('#sheet-change-position').textContent =
-            `${this.changeIndex < 0 ? 0 : this.changeIndex + 1} / ${result.changes.length}`;
+            `${position < 0 ? 0 : position + 1} / ${visible.length}`;
         document.querySelector('#sheet-change-prev').disabled = document.querySelector('#sheet-change-next').disabled =
-            !result.changes.length;
+            !visible.length;
     }
     goto(index) {
-        const result = this.getResult();
+        const result = this.filteredResult || this.getResult();
         if (!result.changes.length) return;
         this.changeIndex = (index + result.changes.length) % result.changes.length;
         const change = result.changes[this.changeIndex];
-        this.page = Math.floor(result.rows.indexOf(change.row) / 100);
-        this.columnPage = Math.floor(result.cols.indexOf(change.col) / 30);
+        this.page = Math.max(0, Math.floor(result.rows.indexOf(change.row) / 100));
+        this.columnPage = Math.max(0, Math.floor(result.cols.indexOf(change.col) / 30));
         if (this.view === 'details' || this.view === 'rows') this.view = 'redline';
         this.render();
     }
     next(direction) {
-        this.goto(this.changeIndex + direction);
+        const changes = this.visibleChanges || this.result.changes;
+        if (!changes.length) return;
+        const current = changes.indexOf(this.result.changes[this.changeIndex]);
+        const index =
+            current < 0
+                ? direction > 0
+                    ? 0
+                    : changes.length - 1
+                : (current + direction + changes.length) % changes.length;
+        this.goto(this.result.changes.indexOf(changes[index]));
     }
     focusCell() {
         const change = this.result.changes[this.changeIndex];
@@ -422,7 +482,14 @@ window.DiffSheets = class {
         dialog.append(heading, input, buttons);
         document.body.append(dialog);
         const value = await new Promise((resolve) => {
-            cancel.onclick = () => dialog.close('cancel');
+            const requestClose = WorkspaceDialogs.bind(dialog, async () => {
+                if (input.value !== DiffSheetModel.value(cell, this.options)) {
+                    const answer = await WorkspaceDialogs.confirmChanges('保存单元格修改？');
+                    if (answer === 'cancel') return;
+                    dialog.close(answer === 'save' ? 'save' : 'cancel');
+                } else dialog.close('cancel');
+            });
+            cancel.onclick = requestClose;
             save.onclick = () => dialog.close('save');
             dialog.onclose = () => resolve(dialog.returnValue === 'save' ? input.value : null);
             dialog.showModal();

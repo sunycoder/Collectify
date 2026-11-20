@@ -12,7 +12,7 @@ var require_entity_repository = __commonJS({
     var { DatabaseSync } = require("node:sqlite");
     var { ensureStorageSchema } = hostSdk.storage;
     var EntityRepository = class {
-      constructor(file, { id, schema, tables, attachments = false }) {
+      constructor(file, { id, schema, tables, attachments = false, migrate }) {
         Object.assign(this, { file, id, schema, tables, attachments });
         fs.mkdirSync(path2.dirname(file), { recursive: true });
         this.database((db) => {
@@ -23,6 +23,7 @@ var require_entity_repository = __commonJS({
           db.exec("BEGIN");
           try {
             db.exec(schema);
+            migrate?.(db);
             db.exec(
               "CREATE TABLE IF NOT EXISTS domain_state(id INTEGER PRIMARY KEY CHECK(id=1),revision INTEGER NOT NULL,payload TEXT NOT NULL) STRICT;CREATE TABLE IF NOT EXISTS domain_audit(id INTEGER PRIMARY KEY,tool TEXT NOT NULL,created_at TEXT NOT NULL) STRICT;PRAGMA user_version=1"
             );
@@ -374,7 +375,7 @@ var require_seed = __commonJS({
               (row) => Object.fromEntries(
                 Object.entries(d.fields).map(([f, c]) => [
                   f,
-                  d.booleans?.includes(f) ? !!row[c] : row[c] ?? ""
+                  d.booleans?.includes(f) ? !!row[c] : row[c] ?? (f === "repeat" ? "none" : f === "repeatDay" ? 1 : "")
                 ])
               )
             );
@@ -407,6 +408,49 @@ var require_seed = __commonJS({
   }
 });
 
+// src/plugins/tasks/recurrence.js
+var require_recurrence = __commonJS({
+  "src/plugins/tasks/recurrence.js"(exports2, module2) {
+    var RULES = ["none", "daily", "workdays", "weekly", "monthly"];
+    function nextOccurrence(task) {
+      const anchor = task.startAt || task.dueAt;
+      if (!anchor || !RULES.includes(task.repeat) || task.repeat === "none") return null;
+      const source = new Date(anchor), next = new Date(source);
+      if (task.repeat === "monthly") {
+        next.setDate(1);
+        next.setMonth(next.getMonth() + 1);
+        const last = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+        next.setDate(Math.min(task.repeatDay || source.getDate(), last));
+      } else {
+        next.setDate(next.getDate() + (task.repeat === "weekly" ? 7 : 1));
+        if (task.repeat === "workdays") while ([0, 6].includes(next.getDay())) next.setDate(next.getDate() + 1);
+      }
+      const days = Math.round(
+        (Date.UTC(next.getFullYear(), next.getMonth(), next.getDate()) - Date.UTC(source.getFullYear(), source.getMonth(), source.getDate())) / 864e5
+      );
+      const shift = (value) => {
+        if (!value) return "";
+        const date = new Date(value);
+        date.setDate(date.getDate() + days);
+        return date.toISOString();
+      };
+      return {
+        ...task,
+        id: void 0,
+        status: "todo",
+        archived: false,
+        skipped: false,
+        completedAt: "",
+        notifiedAt: "",
+        createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+        nextTaskId: "",
+        ...Object.fromEntries(["startAt", "endAt", "dueAt", "remindAt"].map((field) => [field, shift(task[field])]))
+      };
+    }
+    module2.exports = { RULES, nextOccurrence };
+  }
+});
+
 // src/plugins/tasks/model.js
 var require_model = __commonJS({
   "src/plugins/tasks/model.js"(exports2, module2) {
@@ -427,6 +471,9 @@ var require_model = __commonJS({
       if (!title) throw new Error("\u8BF7\u586B\u5199\u5F85\u529E\u6807\u9898");
       const dueAt = date(input.dueAt), remindAt = date(input.remindAt), startAt = date(input.startAt), endAt = date(input.endAt);
       if (endAt && (!startAt || Date.parse(endAt) <= Date.parse(startAt))) throw new Error("\u7ED3\u675F\u65F6\u95F4\u5FC5\u987B\u665A\u4E8E\u5F00\u59CB\u65F6\u95F4");
+      const repeat = input.repeat || "none";
+      if (!require_recurrence().RULES.includes(repeat)) throw Error("\u91CD\u590D\u89C4\u5219\u65E0\u6548");
+      if (repeat !== "none" && !startAt && !dueAt) throw Error("\u91CD\u590D\u5F85\u529E\u9700\u8981\u8BA1\u5212\u65F6\u95F4\u6216\u622A\u6B62\u65F6\u95F4");
       const attachments = (input.attachments || []).map((p) => string(p, 2048));
       const path2 = require("node:path");
       if (attachments.length > 20 || attachments.some((p) => !path2.posix.isAbsolute(p) && !path2.win32.isAbsolute(p)))
@@ -449,18 +496,39 @@ var require_model = __commonJS({
         archived: input.archived === true,
         notifiedAt: date(input.notifiedAt),
         createdAt: date(input.createdAt) || (/* @__PURE__ */ new Date()).toISOString(),
-        completedAt: date(input.completedAt)
+        completedAt: date(input.completedAt),
+        repeat,
+        repeatDay: Number.isInteger(input.repeatDay) && input.repeatDay >= 1 && input.repeatDay <= 31 ? input.repeatDay : new Date(startAt || dueAt || Date.now()).getDate(),
+        nextTaskId: string(input.nextTaskId, 80),
+        skipped: input.skipped === true
       };
     }
     function saveTask2(store, input) {
       const previous = (store.data || store.snapshot()).tasks.find((t) => t.id === input.id);
       if (input.id && !previous) throw new Error("\u5F85\u529E\u4E0D\u5B58\u5728");
       const next = validateTask2({ ...previous, ...input });
+      next.nextTaskId = previous?.nextTaskId || "";
+      if (!previous || previous.repeat !== next.repeat || previous.startAt !== next.startAt || previous.dueAt !== next.dueAt)
+        next.repeatDay = new Date(next.startAt || next.dueAt || Date.now()).getDate();
       if (previous && (next.remindAt !== previous.remindAt || previous.status === "done" && next.status !== "done" || previous.archived && !next.archived))
         next.notifiedAt = "";
       if (next.status === "done") next.completedAt = previous?.completedAt || (/* @__PURE__ */ new Date()).toISOString();
-      else next.completedAt = "";
+      else {
+        next.completedAt = "";
+        next.skipped = false;
+      }
       if (next.archived && next.status !== "done") throw new Error("\u8BF7\u5148\u5B8C\u6210\u5F85\u529E\uFF0C\u518D\u5F52\u6863");
+      if (previous?.status !== "done" && next.status === "done" && next.repeat !== "none" && !next.nextTaskId) {
+        const following = validateTask2(require_recurrence().nextOccurrence(next));
+        next.nextTaskId = following.id;
+        const data = store.snapshot();
+        const position = data.tasks.findIndex((t) => t.id === next.id);
+        if (position >= 0) data.tasks[position] = next;
+        else data.tasks.push(next);
+        data.tasks.push(following);
+        store.commit(data);
+        return next;
+      }
       if (store.updateEntities) store.updateEntities("tasks", [next]);
       else {
         const data = store.snapshot();
@@ -490,6 +558,18 @@ var require_schema = __commonJS({
       },
       validate: (data) => require_domain_store().validateCollection(data, "tasks", require_model().validateTask),
       id: "collectify.tasks",
+      migrate(db) {
+        const fields = new Set(
+          db.prepare("PRAGMA table_info(tasks)").all().map((r) => r.name)
+        );
+        for (const [name, definition2] of Object.entries({
+          repeat_rule: "TEXT NOT NULL DEFAULT 'none'",
+          repeat_day: "INTEGER NOT NULL DEFAULT 1",
+          next_task_id: "TEXT NOT NULL DEFAULT ''",
+          skipped: "INTEGER NOT NULL DEFAULT 0"
+        }))
+          if (!fields.has(name)) db.exec(`ALTER TABLE tasks ADD COLUMN ${name} ${definition2}`);
+      },
       schema: "CREATE TABLE IF NOT EXISTS tasks(id TEXT PRIMARY KEY, title TEXT NOT NULL CHECK(length(trim(title))>0), note TEXT NOT NULL, status TEXT NOT NULL CHECK(status IN ('inbox','todo','doing','done')), priority TEXT NOT NULL CHECK(priority IN ('high','medium','low')), important INTEGER NOT NULL CHECK(important IN (0,1)), urgent INTEGER NOT NULL CHECK(urgent IN (0,1)), all_day INTEGER NOT NULL CHECK(all_day IN (0,1)), start_at TEXT, end_at TEXT, due_at TEXT, remind_at TEXT, notified_at TEXT, bookmark_id TEXT, archived INTEGER NOT NULL CHECK(archived IN (0,1)), created_at TEXT NOT NULL, completed_at TEXT, sort_order INTEGER NOT NULL, CHECK(archived=0 OR status='done'), CHECK(end_at IS NULL OR (start_at IS NOT NULL AND end_at>start_at))) STRICT;\r\nCREATE TABLE IF NOT EXISTS task_attachments(task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE, position INTEGER NOT NULL CHECK(position>=0), path TEXT NOT NULL, PRIMARY KEY(task_id,position)) STRICT;\r",
       tables: {
         tasks: {
@@ -510,9 +590,13 @@ var require_schema = __commonJS({
             bookmarkId: "bookmark_id",
             archived: "archived",
             createdAt: "created_at",
-            completedAt: "completed_at"
+            completedAt: "completed_at",
+            repeat: "repeat_rule",
+            repeatDay: "repeat_day",
+            nextTaskId: "next_task_id",
+            skipped: "skipped"
           },
-          booleans: ["important", "urgent", "allDay", "archived"],
+          booleans: ["important", "urgent", "allDay", "archived", "skipped"],
           nullable: ["startAt", "endAt", "dueAt", "remindAt", "notifiedAt", "bookmarkId", "completedAt"]
         }
       },
@@ -1019,6 +1103,13 @@ exports.create = async (context) => {
   return {
     contracts: require_contracts(),
     store,
+    search: (query) => store.data.tasks.filter((t) => [t.title, t.note].some((v) => v.toLocaleLowerCase().includes(query))).map((t) => ({
+      id: t.id,
+      title: t.title,
+      snippet: t.note.slice(0, 180),
+      route: "list",
+      payload: { focusId: t.id }
+    })),
     widget,
     call,
     keepAlive: () => !!widget.win,

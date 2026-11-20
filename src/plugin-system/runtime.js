@@ -442,6 +442,17 @@ class PluginRuntime extends PluginWindows {
             });
             record = { view, loading: true, error: '', errors: [], diagnostics: [], lastUsed: Date.now() };
             this.views.set(id, record);
+            view.webContents.on('before-input-event', (event, input) => {
+                if (
+                    input.type === 'keyDown' &&
+                    (input.control || input.meta) &&
+                    !input.alt &&
+                    input.key.toLowerCase() === 'k'
+                ) {
+                    event.preventDefault();
+                    this.getWindow()?.webContents.send('focus-search');
+                }
+            });
             view.webContents.on('console-message', (event) => {
                 if (event.level === 3) {
                     record.errors.push(event.message);

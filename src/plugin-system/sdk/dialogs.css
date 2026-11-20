@@ -1,0 +1,40 @@
+.unsaved-changes-dialog {
+    width: min(440px, calc(100vw - 32px));
+    max-height: calc(100vh - 32px);
+    padding: 24px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--ink);
+}
+.unsaved-changes-dialog h2 {
+    font-size: 17px;
+    margin: 0 0 12px;
+}
+.unsaved-changes-dialog p {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.7;
+}
+.unsaved-changes-dialog .dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+.unsaved-changes-dialog button {
+    padding: 7px 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+}
+.unsaved-changes-dialog .primary {
+    background: var(--accent);
+    color: var(--accent-fg, #fff);
+}
+.unsaved-changes-dialog::backdrop {
+    background: #15202c55;
+}

@@ -62,6 +62,57 @@ exports.run = async ({ win, registry, runtime, hostAction }) => {
         await page("document.querySelector('#capture').click()");
         await until(() => registry.storage.get(id, 'history.v2')?.items.length === 1);
         await until(() => page("document.querySelectorAll('.history-item').length===1"));
+        assert.equal(
+            await page("[...document.querySelectorAll('.row-actions button')].some(b=>b.textContent.includes('粘贴'))"),
+            false,
+            '记录行不提供会隐藏窗口的粘贴按钮'
+        );
+        assert.equal(
+            await page(
+                "[...document.querySelectorAll('.row-actions button')].every(b=>{const r=b.getBoundingClientRect(),p=b.closest('.history-item').getBoundingClientRect();return r.right<=p.right && r.bottom<=p.bottom})"
+            ),
+            true,
+            '行内按钮不超出边框'
+        );
+        await page("document.querySelector('#capture').click()");
+        await until(() => page("document.querySelector('#capture-status').textContent==='采集已暂停'"));
+        const originalRecord = structuredClone(registry.storage.get(id, 'history.v2').items[0]);
+        await page('inspectText(items[0])');
+        const previewHeights = await page(
+            "(()=>{const t=document.querySelector('#text-selection-editor');t.value='短文本';resizeTextPreview();const short=t.offsetHeight;t.value='长文本\\n'.repeat(120);resizeTextPreview();const long=t.offsetHeight,scrolls=t.scrollHeight>t.clientHeight;t.value=items[0].preview;resizeTextPreview();return {short,long,scrolls,max:innerHeight*.6}})()"
+        );
+        assert.ok(previewHeights.short < previewHeights.long && previewHeights.long <= previewHeights.max + 2);
+        assert.equal(previewHeights.scrolls, true, '长文本在高度上限内滚动');
+        const selectionPage = runtime.views.get(id).view.webContents;
+        const selectionBounds = await page(
+            "(()=>{const r=document.querySelector('#text-selection-dialog').getBoundingClientRect(),t=document.querySelector('#text-selection-editor').getBoundingClientRect();return {outside:{x:Math.max(2,Math.floor(r.left-12)),y:Math.round(r.top+20)},inside:{x:Math.round(t.left+30),y:Math.round(t.top+20)}}})()"
+        );
+        selectionPage.sendInputEvent({ type: 'mouseDown', ...selectionBounds.inside, button: 'left', clickCount: 1 });
+        selectionPage.sendInputEvent({ type: 'mouseUp', ...selectionBounds.inside, button: 'left', clickCount: 1 });
+        assert.equal(await page("document.querySelector('#text-selection-dialog').open"), true, '点击文本区不关闭');
+        selectionPage.sendInputEvent({ type: 'mouseDown', ...selectionBounds.inside, button: 'left', clickCount: 1 });
+        selectionPage.sendInputEvent({ type: 'mouseMove', ...selectionBounds.outside });
+        selectionPage.sendInputEvent({ type: 'mouseUp', ...selectionBounds.outside, button: 'left', clickCount: 1 });
+        assert.equal(
+            await page("document.querySelector('#text-selection-dialog').open"),
+            true,
+            '从文本区拖到外部不误关闭'
+        );
+        selectionPage.sendInputEvent({ type: 'mouseDown', ...selectionBounds.outside, button: 'left', clickCount: 1 });
+        selectionPage.sendInputEvent({ type: 'mouseUp', ...selectionBounds.outside, button: 'left', clickCount: 1 });
+        await until(() => page("!document.querySelector('#text-selection-dialog').open"), '点击遮罩应关闭文本预览');
+        await page('inspectText(items[0])');
+        await page(
+            "document.querySelector('#text-selection-editor').setSelectionRange(0,10);document.querySelector('#text-selection-dialog button').click()"
+        );
+        await until(() => writes[0] === 'BACKGROUND');
+        assert.deepEqual(registry.storage.get(id, 'history.v2').items[0], originalRecord, '局部复制保留历史原记录');
+        current = new ClipboardItem({ 'text/plain': 'BACKGROUND_TEST_TEXT ' + 'x'.repeat(350) + ' SEARCH_TAIL' });
+        writes = [];
+        writeCount = 0;
+        await page(
+            "document.querySelector('#text-selection-dialog').close();document.querySelector('#capture').click()"
+        );
         await page("document.querySelector('.history-item .row-actions button').click()");
         await until(() => registry.storage.get(id, 'history.v2').items[0].favorite === true);
         await hostAction('plugin-open', { id: 'collectify.json' });
@@ -129,13 +180,13 @@ exports.run = async ({ win, registry, runtime, hostAction }) => {
             "document.querySelector('.history-item').dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,clientX:200,clientY:180}))"
         );
         assert.equal(await page("document.querySelector('#context-menu').matches(':popover-open')"), true);
-        assert.ok((await page("document.querySelector('#context-menu').textContent")).includes('执行粘贴'));
+        assert.ok((await page("document.querySelector('#context-menu').textContent")).includes('切到上一应用并粘贴'));
         if (['win32', 'darwin'].includes(process.platform)) {
-            await page("document.querySelector('#context-menu button[aria-label=执行粘贴]').click()");
+            await page("document.querySelector('#context-menu button[aria-label=切到上一应用并粘贴]').click()");
             await until(() => pasteCalls === 1);
         } else {
             assert.equal(
-                await page("document.querySelector('#context-menu button[aria-label=执行粘贴]').disabled"),
+                await page("document.querySelector('#context-menu button[aria-label=切到上一应用并粘贴]').disabled"),
                 true
             );
             await page("document.querySelector('#context-menu').hidePopover()");

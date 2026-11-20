@@ -44,6 +44,7 @@ function validateEntry(input) {
         url: parsed?.href || (type === 'credential' ? text(input, 'url', 2048) : ''),
         categoryId: text(input, 'categoryId', 80) || 'inbox',
         environment: text(input, 'environment', 60),
+        resourceGroup: text(input, 'resourceGroup', 80),
         note: text(input, 'note', 5000),
         username: text(input, 'username', 200),
         password: typeof input.password === 'string' ? input.password : undefined,

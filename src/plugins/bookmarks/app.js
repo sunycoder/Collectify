@@ -206,6 +206,7 @@ function card(entry) {
     const category = getCategory(entry.categoryId),
         node = el('article', `bookmark-card ${category.color}`);
     node.dataset.id = entry.id;
+    if (/生产|正式|prod/i.test(entry.environment || '')) node.classList.add('production-resource');
     node.tabIndex = 0;
     node.setAttribute('role', 'link');
     node.setAttribute('aria-label', `${batchMode ? '选择' : '打开'} ${entry.name}`);
@@ -251,6 +252,16 @@ function card(entry) {
         tags.append(lock);
     }
     top.append(tags);
+    if (entry.resourceGroup) {
+        const environments = el('div', 'resource-environments');
+        environments.append(el('small', '', entry.resourceGroup));
+        for (const variant of state.entries.filter((e) => e.resourceGroup === entry.resourceGroup)) {
+            const switcher = button(variant.environment || variant.name, null, () => open(variant), 'quiet');
+            switcher.classList.toggle('selected', variant.id === entry.id);
+            environments.append(switcher);
+        }
+        node.append(environments);
+    }
     const name = el('h3', 'card-name', entry.name);
     name.title = entry.name;
     const note = el('p', 'card-note', entry.note || '\u00a0');
@@ -577,7 +588,18 @@ async function showEditor(entry = null, target = '') {
             target ||
             (filter === 'category' ? categoryId : state.categories.find((c) => c.id !== 'inbox')?.id)
     );
-    for (const field of ['url', 'name', 'environment', 'note', 'username', 'authMode', 'type', 'localPath', 'content'])
+    for (const field of [
+        'url',
+        'name',
+        'environment',
+        'resourceGroup',
+        'note',
+        'username',
+        'authMode',
+        'type',
+        'localPath',
+        'content'
+    ])
         form.elements[field].value =
             entry?.[field] ||
             {
@@ -844,8 +866,19 @@ function renderTabs(next) {
     const tab = next.tabs.find((t) => t.id === next.active);
     if (tab) {
         $('#login-card-button').hidden = !tab.hasCredentials;
-        $('#environment-badge').textContent = tab.environment || tab.name;
-        $('#environment-badge').className = `badge ${tab.color}`;
+        const production = /prod|生产|正式/i.test(tab.environment || '');
+        $('#environment-badge').textContent = (production ? '生产环境 · ' : '') + (tab.environment || tab.name);
+        $('#environment-badge').className = `badge ${tab.color}${production ? ' production-environment' : ''}`;
+        const group = state.entries.find((e) => e.id === tab.entryId)?.resourceGroup;
+        const variants = group ? state.entries.filter((e) => e.resourceGroup === group) : [];
+        $('#environment-links').replaceChildren(
+            ...variants.map((entry) => {
+                const link = button(entry.environment || entry.name, null, () => open(entry), 'quiet');
+                link.classList.toggle('selected', entry.id === tab.entryId);
+                return link;
+            })
+        );
+        $('#environment-links').hidden = variants.length < 2;
         $('#current-url').textContent = tab.url;
         $('#current-url').title = tab.url;
         $('#back').disabled = !tab.back;
@@ -928,6 +961,16 @@ $('#editor-copy-password').onclick = task(async () => {
 });
 
 collectify.onNavigate(({ route, payload }) => {
+    if (payload?.focusId)
+        return task(async () => {
+            await refresh();
+            const item = state.entries.find((e) => e.id === payload.focusId);
+            if (!item) return;
+            await selectFilter('category', item.categoryId);
+            $('#search').value = item.name;
+            render();
+            requestAnimationFrame(() => document.querySelector(`[data-id="${item.id}"]`)?.focus());
+        })();
     if (route === 'new-category') return showCategory();
     if (route?.startsWith('category:')) {
         const id = route.slice(9);

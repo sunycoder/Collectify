@@ -91,7 +91,22 @@ function fileIcon(item) {
         }[extension] || 'file-text'
     );
 }
+const compareFiles = new Set();
+function renderCompare() {
+    for (const id of compareFiles) if (!items.some((i) => i.id === id)) compareFiles.delete(id);
+    $('#compare-count').textContent = `已选 ${compareFiles.size}/2 个对比文件`;
+    $('#compare-selected').disabled = compareFiles.size !== 2;
+}
+$('#compare-selected').onclick = run(async () => {
+    const result = await call('diff-open', { ids: [...compareFiles] });
+    if (result?.missing) {
+        message('请在设置 → 插件中安装或启用 Diff 后再对比。', true);
+        $('#compare-selected').textContent = '安装/启用 Diff 后重试';
+        await call('diff-market');
+    }
+});
 function renderResults(append = false) {
+    renderCompare();
     const list = $('#results');
     if (!append) list.replaceChildren();
     const existing = new Set([...list.children].map((node) => node.dataset.id));
@@ -108,6 +123,23 @@ function renderResults(append = false) {
             name = make('div', 'result-name');
         name.append(highlight(item.name));
         content.append(glyph, name);
+        if (!item.directory) {
+            const check = make('input');
+            check.type = 'checkbox';
+            check.checked = compareFiles.has(item.id);
+            check.setAttribute('aria-label', '选择对比 ' + item.name);
+            check.onclick = (e) => e.stopPropagation();
+            check.onchange = () => {
+                if (check.checked && compareFiles.size >= 2) {
+                    check.checked = false;
+                    message('最多选择两个文件');
+                    return;
+                }
+                check.checked ? compareFiles.add(item.id) : compareFiles.delete(item.id);
+                renderCompare();
+            };
+            content.prepend(check);
+        }
         const parent = make('div', 'result-parent', item.parent),
             modified = make(
                 'span',
@@ -656,11 +688,12 @@ function filterSettings() {
 }
 $('#settings-open').onclick = () => {
     draft = structuredClone(settings);
+    $('#custom-filter').reset();
     filterSettings();
     $('#settings').showModal();
 };
-$('#custom-filter').onsubmit = run(async (event) => {
-    event.preventDefault();
+function appendCustomFilter() {
+    if (!$('#custom-filter').reportValidity()) return false;
     const extensions = $('#filter-extensions')
         .value.toLowerCase()
         .split(/[,;\s]+/)
@@ -677,32 +710,56 @@ $('#custom-filter').onsubmit = run(async (event) => {
     });
     filterSettings();
     $('#custom-filter').reset();
+    return true;
+}
+$('#custom-filter').onsubmit = run(async (event) => {
+    event.preventDefault();
+    appendCustomFilter();
 });
 $('#reset-filters').onclick = run(async () => {
     const defaults = await call('default-settings');
     draft.filters = defaults.filters;
     filterSettings();
 });
-$('#settings-save').onclick = run(async () => {
-    settings = await call('settings', draft);
-    if (!settings.filters.some((entry) => entry.id === filter && entry.enabled)) filter = 'all';
-    await api.selectNavigation(filter);
-    if (items.length) await search();
-    $('#settings').close();
-    message('搜索分类已保存');
-});
-let outside = false;
-$('#settings').addEventListener('pointerdown', (event) => {
-    outside = event.target === $('#settings');
-});
-$('#settings').addEventListener('pointerup', (event) => {
-    if (outside && event.target === $('#settings')) {
-        const r = $('#settings').getBoundingClientRect();
-        if (event.clientX < r.x || event.clientX > r.right || event.clientY < r.y || event.clientY > r.bottom)
-            $('#settings').close();
+let savingSettings = false;
+async function saveSearchSettings() {
+    if (savingSettings) return;
+    if (($('#filter-label').value.trim() || $('#filter-extensions').value.trim()) && !appendCustomFilter()) return;
+    savingSettings = true;
+    $('#settings-save').disabled = true;
+    try {
+        settings = await call('settings', draft);
+        if (!settings.filters.some((entry) => entry.id === filter && entry.enabled)) filter = 'all';
+        await api.selectNavigation(filter);
+        if (items.length) await search();
+        $('#settings').close();
+        message('搜索分类已保存');
+    } finally {
+        savingSettings = false;
+        $('#settings-save').disabled = false;
     }
-    outside = false;
-});
+}
+$('#settings-save').onclick = run(saveSearchSettings);
+const closeSearchSettings = WorkspaceDialogs.bind(
+    $('#settings'),
+    run(async () => {
+        if (savingSettings) return;
+        const dirty =
+            JSON.stringify(draft) !== JSON.stringify(settings) ||
+            $('#filter-label').value.trim() ||
+            $('#filter-extensions').value.trim();
+        if (dirty) {
+            const answer = await WorkspaceDialogs.confirmChanges('保存搜索设置？');
+            if (answer === 'save') await saveSearchSettings();
+            if (answer !== 'discard') return;
+        }
+        $('#settings').close();
+    })
+);
+$('#settings form[method="dialog"]').onsubmit = (event) => {
+    event.preventDefault();
+    void closeSearchSettings();
+};
 api.onNavigate(
     run(async ({ route }) => {
         if (!settings) updateState(await call('state'));

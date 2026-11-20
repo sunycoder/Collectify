@@ -12,7 +12,7 @@ var require_entity_repository = __commonJS({
     var { DatabaseSync } = require("node:sqlite");
     var { ensureStorageSchema } = hostSdk.storage;
     var EntityRepository = class {
-      constructor(file, { id, schema, tables, attachments = false }) {
+      constructor(file, { id, schema, tables, attachments = false, migrate }) {
         Object.assign(this, { file, id, schema, tables, attachments });
         fs2.mkdirSync(path2.dirname(file), { recursive: true });
         this.database((db) => {
@@ -23,6 +23,7 @@ var require_entity_repository = __commonJS({
           db.exec("BEGIN");
           try {
             db.exec(schema);
+            migrate?.(db);
             db.exec(
               "CREATE TABLE IF NOT EXISTS domain_state(id INTEGER PRIMARY KEY CHECK(id=1),revision INTEGER NOT NULL,payload TEXT NOT NULL) STRICT;CREATE TABLE IF NOT EXISTS domain_audit(id INTEGER PRIMARY KEY,tool TEXT NOT NULL,created_at TEXT NOT NULL) STRICT;PRAGMA user_version=1"
             );
@@ -287,6 +288,7 @@ var require_store = __commonJS({
         url: parsed?.href || (type === "credential" ? text(input, "url", 2048) : ""),
         categoryId: text(input, "categoryId", 80) || "inbox",
         environment: text(input, "environment", 60),
+        resourceGroup: text(input, "resourceGroup", 80),
         note: text(input, "note", 5e3),
         username: text(input, "username", 200),
         password: typeof input.password === "string" ? input.password : void 0,
@@ -478,6 +480,10 @@ var require_schema = __commonJS({
       prepareCommit(data) {
         for (const entry of data.entries) entry.password ??= "";
       },
+      migrate(db) {
+        if (!db.prepare("PRAGMA table_info(entries)").all().some((r) => r.name === "resource_group"))
+          db.exec("ALTER TABLE entries ADD COLUMN resource_group TEXT NOT NULL DEFAULT ''");
+      },
       id: "collectify.bookmarks",
       schema: "CREATE TABLE IF NOT EXISTS categories(id TEXT PRIMARY KEY, name TEXT NOT NULL, name_key TEXT NOT NULL UNIQUE, description TEXT NOT NULL, color TEXT NOT NULL, icon TEXT NOT NULL, sort_order INTEGER NOT NULL) STRICT;\r\nCREATE TABLE IF NOT EXISTS entries(id TEXT PRIMARY KEY, category_id TEXT NOT NULL REFERENCES categories(id) DEFERRABLE INITIALLY DEFERRED, type TEXT NOT NULL CHECK(type IN ('web','file','folder','text','credential')), name TEXT NOT NULL, url TEXT NOT NULL, local_path TEXT NOT NULL, content TEXT NOT NULL, environment TEXT NOT NULL, note TEXT NOT NULL, username TEXT NOT NULL, password TEXT NOT NULL, auth_mode TEXT NOT NULL CHECK(auth_mode IN ('manual','basic')), open_mode TEXT NOT NULL CHECK(open_mode IN ('internal','external')), favorite INTEGER NOT NULL CHECK(favorite IN (0,1)), last_opened INTEGER NOT NULL CHECK(last_opened>=0), sort_order INTEGER NOT NULL) STRICT;\r",
       tables: {
@@ -502,6 +508,7 @@ var require_schema = __commonJS({
             localPath: "local_path",
             content: "content",
             environment: "environment",
+            resourceGroup: "resource_group",
             note: "note",
             username: "username",
             password: "password",
@@ -652,7 +659,7 @@ var require_seed = __commonJS({
               (row) => Object.fromEntries(
                 Object.entries(d.fields).map(([f, c]) => [
                   f,
-                  d.booleans?.includes(f) ? !!row[c] : row[c] ?? ""
+                  d.booleans?.includes(f) ? !!row[c] : row[c] ?? (f === "repeat" ? "none" : f === "repeatDay" ? 1 : "")
                 ])
               )
             );
@@ -1299,6 +1306,16 @@ exports.create = async (context) => {
   }
   return {
     store,
+    search: (query) => store.entries.map((item) => {
+      const values = [item.name, item.note, item.content, item.url, item.localPath].filter(Boolean), text = values.find((v) => v.toLocaleLowerCase().includes(query));
+      return text ? {
+        id: item.id,
+        title: item.name,
+        snippet: text.slice(Math.max(0, text.toLocaleLowerCase().indexOf(query) - 30), 180),
+        route: "all",
+        payload: { focusId: item.id }
+      } : null;
+    }).filter(Boolean),
     browser,
     call,
     layout: browser.layout,

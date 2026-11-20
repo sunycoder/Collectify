@@ -4,7 +4,7 @@
   "description": "记录想法、整理便签并转为待办",
   "glyph": "记",
   "order": 30,
-  "version": "1.0.4",
+  "version": "1.0.5",
   "apiVersion": 1,
   "entry": "index.html",
   "backend": "backend.cjs",
@@ -50,6 +50,6 @@
       "内容保存与待办转换"
     ]
   },
-  "minHostVersion": "5.7.18",
+  "minHostVersion": "5.7.19",
   "runtime": "native"
 }

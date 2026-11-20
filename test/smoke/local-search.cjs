@@ -145,6 +145,30 @@ app.whenReady().then(async () => {
         await js("document.querySelector('#settings-open').click()");
         await until(() => js("document.querySelector('#settings').open"));
         assert.ok(await js("document.querySelectorAll('#filter-settings>div').length>=10"));
+        const originalFilter = await js('settings.filters[1].enabled');
+        await js("document.querySelectorAll('#filter-settings input')[1].click()");
+        wc.sendInputEvent({ type: 'keyDown', keyCode: 'Escape' });
+        wc.sendInputEvent({ type: 'keyUp', keyCode: 'Escape' });
+        await until(() => js("!!document.querySelector('.unsaved-changes-dialog[open]')"));
+        await js("document.querySelector('[data-choice=cancel]').click()");
+        await until(() => js("!document.querySelector('.unsaved-changes-dialog')"));
+        assert.equal(await js("document.querySelector('#settings').open"), true);
+        assert.equal(await js('draft.filters[1].enabled'), !originalFilter);
+        await js('void closeSearchSettings()');
+        await until(() => js("!!document.querySelector('.unsaved-changes-dialog[open]')"));
+        await js("document.querySelector('[data-choice=save]').click()");
+        await until(() => js("!document.querySelector('#settings').open"));
+        assert.equal(await js('settings.filters[1].enabled'), !originalFilter);
+        await js(
+            "document.querySelector('#settings-open').click();document.querySelectorAll('#filter-settings input')[1].click();void closeSearchSettings()"
+        );
+        await until(() => js("!!document.querySelector('.unsaved-changes-dialog[open]')"));
+        await js("document.querySelector('[data-choice=discard]').click()");
+        await until(() => js("!document.querySelector('#settings').open"));
+        assert.equal(await js('settings.filters[1].enabled'), !originalFilter);
+        await js(
+            "document.querySelector('#settings-open').click();document.querySelectorAll('#filter-settings input')[1].click()"
+        );
         await js("document.querySelector('#settings-save').click()");
         await js("document.querySelector('#preview-toggle').click()");
         await until(() => js("document.querySelector('.search-layout').classList.contains('preview-off')"));
@@ -152,6 +176,21 @@ app.whenReady().then(async () => {
         await until(() => js("!document.querySelector('.search-layout').classList.contains('preview-off')"));
         await js("document.querySelector('#clear-query').click()");
         await until(() => js("document.querySelectorAll('.result-row').length>=10"));
+        await js("[...document.querySelectorAll('.result-row input[type=checkbox]')].slice(0,2).forEach(e=>e.click())");
+        assert.equal(await js('compareFiles.size'), 2);
+        const comparedIds = await js('[...compareFiles]');
+        assert.equal((await services.call('collectify.local-search', 'diff-open', { ids: comparedIds })).missing, true);
+        registry.install(path.join(root, 'src/plugin-library/diff'));
+        await services.load();
+        let openedDiff;
+        services.environment.openPlugin = async (...args) => {
+            openedDiff = args;
+        };
+        await js("document.querySelector('#compare-selected').click()");
+        await until(() => !!openedDiff);
+        assert.equal(openedDiff[0], 'collectify.diff');
+        assert.equal(openedDiff[2].paths.length, 2);
+        assert.ok(openedDiff[2].paths.every((p) => fs.statSync(p).isFile()));
         await pick('sample.xlsx');
         await until(() => js("document.querySelector('#preview table')?.textContent.includes('测试')"));
         await delay(150);

@@ -4,7 +4,7 @@
   "description": "清单、四象限、看板、日历与桌面待办",
   "glyph": "待",
   "order": 20,
-  "version": "1.0.3",
+  "version": "1.0.4",
   "apiVersion": 1,
   "entry": "index.html",
   "backend": "backend.cjs",
@@ -50,6 +50,6 @@
       "任务状态、附件路径、归档与跨插件关联"
     ]
   },
-  "minHostVersion": "5.7.18",
+  "minHostVersion": "5.7.19",
   "runtime": "native"
 }

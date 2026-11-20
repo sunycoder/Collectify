@@ -158,7 +158,12 @@ exports.run = async ({ win, registry, runtime, services, backup, mcp, hostAction
     await until(() => page('collectify.notes', "document.querySelectorAll('.sticky-note').length===1"));
     await page('collectify.notes', "document.querySelector('.sticky-actions button:nth-child(2)').click()");
     await until(() => runtime.activeId === 'collectify.tasks', '便签转待办未切换插件');
-    await until(() => page('collectify.tasks', "document.querySelector('#task-dialog').open"));
+    await until(() =>
+        page(
+            'collectify.tasks',
+            "document.querySelector('#task-dialog').open && document.querySelector('#task-form').elements.title.value==='插件便签'"
+        )
+    );
     assert.equal(
         await page('collectify.tasks', "document.querySelector('#task-form').elements.title.value"),
         '插件便签'

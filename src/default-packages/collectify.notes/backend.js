@@ -63,6 +63,16 @@ exports.create = async (context) => {
     return {
         contracts: require('./contracts'),
         store,
+        search: (query) =>
+            store.data.notes
+                .filter((n) => [n.title, n.content].some((v) => v.toLocaleLowerCase().includes(query)))
+                .map((n) => ({
+                    id: n.id,
+                    title: n.title,
+                    snippet: n.content.slice(0, 180),
+                    route: 'all',
+                    payload: { focusId: n.id }
+                })),
         call,
         activate() {},
         deactivate() {},

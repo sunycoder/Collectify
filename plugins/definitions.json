@@ -5,13 +5,13 @@
       "source": "src/plugin-library/clipboard-history",
       "id": "collectify.clipboard-history",
       "name": "剪贴板历史",
-      "version": "2.2.6"
+      "version": "2.2.7"
     },
     {
       "source": "src/plugin-library/local-search",
       "id": "collectify.local-search",
       "name": "本地搜索",
-      "version": "1.2.4"
+      "version": "1.2.5"
     },
     {
       "source": "src/plugin-library/ip-query",
@@ -23,7 +23,7 @@
       "source": "src/plugin-library/calculator",
       "id": "collectify.calculator",
       "name": "计算稿纸",
-      "version": "1.0.8"
+      "version": "1.0.9"
     },
     {
       "source": "src/plugin-library/chinese-calendar",
@@ -35,25 +35,25 @@
       "source": "src/plugin-library/diff",
       "id": "collectify.diff",
       "name": "Diff",
-      "version": "1.0.7"
+      "version": "1.0.8"
     },
     {
       "source": "src/default-packages/collectify.bookmarks",
       "id": "collectify.bookmarks",
       "name": "收藏",
-      "version": "1.0.3"
+      "version": "1.0.4"
     },
     {
       "source": "src/default-packages/collectify.tasks",
       "id": "collectify.tasks",
       "name": "待办",
-      "version": "1.0.3"
+      "version": "1.0.4"
     },
     {
       "source": "src/default-packages/collectify.notes",
       "id": "collectify.notes",
       "name": "便签",
-      "version": "1.0.4"
+      "version": "1.0.5"
     },
     {
       "source": "src/default-packages/collectify.timestamp",

@@ -116,9 +116,12 @@ test('公式解析不执行脚本，拒绝属性访问、赋值、未知字符�
         fs.readFileSync(path.resolve(__dirname, '../src/plugin-library/calculator/examples.js'), 'utf8'),
         scope
     );
-    const previous = engine.calculate([{ expression: '100' }, { expression: '200' }, { expression: '300' }]);
+    const exampleRows = [{ expression: '100' }, { expression: '200' }, { expression: '300' }];
     for (const group of scope.window.CalcExamples)
-        for (const [formula] of group.items) assert.ok(engine.evaluate(formula, previous), formula);
+        for (const [formula] of group.items) {
+            exampleRows.push({ expression: formula });
+            assert.equal(engine.calculate(exampleRows).at(-1).error, undefined, formula);
+        }
 });
 test('保存队列提交调用时快照，按序落库，失败后可重试并明确报告', async () => {
     const jobs = [],

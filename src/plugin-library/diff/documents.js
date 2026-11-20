@@ -9,6 +9,19 @@ window.DiffDocuments = class {
         this.highlight = false;
         this.canvases = [null, null];
         this.sheetUI = new DiffSheets(app, this);
+        // 比较规则和低频操作沿用左侧工具区，主内容上方只保留工作表和视图切换。
+        const tools = document.querySelector('.sheet-options');
+        const filter = document.querySelector('.sheet-result-filter');
+        const filterHeading = document.createElement('strong');
+        filterHeading.textContent = '筛选对比结果';
+        filter.prepend(filterHeading);
+        tools.prepend(filter);
+        const more = document.createElement('div');
+        more.className = 'sheet-secondary-actions';
+        for (const id of ['sheet-edit', 'sheet-export-csv', 'document-text', 'document-note'])
+            more.append(document.querySelector('#' + id));
+        tools.append(more);
+        document.querySelector('#sheet-toolbar').prepend(document.querySelector('#sheet'));
         for (const id of ['sheet', 'sheet-mode'])
             document.querySelector('#' + id).onchange = () => {
                 if (id === 'sheet') this.sheetUI.resetKeys();
@@ -120,6 +133,20 @@ window.DiffDocuments = class {
             pageControl = document.querySelector('#page'),
             page = Math.max(1, Math.trunc(Number(pageControl.value) || 1));
         document.querySelector('#sheet').hidden = document.querySelector('#sheet-mode').hidden = !isSheet;
+        document.querySelector('.document-toolbar').hidden = isSheet;
+        if (isSheet) {
+            document
+                .querySelector('.sheet-secondary-actions')
+                .append(document.querySelector('#document-text'), document.querySelector('#document-note'));
+        } else {
+            document.querySelector('.document-toolbar').append(document.querySelector('#document-text'));
+            document.querySelector('.document-body').before(document.querySelector('#document-note'));
+        }
+        document.querySelector('#document-panel').classList.toggle('is-sheet', isSheet);
+        document.querySelector('.comparison-meta').classList.toggle('sheet-summary', isSheet);
+        const sheetPicker = document.querySelector('#sheet').tomselect?.wrapper;
+        if (sheetPicker && sheetPicker.parentElement.id !== 'sheet-toolbar')
+            document.querySelector('#sheet-toolbar').prepend(sheetPicker);
         document.querySelector('.table-pagination').hidden = !isSheet;
         pageControl.parentElement.hidden = isSheet;
         document.querySelector('#document-highlight').hidden = isSheet;

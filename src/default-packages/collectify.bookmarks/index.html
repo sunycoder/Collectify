@@ -107,7 +107,9 @@
                     <button id="back" class="icon-button" title="后退" aria-label="后退" data-icon="left"></button>
                     <button id="forward" class="icon-button" title="前进" aria-label="前进" data-icon="right"></button>
                     <button id="reload" class="icon-button" title="刷新" aria-label="刷新" data-icon="reload"></button>
-                    <span id="environment-badge" class="badge"></span><span id="current-url" class="current-url"></span>
+                    <span id="environment-badge" class="badge"></span>
+                    <div id="environment-links" class="resource-environments" hidden></div>
+                    <span id="current-url" class="current-url"></span>
                     <button id="login-card-button" class="quiet" hidden><i data-icon="copy"></i>登录资料卡</button>
                     <button id="external" class="quiet"><i data-icon="external"></i>浏览器打开</button>
                 </div>
@@ -184,6 +186,12 @@
                         /></label>
                     </div>
                     <div class="credential-editor">
+                        <label
+                            >同一资源的环境组<input
+                                name="resourceGroup"
+                                maxlength="80"
+                                placeholder="例如：订单后台（同组收藏可直接切换环境）"
+                        /></label>
                         <div class="form-grid">
                             <label
                                 >登录账号<input

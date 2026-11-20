@@ -227,6 +227,15 @@ function taskCard(t, board = false) {
     top.append(el('span', `priority-label ${t.priority}`, PRIORITIES[t.priority]));
     if (t.important) top.append(el('span', 'board-important', '重要'));
     if (t.urgent) top.append(el('span', 'board-urgent', '紧急'));
+    if (t.repeat && t.repeat !== 'none')
+        top.append(
+            el(
+                'span',
+                'task-reminder-time',
+                { daily: '每天', workdays: '工作日', weekly: '每周', monthly: '每月' }[t.repeat]
+            )
+        );
+    if (t.skipped) top.append(el('span', 'task-reminder-time', '已跳过'));
     if (t.notifiedAt && t.status !== 'done' && !t.archived) top.append(el('span', 'reminded-label', '已提醒'));
     const edit = button(t.title, null, () => showTask(t), 'task-title');
     node.append(top, edit);
@@ -286,6 +295,14 @@ function taskCard(t, board = false) {
             await refresh();
         });
         actions.append(status);
+        if (t.repeat && t.repeat !== 'none' && t.status !== 'done')
+            actions.append(
+                button('跳过本次', null, async () => {
+                    await call('task-save', { ...t, status: 'done', skipped: true });
+                    await refresh();
+                    toast('已跳过本次并生成下一次');
+                })
+            );
         if (t.status === 'done')
             actions.append(
                 button('归档', 'folder', async () => {
@@ -355,6 +372,19 @@ function checklistRow(t) {
     if (t.urgent) tags.append(el('span', 'flag-urgent', '紧急'));
     tags.append(el('span', `task-status ${t.status}`, TASK_STATUSES[t.status]));
     const actions = el('div', 'checklist-actions');
+    if (t.repeat && t.repeat !== 'none' && t.status !== 'done' && !t.archived)
+        actions.append(
+            button(
+                '跳过本次',
+                'forward',
+                async () => {
+                    await call('task-save', { ...t, status: 'done', skipped: true });
+                    await refresh();
+                    toast('已跳过本次并生成下一次');
+                },
+                'icon-button'
+            )
+        );
     if (t.status !== 'done' && !t.archived)
         actions.append(button('调整提醒时间', 'clock', () => showReminder(t), 'icon-button'));
     if (t.status === 'done')
@@ -555,7 +585,9 @@ async function showTask(t = null, initial = {}) {
     form.elements.bookmarkId.value = state.entries.some((e) => e.id === value.bookmarkId) ? value.bookmarkId : '';
     taskAttachments = [...(value.attachments || [])];
     renderAttachments();
+    form.elements.repeat.value = t?.repeat || 'none';
     $('#task-dialog').showModal();
+    window.OfficeUI?.refresh();
 }
 
 async function confirmDelete(kind, item) {
@@ -650,6 +682,12 @@ async function refresh() {
 const ready = refresh();
 collectify.onNavigate(({ route, payload }) => {
     void ready.then(async () => {
+        if (payload?.focusId) {
+            await refresh();
+            const item = state.tasks.find((t) => t.id === payload.focusId);
+            if (item) await showTask(item);
+            return;
+        }
         pluginRoute = route;
         if (route === 'create') {
             await showTask(null, payload || {});

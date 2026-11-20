@@ -5,7 +5,7 @@ const { ensureStorageSchema } = require('../../plugin-system/storage');
 
 // 只执行插件随包提供的固定表定义；页面无法传表名、字段名或 SQL。
 class EntityRepository {
-    constructor(file, { id, schema, tables, attachments = false }) {
+    constructor(file, { id, schema, tables, attachments = false, migrate }) {
         Object.assign(this, { file, id, schema, tables, attachments });
         fs.mkdirSync(path.dirname(file), { recursive: true });
         this.database((db) => {
@@ -16,6 +16,7 @@ class EntityRepository {
             db.exec('BEGIN');
             try {
                 db.exec(schema);
+                migrate?.(db);
                 db.exec(
                     'CREATE TABLE IF NOT EXISTS domain_state(id INTEGER PRIMARY KEY CHECK(id=1),revision INTEGER NOT NULL,payload TEXT NOT NULL) STRICT;CREATE TABLE IF NOT EXISTS domain_audit(id INTEGER PRIMARY KEY,tool TEXT NOT NULL,created_at TEXT NOT NULL) STRICT;PRAGMA user_version=1'
                 );

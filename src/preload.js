@@ -1,7 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('workbench', {
     onEvent: (name, callback) => {
-        if (!['shell-state', 'distribution-state', 'plugin-transfer'].includes(name)) return;
+        if (!['shell-state', 'distribution-state', 'plugin-transfer', 'plugin-market-request'].includes(name)) return;
         const listener = (_event, data) => callback(data);
         ipcRenderer.on(name, listener);
         return () => ipcRenderer.removeListener(name, listener);

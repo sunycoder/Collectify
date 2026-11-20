@@ -88,6 +88,17 @@ app.whenReady().then(async () => {
             }
         });
         await js('DiffApp.ready');
+        await js("window.firstGroup=DiffApp.workspaces.active;DiffApp.setTexts(['第一组原文','第一组修改'])");
+        await js(
+            "[...document.querySelectorAll('.comparison-workspaces button')].find(b=>b.textContent.includes('新对比')).click()"
+        );
+        await until(() => js("DiffApp.workspaces.groups.length===2 && DiffApp.models[0].getValue()===''"));
+        await js("DiffApp.setTexts(['第二组原文','第二组修改'])");
+        await js('DiffApp.workspaces.switchGroup(firstGroup)');
+        assert.equal(await js('DiffApp.models[0].getValue()'), '第一组原文');
+        await js('DiffApp.workspaces.switchGroup(DiffApp.workspaces.groups[1].id)');
+        assert.equal(await js('DiffApp.models[1].getValue()'), '第二组修改');
+        await js("DiffApp.setTexts(['',''])");
         await until(() => js('!!DiffApp.diff'));
         assert.equal(
             await js("document.querySelectorAll('#editor .monaco-diff-editor').length"),
@@ -96,6 +107,29 @@ app.whenReady().then(async () => {
         );
         assert.equal(await js("document.querySelector('.brand img').naturalWidth>0"), true);
         await js(`DiffApp.importPaths(${JSON.stringify([files.left, files.right])})`);
+        await js(
+            "document.querySelector('.workspace-actions').open=true;document.querySelector('#comparison-name').value='常用测试组合';[...document.querySelectorAll('.workspace-actions button')].find(b=>b.textContent==='保存对比组合').click()"
+        );
+        await until(() => js("document.querySelectorAll('.saved-comparison-row').length===1"));
+        assert.equal(await js("document.querySelector('.workspace-actions').open"), false, '保存后收起组合浮层');
+        await js("document.querySelector('.workspace-actions').open=true");
+        const savedVisible = await js(
+            "(()=>{const row=document.querySelector('.saved-comparison-row').getBoundingClientRect();return !!document.elementFromPoint(row.left+10,row.top+10)?.closest('.workspace-actions')})()"
+        );
+        assert.equal(savedVisible, true, '组合列表不得被顶部容器裁剪或主内容遮挡');
+        await delay(150);
+        fs.writeFileSync(path.join(root, 'dist/diff-saved-combinations.png'), (await wc.capturePage()).toPNG());
+        wc.sendInputEvent({ type: 'mouseDown', x: 10, y: 10, button: 'left', clickCount: 1 });
+        wc.sendInputEvent({ type: 'mouseUp', x: 10, y: 10, button: 'left', clickCount: 1 });
+        assert.equal(await js("document.querySelector('.workspace-actions').open"), false, '点击外部关闭组合列表');
+        await js(
+            "document.querySelector('.workspace-actions').open=true;document.querySelector('.saved-comparisons input').value='没有匹配';document.querySelector('.saved-comparisons input').dispatchEvent(new Event('input'))"
+        );
+        assert.equal(await js("document.querySelectorAll('.saved-comparison-row').length"), 0);
+        await js(
+            "document.querySelector('.saved-comparisons input').value='常用';document.querySelector('.saved-comparisons input').dispatchEvent(new Event('input'));document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))"
+        );
+        assert.equal(await js("document.querySelector('.workspace-actions').open"), false);
         await until(() => js('(DiffApp.diff.getLineChanges()||[]).length>0'));
         assert.equal(await js('DiffApp.models[0].getLanguageId()'), 'javascript');
         await until(() => js("document.querySelector('#editor .view-lines')?.textContent.includes('budget')"));
@@ -186,6 +220,18 @@ app.whenReady().then(async () => {
         await until(() => js('!!preparedExport && !preparingExport'));
         assert.match(await js("document.querySelector('#export-summary').textContent"), /仅差异/);
         assert.equal(await js('preparedExport.report.parts.every(part=>part.added||part.removed)'), true);
+        const exportBounds = await js(
+            "(()=>{const r=document.querySelector('#export-dialog').getBoundingClientRect();return {inside:{x:Math.round(r.left+30),y:Math.round(r.top+30)},outside:{x:Math.max(2,Math.floor(r.left-10)),y:Math.round(r.top+20)}}})()"
+        );
+        wc.sendInputEvent({ type: 'mouseDown', ...exportBounds.inside, button: 'left', clickCount: 1 });
+        wc.sendInputEvent({ type: 'mouseMove', ...exportBounds.outside });
+        wc.sendInputEvent({ type: 'mouseUp', ...exportBounds.outside, button: 'left', clickCount: 1 });
+        assert.equal(await js("document.querySelector('#export-dialog').open"), true, '导出弹窗内部拖到外部不关闭');
+        wc.sendInputEvent({ type: 'mouseDown', ...exportBounds.outside, button: 'left', clickCount: 1 });
+        wc.sendInputEvent({ type: 'mouseUp', ...exportBounds.outside, button: 'left', clickCount: 1 });
+        await until(() => js("!document.querySelector('#export-dialog').open"));
+        await js("document.querySelector('#export').click()");
+        await until(() => js('!!preparedExport && !preparingExport'));
         await js(
             "document.querySelector('#export-scope').value='context';document.querySelector('#export-scope').dispatchEvent(new Event('change'))"
         );
@@ -248,7 +294,26 @@ app.whenReady().then(async () => {
         assert.match(await js('DiffApp.models[0].getValue()'), /合同：100/);
         await js(`DiffApp.importPaths(${JSON.stringify([files.xlsxLeft, files.xlsxRight])})`);
         assert.equal(await js('DiffApp.content'), 'document');
+        assert.ok(
+            await js("document.querySelector('.document-body').getBoundingClientRect().height > innerHeight * .55"),
+            '表格内容区至少保留页面高度的 55%'
+        );
         assert.ok(await js("document.querySelectorAll('.sheet-table td.changed').length>0"));
+        await js(
+            "document.querySelector('#sheet-result-query').value='不存在的业务ID';document.querySelector('#sheet-result-query').dispatchEvent(new Event('input'))"
+        );
+        assert.equal(await js('DiffApp.documents.sheetUI.filteredResult.rows.length'), 0);
+        assert.equal(await js("document.querySelectorAll('#sheet-change-list .change-card').length"), 0);
+        await js(
+            "document.querySelector('#sheet-result-query').value='';document.querySelector('#sheet-result-query').dispatchEvent(new Event('input'))"
+        );
+        let copiedRow = '';
+        runtime.clipboard.writeText = async (text) => {
+            copiedRow = text;
+        };
+        await js("document.querySelector('.sheet-table th button').click()");
+        await until(() => copiedRow.length > 0);
+        assert.match(copiedRow, /\t/);
         await js("document.querySelector('[data-sheet-view=redline]').click()");
         assert.ok(
             await js(
@@ -261,8 +326,27 @@ app.whenReady().then(async () => {
         await js("document.querySelector('#sheet-edit').click();void DiffApp.documents.sheetUI.edit(1,1,0)");
         await until(() => js("!!document.querySelector('dialog[open] textarea')"));
         await js(
-            "document.querySelector('dialog[open] textarea').value='new cell';document.querySelector('dialog[open] .primary').click()"
+            "document.querySelector('dialog[open] textarea').value='draft cell';document.querySelector('dialog[open] .dialog-actions button').click()"
         );
+        await until(() => js("!!document.querySelector('.unsaved-changes-dialog[open]')"));
+        await js("document.querySelector('[data-choice=cancel]').click()");
+        await until(() => js("!document.querySelector('.unsaved-changes-dialog')"));
+        assert.equal(await js("document.querySelector('dialog[open] textarea').value"), 'draft cell');
+        wc.sendInputEvent({ type: 'keyDown', keyCode: 'Escape' });
+        wc.sendInputEvent({ type: 'keyUp', keyCode: 'Escape' });
+        await until(() => js("!!document.querySelector('.unsaved-changes-dialog[open]')"));
+        await js("document.querySelector('[data-choice=discard]').click()");
+        await until(() => js("!document.querySelector('dialog[open] textarea')"));
+        await js('void DiffApp.documents.sheetUI.edit(1,1,0)');
+        await until(() => js("!!document.querySelector('dialog[open] textarea')"));
+        await js("document.querySelector('dialog[open] textarea').value='new cell'");
+        const cellOutside = await js(
+            "(()=>{const r=document.querySelector('dialog[open]').getBoundingClientRect();return {x:Math.max(2,Math.floor(r.left-10)),y:Math.round(r.top+20)}})()"
+        );
+        wc.sendInputEvent({ type: 'mouseDown', ...cellOutside, button: 'left', clickCount: 1 });
+        wc.sendInputEvent({ type: 'mouseUp', ...cellOutside, button: 'left', clickCount: 1 });
+        await until(() => js("!!document.querySelector('.unsaved-changes-dialog[open]')"));
+        await js("document.querySelector('[data-choice=save]').click()");
         await until(() => js("DiffApp.items[1].sheets[0].rows[1][0].v==='new cell'"));
         const previousSave = dialog.showSaveDialog;
         dialog.showSaveDialog = async () => ({ canceled: false, filePath: path.join(tmp, 'sheet.csv') });

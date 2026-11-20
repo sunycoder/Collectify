@@ -207,6 +207,9 @@ body {
 }
 .row-actions button {
     width: 28px;
+    flex: 0 0 28px;
+    white-space: nowrap;
+    overflow: hidden;
     height: 28px;
     padding: 6px;
     border-radius: 6px;
@@ -229,7 +232,7 @@ body {
     fill: currentColor;
 }
 .history-content {
-    padding-right: 125px;
+    padding-right: 165px;
 }
 .type-icon {
     width: 16px;
@@ -364,4 +367,24 @@ footer {
     body {
         padding: 14px;
     }
+}
+
+.text-selection-dialog {
+    width: min(900px, 90vw);
+    max-height: 90vh;
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px;
+}
+.text-selection-dialog textarea {
+    width: 100%;
+    min-height: 96px;
+    max-height: 60vh;
+    resize: vertical;
+    font: 13px/1.7 monospace;
+    user-select: text;
+    white-space: pre-wrap;
+    overflow: auto;
 }
