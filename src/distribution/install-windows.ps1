@@ -17,8 +17,16 @@ try {
         Start-Sleep -Milliseconds 500
     }
     if (-not $committed) { Save-Result 'timeout'; exit 1 }
-    if ((Get-Item -LiteralPath $Installer).Length -ne $Size -or
-        (Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash.ToLowerInvariant() -ne $Digest) {
+    # PowerShell 7 的模块搜索路径可能传给 Windows PowerShell 5.1；直接使用 .NET，避免依赖 Get-FileHash 模块。
+    $inputStream = [IO.File]::OpenRead($Installer)
+    $algorithm = [Security.Cryptography.SHA256]::Create()
+    try {
+        $actualDigest = [BitConverter]::ToString($algorithm.ComputeHash($inputStream)).Replace('-', '').ToLowerInvariant()
+    } finally {
+        $algorithm.Dispose()
+        $inputStream.Dispose()
+    }
+    if (([IO.FileInfo]$Installer).Length -ne $Size -or $actualDigest -ne $Digest) {
         throw 'Installer verification failed'
     }
     $installDirectory = [IO.Path]::GetDirectoryName($Target)
