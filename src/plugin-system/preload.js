@@ -1,4 +1,6 @@
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
+for (const name of ['pointerdown', 'keydown', 'wheel'])
+    window.addEventListener(name, () => ipcRenderer.send('app-update-activity'), { once: true, capture: true });
 const call = async (action, payload) => {
     const result = await ipcRenderer.invoke('plugin-sdk', action, payload);
     if (!result.ok) throw Object.assign(Error(result.error), { code: result.code || 'PLUGIN_OPERATION_FAILED' });

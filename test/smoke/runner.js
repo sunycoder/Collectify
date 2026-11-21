@@ -17,7 +17,10 @@ exports.run = async (context) => {
             trayAccess.set(previous);
         }
     };
-    if (process.argv.includes('--smoke-content-workflows')) await require('./smoke-content-workflows').run(context);
+    if (process.argv.includes('--smoke-auto-update')) await require('./smoke-auto-update').run(context);
+    else if (process.argv.includes('--smoke-performance')) await require('./smoke-performance').run(context);
+    else if (process.argv.includes('--smoke-content-workflows'))
+        await require('./smoke-content-workflows').run(context);
     else if (process.argv.includes('--smoke-default-plugins')) await require('./smoke-default-plugins').run(context);
     else if (process.argv.includes('--smoke-usability')) await require('./smoke-usability').run(context);
     else if (process.argv.includes('--smoke-architecture')) await require('./smoke-architecture').run(context);

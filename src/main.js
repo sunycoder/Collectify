@@ -23,6 +23,8 @@ const { PluginDevelopment } = require('./plugin-system/development');
 const { PluginPackages } = require('./plugin-system/package');
 const { PluginCatalog } = require('./plugin-system/catalog');
 const { Distribution } = require('./distribution/manager');
+const { AutomaticUpdate } = require('./distribution/automatic');
+const { installation, prepareInstallation, previousInstallation } = require('./distribution/install');
 const { CredentialStore } = require('./distribution/credentials');
 const { webUrl } = require('./distribution/config');
 const Theme = require('./theme');
@@ -31,6 +33,53 @@ const { copyText } = require('./clipboard-service');
 const { revealWindow, stayResident, bindTray, bindStableLayout } = require('./window-lifecycle');
 const defaults = require('./app-defaults');
 const loginItem = require('./login-item').createLoginItem(app);
+let updatePrompt,
+    pendingInstallation,
+    updateCloseApproved = false;
+
+async function installAppUpdate({ startup = false } = {}) {
+    const plan = installation({ packaged: app.isPackaged && !smoke, fileName: distribution.update?.file.name });
+    if (!plan.supported) throw Error(plan.reason);
+    const file = await distribution.installer();
+    if (!(await confirmPluginClose([...(services?.providers.keys() || [])], 'quit'))) return false;
+    // 下载校验之后及交接前再次检查，拒绝在用户退出确认期间被替换的安装包。
+    if ((await distribution.installer()) !== file) throw Error('安装包状态已改变，请重试更新');
+    pendingInstallation = await prepareInstallation({
+        directory: app.getPath('userData'),
+        file,
+        update: distribution.update,
+        plan
+    });
+    try {
+        // 助手启动时用户仍可操作；退出前再刷新一次最新数据，不能依赖几秒前的保存结果。
+        if (
+            (startup && distribution.automation.active) ||
+            distribution.automation.deferred ||
+            !(await confirmPluginClose([...(services?.providers.keys() || [])], 'quit'))
+        ) {
+            pendingInstallation.cancel();
+            pendingInstallation = null;
+            return false;
+        }
+        updateCloseApproved = true;
+        app.quit();
+        return true;
+    } catch (error) {
+        pendingInstallation?.cancel();
+        pendingInstallation = null;
+        throw error;
+    }
+}
+
+function updateAction(action) {
+    if (action === 'update') return distribution.automation.begin();
+    if (action === 'later') return distribution.automation.later();
+    if (action === 'cancel') {
+        distribution.automation.later();
+        return distribution.cancel();
+    }
+}
+ipcMain.on('app-update-activity', () => distribution?.automation?.touch());
 let bootReady = false,
     revealAfterBoot = false;
 const revealMain = async () => {
@@ -85,6 +134,7 @@ let win,
     quitting = false,
     importDraft;
 let pluginTransfer = null;
+let sourceCredentialsReady;
 function sendPluginTransfer(value) {
     if (win && !win.isDestroyed()) win.webContents.send('plugin-transfer', value);
 }
@@ -197,6 +247,7 @@ function pluginManagement(...args) {
     return management().manage(...args);
 }
 function layout() {
+    updatePrompt?.sync();
     if (!win || win.isDestroyed()) return;
     runtime.layout(!overlay && !fullscreenTransition && win.isVisible() && !win.isMinimized());
     services.layout(
@@ -334,6 +385,7 @@ async function hostAction(action, payload) {
         return;
     }
     if (action.startsWith('distribution-')) {
+        await sourceCredentialsReady;
         switch (action) {
             case 'distribution-status':
                 return distribution.status();
@@ -362,10 +414,18 @@ async function hostAction(action, payload) {
             case 'distribution-download':
                 await distribution.download();
                 return distribution.status();
+            case 'distribution-update':
+                void updateAction('update').catch((error) => distribution.automation.set('error', error.message));
+                return distribution.status();
+            case 'distribution-later':
+                updateAction('later');
+                return distribution.status();
             case 'distribution-preview':
+                await services.load({ activate: false });
                 await distribution.previewProfile(payload);
                 return distribution.status();
             case 'distribution-apply':
+                await services.load({ activate: false });
                 if (!(await confirmPluginClose([...services.providers.keys()], 'import'))) return distribution.status();
                 await distribution.applyProfile(payload);
                 runtime.destroy();
@@ -374,7 +434,12 @@ async function hostAction(action, payload) {
                 runtime.themeChanged();
                 publish();
                 return distribution.status();
-            case 'distribution-install': {
+            case 'distribution-install':
+            case 'distribution-manual-install': {
+                if (action !== 'distribution-manual-install' && distribution.automation?.status().supported) {
+                    void updateAction('update').catch((error) => distribution.automation.set('error', error.message));
+                    return distribution.status();
+                }
                 const file = await distribution.installer();
                 const answer = await dialog.showMessageBox(win, {
                     type: 'question',
@@ -464,6 +529,7 @@ async function hostAction(action, payload) {
                 performance: {
                     startup: startupMarks,
                     operations: services.metrics.snapshot(),
+                    pluginLoads: [...runtime.views].map(([id, record]) => ({ id, ...record.loadMetrics })),
                     pages: runtime.views.size,
                     backgroundPages: runtime.backgrounds.size,
                     processes: app
@@ -508,6 +574,7 @@ async function hostAction(action, payload) {
             return Theme.validate(raw.theme);
         }
         case 'mcp-start':
+            await services.load();
             return mcp.start(payload.port);
         case 'mcp-stop':
             return mcp.stop();
@@ -515,6 +582,7 @@ async function hostAction(action, payload) {
             await copyText(JSON.stringify(mcp.connection(), null, 2));
             return;
         case 'export': {
+            await services.load({ activate: false });
             const value = backup.export(payload.ids, payload.settings, payload.includeCredentials !== false),
                 text = JSON.stringify(value, null, 2);
             if (Buffer.byteLength(text) > 20 * 1024 * 1024) throw Error('所选数据超过 20 MB，请分插件导出');
@@ -546,6 +614,7 @@ async function hostAction(action, payload) {
             return;
         case 'import': {
             if (!importDraft || payload.token !== importDraft.token) throw Error('导入预览失效');
+            await services.load({ activate: false });
             if (!(await confirmPluginClose([...services.providers.keys()], 'import'))) return false;
             runtime.destroy();
             layout();
@@ -655,6 +724,15 @@ async function createWindow() {
         }
     }
     await win.loadFile(path.join(__dirname, 'index.html'));
+    if (!smoke) {
+        const { UpdatePrompt } = require('./distribution/update-prompt');
+        updatePrompt = new UpdatePrompt({
+            parent: win,
+            status: () => ({ ...distribution.status(), theme: settings().theme }),
+            action: updateAction,
+            blocked: () => overlay
+        });
+    }
     publish();
 }
 app.on('second-instance', () => {
@@ -673,16 +751,21 @@ app.on('before-quit', (event) => {
     event.preventDefault();
     if (cleanupTask) return;
     cleanupTask = (async () => {
-        if (!(await confirmPluginClose([...(services?.providers.keys() || [])], 'quit'))) return;
+        if (!updateCloseApproved && !(await confirmPluginClose([...(services?.providers.keys() || [])], 'quit')))
+            return;
         quitting = true;
         distribution?.dispose();
         runtime?.destroy();
         const results = await Promise.allSettled([services?.dispose(), mcp?.stop(false)]);
         for (const result of results) if (result.status === 'rejected') console.error('退出清理失败：', result.reason);
+        pendingInstallation?.commit();
         cleanupFinished = true;
         app.quit();
     })()
         .catch((error) => {
+            pendingInstallation?.cancel();
+            pendingInstallation = null;
+            updateCloseApproved = false;
             dialog.showErrorBox('无法退出工作台', error.message);
         })
         .finally(() => {
@@ -766,12 +849,16 @@ app.whenReady()
             runtime.emit(id, 'data-changed');
             publish();
         });
+        // 暂保留稳定的后台准备顺序，不将全量初始化推迟到用户已经开始点击的阶段。
         await services.load({ activate: false });
         startupMark('services-ready');
         backup = new WorkspaceBackup(registry, settings, setSettings);
         backup.recover();
         const sourceCredentials = new CredentialStore(path.join(dataDirectory, 'source-credentials.enc'), safeStorage);
-        await sourceCredentials.initialize();
+        // macOS 钥匙串可能等待系统响应，不让账号凭据阻塞本地工作台首屏。
+        startupMark('credentials-started');
+        sourceCredentialsReady = sourceCredentials.initialize().then(() => startupMark('credentials-ready'));
+        void sourceCredentialsReady.catch(() => {});
         distribution = new Distribution({
             registry,
             fetcher: require('./distribution/electron-fetch').electronFetch,
@@ -788,7 +875,17 @@ app.whenReady()
             deployment: !smoke || process.argv.includes('--smoke-deployment') ? defaults.distribution : undefined,
             changed: () => {
                 if (win && !win.isDestroyed()) win.webContents.send('distribution-state', distribution.status());
+                updatePrompt?.sync();
             }
+        });
+        const failedUpdate = previousInstallation(dataDirectory, app.getVersion());
+        distribution.automation = new AutomaticUpdate({
+            distribution,
+            supported: () =>
+                installation({ packaged: app.isPackaged && !smoke, fileName: distribution.update?.file.name }),
+            install: installAppUpdate,
+            changed: () => distribution.changed(),
+            failedVersion: failedUpdate?.version || ''
         });
         if (registry.getSetting('distributionSource'))
             pluginCatalog.configure(
@@ -842,7 +939,11 @@ app.whenReady()
         if (quitting) return;
         await runtime.startBackgrounds();
         if (!smoke) {
-            distribution.start();
+            void sourceCredentialsReady
+                .then(() => {
+                    if (!quitting) distribution.start();
+                })
+                .catch((error) => console.error('账号服务初始化失败：', error.message));
             const trayIcon = nativeImage.createFromPath(path.join(__dirname, '..', 'assets', 'icon.png'));
             tray = new Tray(process.platform === 'darwin' ? trayIcon.resize({ width: 18, height: 18 }) : trayIcon);
             tray.setToolTip('Collectify');

@@ -55,6 +55,8 @@ jobs:
           npm run smoke -- --smoke-architecture
           npm run smoke -- --smoke-default-plugins
           npm run smoke -- --smoke-shutdown
+          npm run smoke -- --smoke-performance
+          npm run smoke -- --smoke-auto-update
       - name: Linux 桌面回归检查
         if: runner.os == 'Linux'
         run: |
@@ -71,3 +73,5 @@ jobs:
           xvfb-run -a npm run smoke -- --smoke-architecture
           xvfb-run -a npm run smoke -- --smoke-default-plugins
           xvfb-run -a npm run smoke -- --smoke-shutdown
+          xvfb-run -a npm run smoke -- --smoke-performance
+          xvfb-run -a npm run smoke -- --smoke-auto-update

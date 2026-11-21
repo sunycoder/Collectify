@@ -187,8 +187,10 @@ async function withDialogTransition(action) {
     }
 }
 const singleNavigationExpanded = new Set();
+let railSignature = '',
+    navigationSignature = '',
+    shellThemeSignature = '';
 function renderShell(next) {
-    finishPluginDrag?.();
     state = next;
     const activeNavigation = state.plugins.find((plugin) => plugin.id === state.active?.id)?.navigation || [];
     const collapsed =
@@ -200,80 +202,102 @@ function renderShell(next) {
     $('#toggle-navigation').title = collapsed ? '展开导航' : '收起导航';
     $('#expand-navigation').setAttribute('aria-expanded', String(!collapsed));
     $('.plugin-context').inert = collapsed;
-    if ($('#theme-dialog').hidden) ShiyueTheme.apply(state.settings.theme);
-    const enabled = state.plugins.filter((p) => p.enabled);
-    const currentIcons = new Set(state.plugins.map((p) => `${p.id}@${p.version}:${p.icon}`));
-    for (const key of pluginIcons.keys()) if (!currentIcons.has(key)) pluginIcons.delete(key);
-    const railScroll = $('#plugin-rail').scrollTop;
-    $('#plugin-rail').replaceChildren();
-    for (const plugin of enabled) {
-        const node = button(plugin.name, null, () => call('plugin-open', { id: plugin.id }), 'plugin-entry');
-        node.dataset.pluginId = plugin.id;
-        node.title = plugin.name + ' · 拖动调整顺序；Alt + ↑ / ↓ 移动';
-        node.setAttribute('aria-keyshortcuts', 'Alt+ArrowUp Alt+ArrowDown');
-        node.classList.toggle('selected', state.active?.id === plugin.id);
-        node.setAttribute('aria-pressed', String(state.active?.id === plugin.id));
-        node.replaceChildren(el('span', 'plugin-glyph', plugin.glyph), el('span', 'plugin-name', plugin.name));
-        $('#plugin-rail').append(node);
-        if (plugin.icon) {
-            // 挂接到 DOM 后再展示异步图标；失败时保留清单中的文字后备图标。
-            renderPluginIcon(plugin, node.querySelector('.plugin-glyph'));
-        } else if (plugin.iconAsset) {
-            const glyph = node.querySelector('.plugin-glyph');
-            const image = el('img', 'plugin-asset-icon');
-            image.src = `../assets/${encodeURIComponent(plugin.iconAsset)}`;
-            image.alt = '';
-            image.draggable = false;
-            glyph.replaceChildren(image);
-        }
+    const themeKey = JSON.stringify(state.settings.theme);
+    if ($('#theme-dialog').hidden && themeKey !== shellThemeSignature) {
+        ShiyueTheme.apply(state.settings.theme);
+        shellThemeSignature = themeKey;
     }
-    $('#plugin-rail').scrollTop = railScroll;
+    const enabled = state.plugins.filter((p) => p.enabled);
+    const railKey = JSON.stringify(
+        enabled.map(({ id, name, version, icon, iconAsset, glyph }) => ({ id, name, version, icon, iconAsset, glyph }))
+    );
+    if (railKey !== railSignature) {
+        finishPluginDrag?.();
+        railSignature = railKey;
+        const currentIcons = new Set(state.plugins.map((p) => `${p.id}@${p.version}:${p.icon}`));
+        for (const key of pluginIcons.keys()) if (!currentIcons.has(key)) pluginIcons.delete(key);
+        const railScroll = $('#plugin-rail').scrollTop;
+        $('#plugin-rail').replaceChildren();
+        for (const plugin of enabled) {
+            const node = button(plugin.name, null, () => call('plugin-open', { id: plugin.id }), 'plugin-entry');
+            node.dataset.pluginId = plugin.id;
+            node.title = plugin.name + ' · 拖动调整顺序；Alt + ↑ / ↓ 移动';
+            node.setAttribute('aria-keyshortcuts', 'Alt+ArrowUp Alt+ArrowDown');
+            node.classList.toggle('selected', state.active?.id === plugin.id);
+            node.setAttribute('aria-pressed', String(state.active?.id === plugin.id));
+            node.replaceChildren(el('span', 'plugin-glyph', plugin.glyph), el('span', 'plugin-name', plugin.name));
+            $('#plugin-rail').append(node);
+            if (plugin.icon) {
+                // 挂接到 DOM 后再展示异步图标；失败时保留清单中的文字后备图标。
+                renderPluginIcon(plugin, node.querySelector('.plugin-glyph'));
+            } else if (plugin.iconAsset) {
+                const glyph = node.querySelector('.plugin-glyph');
+                const image = el('img', 'plugin-asset-icon');
+                image.src = `../assets/${encodeURIComponent(plugin.iconAsset)}`;
+                image.alt = '';
+                image.draggable = false;
+                glyph.replaceChildren(image);
+            }
+        }
+        $('#plugin-rail').scrollTop = railScroll;
+    }
+    for (const node of $('#plugin-rail').children) {
+        const selected = node.dataset.pluginId === state.active?.id;
+        node.classList.toggle('selected', selected);
+        node.setAttribute('aria-pressed', String(selected));
+    }
     const active = state.plugins.find((p) => p.id === state.active?.id);
     $('#navigation-title').textContent = active?.name || '工作台';
     $('#navigation-description').textContent = active?.description || '启用所需的插件';
     $('#plugin-title').textContent = active?.name || 'Collectify';
-    $('#plugin-navigation').replaceChildren();
-    let group;
-    for (const item of active?.navigation || []) {
-        if (item.group && item.group !== group) {
-            group = item.group;
-            $('#plugin-navigation').append(el('div', 'navigation-group', group));
-        }
-        const node = button(
-            item.label,
-            item.icon || null,
-            () => call('plugin-open', { id: active.id, route: item.id }),
-            'plugin-subnav'
-        );
-        node.dataset.route = item.id;
-        if (item.icon) {
-            node.classList.add('has-icon');
-            const label = el('span', 'subnav-label', item.label);
-            node.replaceChildren(icon(item.icon), label);
-        }
-        node.classList.toggle('selected', state.active.route === item.id);
-        if (item.count !== undefined) node.append(el('small', '', item.count));
-        $('#plugin-navigation').append(node);
-        node.draggable = item.draggable === true;
-        node.ondragstart = (event) => {
-            if (item.dragData)
-                event.dataTransfer.setData(
-                    'application/collectify-plugin',
-                    JSON.stringify({ pluginId: active.id, data: item.dragData })
-                );
-        };
-        node.ondragover = (event) => event.preventDefault();
-        node.ondrop = task(async (event) => {
-            event.preventDefault();
-            try {
-                const drag = JSON.parse(event.dataTransfer.getData('application/collectify-plugin'));
-                if (drag.pluginId === active.id)
-                    await call('plugin-open', { id: active.id, route: item.id, data: { drag: drag.data } });
-            } catch (error) {
-                toast(error.message);
+    const navigationKey = JSON.stringify([active?.id, active?.navigation]);
+    if (navigationKey !== navigationSignature) {
+        navigationSignature = navigationKey;
+        $('#plugin-navigation').replaceChildren();
+        let group;
+        for (const item of active?.navigation || []) {
+            if (item.group && item.group !== group) {
+                group = item.group;
+                $('#plugin-navigation').append(el('div', 'navigation-group', group));
             }
-        });
+            const node = button(
+                item.label,
+                item.icon || null,
+                () => call('plugin-open', { id: active.id, route: item.id }),
+                'plugin-subnav'
+            );
+            node.dataset.route = item.id;
+            if (item.icon) {
+                node.classList.add('has-icon');
+                const label = el('span', 'subnav-label', item.label);
+                node.replaceChildren(icon(item.icon), label);
+            }
+            node.classList.toggle('selected', state.active.route === item.id);
+            if (item.count !== undefined) node.append(el('small', '', item.count));
+            $('#plugin-navigation').append(node);
+            node.draggable = item.draggable === true;
+            node.ondragstart = (event) => {
+                if (item.dragData)
+                    event.dataTransfer.setData(
+                        'application/collectify-plugin',
+                        JSON.stringify({ pluginId: active.id, data: item.dragData })
+                    );
+            };
+            node.ondragover = (event) => event.preventDefault();
+            node.ondrop = task(async (event) => {
+                event.preventDefault();
+                try {
+                    const drag = JSON.parse(event.dataTransfer.getData('application/collectify-plugin'));
+                    if (drag.pluginId === active.id)
+                        await call('plugin-open', { id: active.id, route: item.id, data: { drag: drag.data } });
+                } catch (error) {
+                    toast(error.message);
+                }
+            });
+        }
     }
+    for (const node of $('#plugin-navigation').querySelectorAll('[data-route]'))
+        node.classList.toggle('selected', state.active?.route === node.dataset.route);
     $('#route-title').textContent = active?.navigation.find((n) => n.id === state.active.route)?.label || '';
     const failed = !!state.active?.error,
         loading = !!state.active?.loading;
@@ -750,7 +774,7 @@ document.addEventListener(
             try {
                 await refresh();
                 const enabled = state.plugins.filter((p) => p.enabled);
-                if ((!state.active || state.active.loading) && enabled.length)
+                if (!state.active && enabled.length)
                     await call('plugin-open', {
                         id: state.active?.id || enabled.find((p) => p.id === state.lastPlugin)?.id || enabled[0].id
                     });

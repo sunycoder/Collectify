@@ -53,7 +53,7 @@ function renderDistribution(next) {
         sourceDrafts[next.config.provider] = structuredClone(next.config);
         fillSource(next.config);
     }
-    const busy = !!next.busy;
+    const busy = !!next.busy || next.automatic?.phase === 'installing';
     for (const id of [
         'source-save',
         'source-login',
@@ -94,21 +94,30 @@ function renderDistribution(next) {
         $('#' + id).title = updates ? '设置 · 有可用更新或团队配置' : '设置';
     }
     $('#download-app').textContent = update?.available ? '有新版本 · ' + update.version : '下载与更新';
-    if (update?.available && notifiedVersion !== update.version) {
+    if (!next.automatic?.supported && update?.available && notifiedVersion !== update.version) {
         notifiedVersion = update.version;
         toast('发现 Collectify ' + update.version + '，可在设置中下载更新');
     }
+    const automatic = next.automatic?.supported;
+    const installing = next.automatic?.phase === 'installing';
     $('#source-download').hidden = !update?.available || next.downloaded;
+    $('#source-download').textContent = automatic ? '重启更新' : '下载新版本';
     $('#source-install').hidden = !next.downloaded;
+    $('#source-install').textContent = automatic ? '重启并安装更新' : '打开安装包';
+    $('#source-download').disabled = busy || installing;
+    $('#source-install').disabled = busy || installing;
+    $('#source-manual-install').hidden = !next.downloaded || next.automatic?.phase !== 'error';
+    $('#source-manual-install').disabled = busy || installing;
     $('#source-update-status').textContent =
         next.progress && next.busy === '下载安装包'
             ? `正在下载 ${Math.floor((next.progress.received / next.progress.total) * 100)}%`
-            : next.updateError ||
+            : next.automatic?.error ||
+              next.updateError ||
               (update
                   ? update.available
                       ? `发现 ${update.version} · ${update.file.name}${next.downloaded ? ' · 已下载并通过 SHA-256 校验' : ''}`
                       : '当前已是该源的最新版本'
-                  : '尚未检查。安装包下载完成后，由你确认安装。');
+                  : '启动后及使用期间自动检查；新版本下载并校验后，重启完成安装。');
     $('#source-update-notes').hidden = !update?.notes;
     $('#source-update-notes').textContent = update?.notes || '';
     $('#source-plugin-status').textContent = next.pluginError
@@ -218,6 +227,8 @@ $('#source-login').onclick = () =>
 $('#source-logout').onclick = () => distributionAction('logout');
 $('#source-cancel').onclick = () => distributionAction('cancel');
 $('#source-check').onclick = () => distributionAction('check');
-$('#source-download').onclick = () => distributionAction('download');
+$('#source-download').onclick = () =>
+    distributionAction(distributionState?.automatic?.supported ? 'update' : 'download');
 $('#source-install').onclick = () => distributionAction('install');
+$('#source-manual-install').onclick = () => distributionAction('manual-install');
 $('#source-profile-apply').onclick = () => distributionAction('apply', distributionState.preview?.token);

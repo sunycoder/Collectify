@@ -1,0 +1,67 @@
+:root {
+    color-scheme: light dark;
+    font-family: system-ui, sans-serif;
+    font-size: 13px;
+}
+* {
+    box-sizing: border-box;
+}
+body {
+    margin: 0;
+    background: transparent;
+    color: var(--ink);
+}
+section {
+    padding: 16px;
+    height: 176px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+}
+strong {
+    font-size: 14px;
+}
+p {
+    margin: 0;
+    line-height: 1.5;
+    flex: 1;
+    overflow: auto;
+}
+progress {
+    width: 100%;
+    height: 6px;
+    accent-color: var(--accent);
+}
+[hidden] {
+    display: none !important;
+}
+footer {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+button {
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 6px 12px;
+    font: inherit;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+#update {
+    background: var(--accent);
+    color: var(--accent-fg);
+    border-color: var(--accent);
+}
+button:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}

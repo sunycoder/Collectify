@@ -186,4 +186,26 @@ function readManifest(root, { builtin = false } = {}) {
     };
 }
 
-module.exports = { API_VERSION, PERMISSIONS, pluginId, pluginUrl, assetPath, readManifest };
+// 协议加载使用异步路径检查，保留与清单检查一致的链接和越界约束。
+async function assetPathAsync(root, relative) {
+    if (
+        typeof relative !== 'string' ||
+        !relative ||
+        relative.includes('\\') ||
+        relative.includes('\0') ||
+        relative.split('/').some((p) => !p || p === '.' || p === '..') ||
+        path.isAbsolute(relative)
+    )
+        throw Error('插件资源路径不合法');
+    const base = await fs.promises.realpath(root);
+    const target = path.resolve(base, relative);
+    if (!target.startsWith(base + path.sep)) throw Error('插件资源越界');
+    let current = base;
+    for (const segment of relative.split('/')) {
+        current = path.join(current, segment);
+        if ((await fs.promises.lstat(current)).isSymbolicLink()) throw Error('插件资源不能是符号链接');
+    }
+    if (!(await fs.promises.stat(target)).isFile()) throw Error('插件资源不是文件');
+    return target;
+}
+module.exports = { API_VERSION, PERMISSIONS, pluginId, pluginUrl, assetPath, assetPathAsync, readManifest };

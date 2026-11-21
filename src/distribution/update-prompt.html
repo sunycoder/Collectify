@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8" />
+        <meta
+            http-equiv="Content-Security-Policy"
+            content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'"
+        />
+        <title>Collectify 更新</title>
+        <link rel="stylesheet" href="update-prompt.css" />
+    </head>
+    <body>
+        <section aria-live="polite">
+            <strong id="title">发现新版本</strong>
+            <p id="message"></p>
+            <progress id="progress" max="100" hidden aria-label="更新下载进度"></progress>
+            <footer><button id="later">稍后</button><button id="update">重启更新</button></footer>
+        </section>
+        <script src="../theme.js"></script>
+        <script src="update-prompt-renderer.js"></script>
+    </body>
+</html>

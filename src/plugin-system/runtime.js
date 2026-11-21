@@ -45,6 +45,7 @@ class PluginRuntime extends PluginWindows {
         this.prepared = new Set();
         this.generation = 0;
         this.suspendedPages = new Map();
+        this.sdkAssets = new (require('./resource-cache').ResourceCache)();
         this.bounds = { x: 248, y: 72, width: 800, height: 600 };
         ipcMain.handle('plugin-sdk', async (event, action, payload) => {
             try {
@@ -375,10 +376,22 @@ class PluginRuntime extends PluginWindows {
                         [plugin.backend, 'schema.js'].includes(relative)
                     )
                         return new Response('Forbidden', { status: 403 });
-                    const file = assetPath(root, relative);
-                    const extension = path.extname(file).toLowerCase();
+                    const extension = path.extname(relative).toLowerCase();
                     if (!MIME[extension]) return new Response('Unsupported resource', { status: 403 });
-                    return new Response(await fs.promises.readFile(file), {
+                    let data;
+                    if (url.hostname === 'collectify.sdk' && app.isPackaged) {
+                        data = await this.sdkAssets.get(relative, () =>
+                            fs.promises.readFile(assetPath(root, relative))
+                        );
+                    } else {
+                        // 恢复单次同步路径校验，避免逐段异步 stat 放大开发加载的往返延迟。
+                        const file = assetPath(root, relative);
+                        if (url.hostname === 'collectify.sdk') {
+                            // 开发缓存随文件修改立即失效，不用关闭应用才能看到公共控件修改。
+                            data = await this.sdkAssets.readFile(relative, file);
+                        } else data = await fs.promises.readFile(file);
+                    }
+                    return new Response(data, {
                         headers: {
                             'Content-Type': `${MIME[extension]}; charset=utf-8`,
                             'Content-Security-Policy': resourceProvider?.resource
@@ -394,11 +407,20 @@ class PluginRuntime extends PluginWindows {
                 }
             };
             isolated.protocol.handle('collectify-plugin', (request) => {
+                const page = this.views.get(plugin.id),
+                    resourceStarted = performance.now();
                 const task = serve(request),
                     reads = this.resourceReads.get(plugin.id) || new Set();
                 this.resourceReads.set(plugin.id, reads);
                 reads.add(task);
                 return task.finally(() => {
+                    if (page) {
+                        const elapsed = Math.round(performance.now() - resourceStarted);
+                        const stats = (page.resourceStats ||= { count: 0, totalMs: 0, maxMs: 0 });
+                        stats.count++;
+                        stats.totalMs += elapsed;
+                        stats.maxMs = Math.max(stats.maxMs, elapsed);
+                    }
                     reads.delete(task);
                     if (!reads.size) this.resourceReads.delete(plugin.id);
                 });
@@ -417,17 +439,25 @@ class PluginRuntime extends PluginWindows {
         return partition;
     }
     async open(id, commandId, route, payload) {
+        const started = performance.now();
         const plugin = this.registry.get(id, true),
             generation = ++this.generation;
         // 后台与前台并行加载；后台能力调用自身仍等待后台就绪，不跳过错误检查。
         const backgroundReady = this.startBackground(id);
         void backgroundReady.catch(() => {});
+        let backendMs = 0;
+        const backendReady = Promise.resolve(this.services?.enable(id)).finally(() => {
+            backendMs = Math.round(performance.now() - started);
+        });
+        void backendReady.catch(() => {});
         if (this.services?.errors.has(id)) throw Error(`插件后台加载失败：${this.services.errors.get(id)}`);
         if (commandId && !plugin.commands.some((c) => c.id === commandId)) throw Error('插件命令不存在');
         this.activeId = id;
         const resumed = this.suspendedPages.get(id);
         this.layoutOwnedWindows();
         let record = this.views.get(id);
+        const reused = !!record,
+            pageStarted = performance.now();
         if (!record) {
             const view = new WebContentsView({
                 webPreferences: {
@@ -501,6 +531,13 @@ class PluginRuntime extends PluginWindows {
         }
         this.changed();
         await record.ready;
+        const pageMs = Math.round(performance.now() - pageStarted);
+        await backendReady;
+        if (this.services?.errors.has(id)) {
+            record.error = `插件后台加载失败：${this.services.errors.get(id)}`;
+            this.changed();
+            throw Error(record.error);
+        }
         await backgroundReady;
         record.lastUsed = Date.now();
         if (generation !== this.generation || this.views.get(id) !== record || record.view.webContents.isDestroyed())
@@ -514,10 +551,22 @@ class PluginRuntime extends PluginWindows {
             record.route = typeof route === 'string' ? route : record.route || plugin.navigation[0]?.id || 'home';
             record.view.webContents.send('plugin-navigate', { route: record.route, payload });
         }
+        const elapsed = Math.round(performance.now() - started);
+        record.loadMetrics = {
+            platform: process.platform,
+            elapsedMs: elapsed,
+            pageMs,
+            backendMs,
+            reused,
+            resources: { ...record.resourceStats }
+        };
+        if (process.argv.includes('--startup-metrics')) console.log('PLUGIN READY', id, elapsed + 'ms');
+        else if (!app.isPackaged && !this.smoke && elapsed >= 800)
+            console.warn('[Collectify 加载耗时]', id, JSON.stringify(record.loadMetrics));
         this.changed();
         await this.prunePages();
     }
-    async prunePages({ maxPages = 4, idleMs = 15 * 60 * 1000 } = {}) {
+    async prunePages({ maxPages = 6, idleMs = 15 * 60 * 1000 } = {}) {
         const candidates = [...this.views]
             .filter(
                 ([id, record]) =>

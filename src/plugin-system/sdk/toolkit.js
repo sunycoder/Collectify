@@ -33,21 +33,27 @@ window.ToolUI.ready = (async () => {
         link.href = `collectify-plugin://collectify.sdk/${resource}`;
         document.head.append(link);
     }
-    for (const resource of [
+    const scripts = [
         'vendor/tom-select.js',
         'vendor/floating-ui.js',
         'vendor/flatpickr.js',
         'vendor/flatpickr-zh.js',
         'overlay.js',
         'ui-components.js'
-    ]) {
-        await new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = `collectify-plugin://collectify.sdk/${resource}`;
-            script.onload = resolve;
-            script.onerror = () => reject(Error('公共控件加载失败'));
-            document.head.append(script);
-        });
-    }
+    ];
+    // 并行请求，按插入顺序执行，避免每个控件脚本都额外等待上一轮协议往返。
+    await Promise.all(
+        scripts.map(
+            (resource) =>
+                new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.async = false;
+                    script.src = `collectify-plugin://collectify.sdk/${resource}`;
+                    script.onload = resolve;
+                    script.onerror = () => reject(Error('公共控件加载失败'));
+                    document.head.append(script);
+                })
+        )
+    );
 })();
 window.ToolUI.ready.catch((error) => window.ToolUI.message(error.message, true));

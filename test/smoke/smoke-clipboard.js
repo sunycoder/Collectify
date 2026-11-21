@@ -43,16 +43,10 @@ exports.run = async ({ win, registry, runtime, hostAction }) => {
         page = (code) => runtime.views.get(id).view.webContents.executeJavaScript(code);
     try {
         await win.webContents.executeJavaScript('shellReady');
+        // 可选插件作为外部安装夹具提供，正式宿主包按设计不包含 plugin-library。
+        // 被测宿主、安装器及 SDK 仍通过 requireHost 从实际应用包加载。
         const prepared = packages.prepare(
-            encodeZip(
-                collectFiles(
-                    path.dirname(
-                        require('../support/host').requireHost.resolve(
-                            './plugin-library/clipboard-history/manifest.json'
-                        )
-                    )
-                )
-            )
+            encodeZip(collectFiles(path.resolve(__dirname, '../../src/plugin-library/clipboard-history')))
         );
         registry.install(prepared.directory);
         packages.cleanup(prepared);
@@ -391,7 +385,13 @@ exports.run = async ({ win, registry, runtime, hostAction }) => {
         );
     } catch (error) {
         console.error('剪贴板页面诊断', runtime.views.get(id)?.errors, runtime.backgrounds.get(id)?.errors);
-        console.error('后台状态', await page("collectify.background.request({action:'list'})"));
+        if (runtime.views.has(id)) {
+            try {
+                console.error('后台状态', await page("collectify.background.request({action:'list'})"));
+            } catch (diagnosticError) {
+                console.error('读取后台诊断失败：', diagnosticError.message);
+            }
+        }
         throw error;
     } finally {
         runtime.close(id);

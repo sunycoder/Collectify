@@ -8,8 +8,10 @@ function ensureStorageSchema(db) {
     const version = db.prepare('PRAGMA user_version').get().user_version;
     if (version > 1) throw Error('插件数据版本高于当前宿主支持的版本');
     db.exec(
-        'CREATE TABLE IF NOT EXISTS plugin_values(key TEXT PRIMARY KEY,value_json TEXT NOT NULL,updated_at TEXT NOT NULL) STRICT;PRAGMA user_version=1'
+        'CREATE TABLE IF NOT EXISTS plugin_values(key TEXT PRIMARY KEY,value_json TEXT NOT NULL,updated_at TEXT NOT NULL) STRICT'
     );
+    // 已建库的读取不再重写 SQLite 版本页，避免每次取偏好都触发磁盘同步。
+    if (version === 0) db.exec('PRAGMA user_version=1');
 }
 
 function keyOf(key) {

@@ -1,4 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
+// 首次真实操作即取消“启动后无人操作时自动重启”的资格，不发送内容或按键值。
+for (const name of ['pointerdown', 'keydown', 'wheel'])
+    window.addEventListener(name, () => ipcRenderer.send('app-update-activity'), { once: true, capture: true });
 contextBridge.exposeInMainWorld('workbench', {
     onEvent: (name, callback) => {
         if (!['shell-state', 'distribution-state', 'plugin-transfer', 'plugin-market-request'].includes(name)) return;

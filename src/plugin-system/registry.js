@@ -13,12 +13,14 @@ class PluginRegistry {
         fs.mkdirSync(path.dirname(hostFile), { recursive: true });
         fs.mkdirSync(userRoot, { recursive: true });
         this.storage = new PluginStorage(dataRoot);
+        this.settingCache = new Map();
         this.database((db) => {
             const version = db.prepare('PRAGMA user_version').get().user_version;
             if (version > 2) throw Error('插件宿主数据版本不受支持');
             db.exec(
-                'CREATE TABLE IF NOT EXISTS installed_plugins(id TEXT PRIMARY KEY,enabled INTEGER NOT NULL CHECK(enabled IN (0,1)),version TEXT NOT NULL,installed_at TEXT NOT NULL) STRICT; CREATE TABLE IF NOT EXISTS host_settings(key TEXT PRIMARY KEY,value_json TEXT NOT NULL CHECK(json_valid(value_json))) STRICT; PRAGMA user_version=2;'
+                'CREATE TABLE IF NOT EXISTS installed_plugins(id TEXT PRIMARY KEY,enabled INTEGER NOT NULL CHECK(enabled IN (0,1)),version TEXT NOT NULL,installed_at TEXT NOT NULL) STRICT; CREATE TABLE IF NOT EXISTS host_settings(key TEXT PRIMARY KEY,value_json TEXT NOT NULL CHECK(json_valid(value_json))) STRICT;'
             );
+            if (version < 2) db.exec('PRAGMA user_version=2');
         });
         const order = this.getSetting('pluginOrder', []);
         this.pluginOrder = Array.isArray(order) ? [...new Set(order.filter((id) => typeof id === 'string'))] : [];
@@ -35,42 +37,49 @@ class PluginRegistry {
         }
     }
     getSetting(key, fallback = null) {
-        return this.database((db) => {
-            const row = db.prepare('SELECT value_json FROM host_settings WHERE key=?').get(key);
-            return row ? JSON.parse(row.value_json) : fallback;
-        });
+        if (!this.settingCache.has(key))
+            this.database((db) => {
+                const row = db.prepare('SELECT value_json FROM host_settings WHERE key=?').get(key);
+                this.settingCache.set(key, row ? row.value_json : null);
+            });
+        const text = this.settingCache.get(key);
+        return text === null ? structuredClone(fallback) : JSON.parse(text);
     }
     setSetting(key, value) {
         if (key === 'pluginOrder') value = require('./navigation-order').validateOrder(value);
+        const text = JSON.stringify(value);
+        if (typeof text !== 'string') throw Error('宿主设置必须为可序列化的数据');
+        if (this.settingCache.has(key) && this.settingCache.get(key) === text) return;
         this.database((db) =>
             db
                 .prepare(
                     'INSERT INTO host_settings VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json'
                 )
-                .run(key, JSON.stringify(value))
+                .run(key, text)
         );
+        this.settingCache.set(key, text);
         if (key === 'pluginOrder') this.pluginOrder = [...value];
     }
     readMcpConfig() {
         return this.getSetting('mcp');
     }
     readSettings(fallbacks) {
-        return this.database((db) => {
-            const keys = Object.keys(fallbacks);
-            if (!keys.length) return {};
-            const values = Object.fromEntries(
-                db
-                    .prepare(`SELECT key,value_json FROM host_settings WHERE key IN (${keys.map(() => '?').join(',')})`)
-                    .all(...keys)
-                    .map((row) => [row.key, JSON.parse(row.value_json)])
-            );
-            return Object.fromEntries(
-                Object.entries(fallbacks).map(([key, fallback]) => [
-                    key,
-                    Object.hasOwn(values, key) ? values[key] : fallback
-                ])
-            );
-        });
+        const missing = Object.keys(fallbacks).filter((key) => !this.settingCache.has(key));
+        if (missing.length)
+            this.database((db) => {
+                const rows = new Map(
+                    db
+                        .prepare(
+                            `SELECT key,value_json FROM host_settings WHERE key IN (${missing.map(() => '?').join(',')})`
+                        )
+                        .all(...missing)
+                        .map((r) => [r.key, r.value_json])
+                );
+                for (const key of missing) this.settingCache.set(key, rows.get(key) ?? null);
+            });
+        return Object.fromEntries(
+            Object.entries(fallbacks).map(([key, fallback]) => [key, this.getSetting(key, fallback)])
+        );
     }
     saveMcpConfig(value) {
         this.setSetting('mcp', value);
@@ -122,8 +131,17 @@ class PluginRegistry {
             .map(({ directory, backend, entry, ...p }) => p);
     }
     discover() {
-        this.defaultManifests = null;
         this.iconCache = new Map();
+        const records = this.database(
+            (db) =>
+                new Map(
+                    db
+                        .prepare('SELECT id,version,enabled FROM installed_plugins')
+                        .all()
+                        .map((r) => [r.id, r])
+                )
+        );
+        const changed = [];
         const next = new Map(),
             diagnostics = [];
         for (const [root, builtin] of [[this.userRoot, false]]) {
@@ -143,12 +161,8 @@ class PluginRegistry {
                     if (!builtin && folder.name !== manifest.id)
                         throw Error('已安装插件的目录名必须与插件 ID 一致，请通过插件管理安装');
                     if (next.has(manifest.id)) throw Error('插件 ID 与已安装插件冲突');
-                    const record = this.database((db) => {
-                        db.prepare(
-                            'INSERT INTO installed_plugins VALUES(?,1,?,?) ON CONFLICT(id) DO UPDATE SET version=excluded.version'
-                        ).run(manifest.id, manifest.version, new Date().toISOString());
-                        return db.prepare('SELECT enabled FROM installed_plugins WHERE id=?').get(manifest.id);
-                    });
+                    const record = records.get(manifest.id) || { enabled: 1 };
+                    if (records.get(manifest.id)?.version !== manifest.version) changed.push(manifest);
                     next.set(manifest.id, {
                         ...manifest,
                         directory,
@@ -161,6 +175,21 @@ class PluginRegistry {
                 }
             }
         }
+        if (changed.length)
+            this.database((db) => {
+                db.exec('BEGIN');
+                try {
+                    const save = db.prepare(
+                        'INSERT INTO installed_plugins VALUES(?,1,?,?) ON CONFLICT(id) DO UPDATE SET version=excluded.version'
+                    );
+                    const now = new Date().toISOString();
+                    for (const manifest of changed) save.run(manifest.id, manifest.version, now);
+                    db.exec('COMMIT');
+                } catch (error) {
+                    db.exec('ROLLBACK');
+                    throw error;
+                }
+            });
         this.plugins = next;
         this.diagnostics = diagnostics;
     }

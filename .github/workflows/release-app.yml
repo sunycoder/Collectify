@@ -45,7 +45,10 @@ jobs:
         run: node scripts/release-files.cjs verify
       - name: 桌面回归检查
         if: matrix.platform != 'linux'
-        run: npm run smoke
+        run: |
+          npm run smoke
+          npm run smoke -- --smoke-performance
+          npm run smoke -- --smoke-auto-update
       - name: Linux 桌面回归检查
         if: matrix.platform == 'linux'
         run: |
@@ -53,6 +56,8 @@ jobs:
           sudo chown root:root node_modules/electron/dist/chrome-sandbox
           sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
           xvfb-run -a npm run smoke
+          xvfb-run -a npm run smoke -- --smoke-performance
+          xvfb-run -a npm run smoke -- --smoke-auto-update
       - name: Windows 打包版启动验证
         if: matrix.platform == 'windows'
         shell: pwsh

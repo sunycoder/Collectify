@@ -113,6 +113,7 @@ class Distribution {
             preview: this.preview?.summary || null,
             profileError: this.profileError,
             updateError: this.updateError,
+            automatic: this.automation?.status() || null,
             pluginError: this.pluginError || '',
             pluginUpdates: this.pluginUpdates || 0
         };
@@ -153,6 +154,7 @@ class Distribution {
         this.progress = null;
         this.pluginError = '';
         this.pluginUpdates = 0;
+        this.automation?.reset();
     }
     save(input) {
         if (this.busy) throw Error('请先完成或取消当前操作，再修改源');
@@ -204,6 +206,7 @@ class Distribution {
             this.client = this.newClient();
             this.busy = '';
             this.progress = { ...this.progress, phase: 'cancelled', error: '已取消下载' };
+            this.automation?.cancelled();
             this.changed();
             return this.status();
         }
@@ -246,8 +249,8 @@ class Distribution {
             };
         });
     }
-    async check() {
-        return this.run('检查更新', async () => {
+    async check({ automatic = false, startup = false } = {}) {
+        const result = await this.run('检查更新', async () => {
             const client = this.client;
             const results = await Promise.allSettled([
                 (async () => {
@@ -275,6 +278,8 @@ class Distribution {
             this.checkedAt = new Date().toISOString();
             return this.status();
         });
+        if (!this.updateError) await this.automation?.checked({ startup: automatic && startup });
+        return result;
     }
     async previewProfile(id) {
         return this.run('读取团队配置', async () => {
@@ -372,6 +377,22 @@ class Distribution {
                 }
             }, 500);
             try {
+                const cached = path.join(this.directory, 'updates', update.file.name);
+                if (fs.existsSync(cached)) {
+                    try {
+                        this.progress = meter(update.file.size, update.file.size, 'verifying');
+                        this.changed();
+                        await verifyInstaller(cached, update);
+                        client.controller.signal.throwIfAborted();
+                        if (generation !== this.generation) return;
+                        this.downloaded = cached;
+                        this.progress = meter(update.file.size, update.file.size, 'complete');
+                        return this.status();
+                    } catch (error) {
+                        client.controller.signal.throwIfAborted();
+                        // 缓存不完整或已改变时重新下载，不能把存在文件当作校验成功。
+                    }
+                }
                 this.downloaded = await downloadUpdate(client, update, path.join(this.directory, 'updates'), {
                     progress: (received, total) => {
                         if (generation !== this.generation) return;
@@ -403,10 +424,17 @@ class Distribution {
     }
     async installer() {
         if (this.busy || !this.downloaded || !this.update?.available) throw Error('请先下载并校验新版本');
-        await verifyInstaller(this.downloaded, this.update);
+        try {
+            await verifyInstaller(this.downloaded, this.update);
+        } catch (error) {
+            this.downloaded = null;
+            throw error;
+        }
         return this.downloaded;
     }
     start() {
+        clearInterval(this.timer);
+        let startup = true;
         const check = () => {
             try {
                 if (
@@ -415,7 +443,9 @@ class Distribution {
                     (this.config.provider === 'gitlab' && !this.credentials.read(this.client.key))
                 )
                     return;
-                void this.check().catch(() => {});
+                const first = startup;
+                startup = false;
+                void this.check({ automatic: true, startup: first }).catch(() => {});
             } catch (error) {
                 this.error = error.message;
                 this.changed();
@@ -426,6 +456,7 @@ class Distribution {
         check();
     }
     dispose() {
+        this.automation?.dispose();
         clearInterval(this.timer);
         this.credentials.invalidateWrites?.();
         this.client.dispose();

@@ -19,8 +19,9 @@ class PluginServices extends EventEmitter {
         this.taskPools = new Map();
         this.metrics = new OperationMetrics();
         this.cleanups = new Map();
+        this.loading = new Map();
     }
-    async load({ activate = true } = {}) {
+    async load({ activate = true, ids, yieldBetween = false } = {}) {
         // 保留数据的默认插件仍需提供领域备份处理器，但不激活页面、提醒或 MCP。
         const retained = this.registry
             .retainedDefaults()
@@ -31,47 +32,75 @@ class PluginServices extends EventEmitter {
                     fs.existsSync(path.join(this.registry.dataRoot, p.id, 'data.sqlite'))
             );
         for (const plugin of [...this.registry.plugins.values(), ...retained]) {
+            if (ids && !ids.includes(plugin.id)) continue;
             if (!plugin.backend) continue;
-            if (this.providers.has(plugin.id)) continue;
-            const context = {
-                ...this.environment,
-                id: plugin.id,
-                file: path.join(this.registry.dataRoot, plugin.id, 'data.sqlite'),
-                emptyInitialData: this.registry.getSetting('emptyPluginData', []).includes(plugin.id),
-                emit: (name, data) => this.emit('event', { pluginId: plugin.id, name, data }),
-                changed: () => this.emit('changed', plugin.id),
-                invoke: (id, action, payload) => this.call(id, action, payload),
-                available: (id) =>
-                    this.registry.plugins.get(id)?.enabled === true && this.providers.has(id) && !this.errors.has(id),
-                open: (id, route, payload) => this.environment.openPlugin(id, route, payload)
-            };
-            context.startWorker = (file, options) => {
-                if (!this.active.has(plugin.id) || this.stopping.has(plugin.id)) throw Error('插件未启用或正在停用');
-                let pool = this.taskPools.get(plugin.id);
-                if (!pool) {
-                    const { PluginTaskPool } = require('./process-task');
-                    pool = new PluginTaskPool(plugin.directory);
-                    this.taskPools.set(plugin.id, pool);
-                }
-                pool.activate();
-                return pool.start(file, options);
-            };
-            try {
-                const provider = await require(path.join(plugin.directory, plugin.backend)).create(context);
-                this.providers.set(plugin.id, provider);
-            } catch (error) {
-                this.errors.set(plugin.id, error.message);
-                this.registry.diagnostics.push({ folder: plugin.name, error: error.message });
-            }
+            await this.prepare(plugin);
+            if (yieldBetween) await new Promise((resolve) => setImmediate(resolve));
         }
         this.registry.providers = this.providers;
         if (activate) await this.activateEnabled();
+    }
+    async prepare(plugin) {
+        if (this.stopping.has(plugin.id)) throw Error('插件正在卸载，请稍候');
+        if (this.providers.has(plugin.id) || !plugin.backend || this.errors.has(plugin.id)) return;
+        if (this.loading.has(plugin.id)) return this.loading.get(plugin.id);
+        const pending = this.createProvider(plugin);
+        this.loading.set(plugin.id, pending);
+        try {
+            await pending;
+        } finally {
+            this.loading.delete(plugin.id);
+        }
+    }
+    async createProvider(plugin) {
+        // 初始化可能触发磁盘读取或跨插件请求，先让并发请求登记到同一准备任务。
+        await Promise.resolve();
+        const context = {
+            ...this.environment,
+            id: plugin.id,
+            file: path.join(this.registry.dataRoot, plugin.id, 'data.sqlite'),
+            emptyInitialData: this.registry.getSetting('emptyPluginData', []).includes(plugin.id),
+            emit: (name, data) => this.emit('event', { pluginId: plugin.id, name, data }),
+            changed: () => this.emit('changed', plugin.id),
+            invoke: (id, action, payload) => this.call(id, action, payload),
+            available: (id) =>
+                this.registry.plugins.get(id)?.enabled === true &&
+                (!!this.registry.plugins.get(id)?.backend || this.providers.has(id)) &&
+                !this.errors.has(id) &&
+                !this.stopping.has(id),
+            open: (id, route, payload) => this.environment.openPlugin(id, route, payload)
+        };
+        context.startWorker = (file, options) => {
+            if (!this.active.has(plugin.id) || this.stopping.has(plugin.id)) throw Error('插件未启用或正在停用');
+            let pool = this.taskPools.get(plugin.id);
+            if (!pool) {
+                const { PluginTaskPool } = require('./process-task');
+                pool = new PluginTaskPool(plugin.directory);
+                this.taskPools.set(plugin.id, pool);
+            }
+            pool.activate();
+            return pool.start(file, options);
+        };
+        try {
+            const end = this.metrics.start(plugin.id, 'backend-load');
+            try {
+                const provider = await require(path.join(plugin.directory, plugin.backend)).create(context);
+                this.providers.set(plugin.id, provider);
+            } finally {
+                end();
+            }
+        } catch (error) {
+            this.errors.set(plugin.id, error.message);
+            this.registry.diagnostics.push({ folder: plugin.name, error: error.message });
+        }
     }
     async activateEnabled() {
         for (const plugin of this.registry.plugins.values()) if (plugin.enabled) await this.enable(plugin.id);
     }
     async enable(id) {
         if (this.stopping.has(id)) throw Error('插件正在卸载，请稍候');
+        const plugin = this.registry.plugins?.get(id);
+        if (plugin) await this.prepare(plugin);
         if (this.errors.has(id)) return;
         const p = this.providers.get(id);
         if (p && !this.active.has(id)) {
@@ -88,6 +117,7 @@ class PluginServices extends EventEmitter {
         }
     }
     async disable(id) {
+        await this.loading.get(id);
         await this.activating.get(id);
         const p = this.providers.get(id);
         if (p && this.active.has(id)) {
@@ -160,7 +190,8 @@ class PluginServices extends EventEmitter {
         }
     }
     async call(id, action, payload) {
-        this.registry.get(id, true);
+        const plugin = this.registry.get(id, true);
+        await this.prepare(plugin);
         const provider = this.providers.get(id);
         if (!provider?.call)
             throw Error(this.errors.has(id) ? `插件后台加载失败：${this.errors.get(id)}` : '插件没有声明后台能力');
@@ -235,6 +266,7 @@ class PluginServices extends EventEmitter {
             );
     }
     async dispose() {
+        await Promise.allSettled([...this.loading.values()]);
         const ids = [...this.providers.keys()];
         for (const id of ids) this.stopping.add(id);
         const failures = [];
