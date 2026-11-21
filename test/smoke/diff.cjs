@@ -121,6 +121,7 @@ app.whenReady().then(async () => {
         fs.writeFileSync(path.join(root, 'dist/diff-saved-combinations.png'), (await wc.capturePage()).toPNG());
         wc.sendInputEvent({ type: 'mouseDown', x: 10, y: 10, button: 'left', clickCount: 1 });
         wc.sendInputEvent({ type: 'mouseUp', x: 10, y: 10, button: 'left', clickCount: 1 });
+        await until(() => js("!document.querySelector('.workspace-actions').open"));
         assert.equal(await js("document.querySelector('.workspace-actions').open"), false, '点击外部关闭组合列表');
         await js(
             "document.querySelector('.workspace-actions').open=true;document.querySelector('.saved-comparisons input').value='没有匹配';document.querySelector('.saved-comparisons input').dispatchEvent(new Event('input'))"

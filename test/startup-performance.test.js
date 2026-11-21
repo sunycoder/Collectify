@@ -192,7 +192,7 @@ test('异步资源路径检查保持越界、目录和符号链接拒绝', async
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
     fs.writeFileSync(path.join(root, 'index.html'), 'test');
     fs.mkdirSync(path.join(root, 'directory'));
-    assert.equal(await assetPathAsync(root, 'index.html'), path.join(fs.realpathSync(root), 'index.html'));
+    assert.equal(await assetPathAsync(root, 'index.html'), fs.realpathSync.native(path.join(root, 'index.html')));
     await assert.rejects(assetPathAsync(root, '../index.html'));
     await assert.rejects(assetPathAsync(root, 'directory'));
     fs.symlinkSync(path.join(root, 'directory'), path.join(root, 'link'), 'junction');

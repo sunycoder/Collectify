@@ -26,10 +26,24 @@ try {
     $backedUp = $true
     # /D 必须是最后一个 NSIS 参数。安装到原目录，保留所有用户数据；由助手负责重新打开。
     $installArgs = '/S --updated /D=' + $installDirectory
-    $process = Start-Process -FilePath $Installer -ArgumentList $installArgs -WindowStyle Hidden -PassThru -Wait
-    if ($process.ExitCode -ne 0) { throw ('Installer exit: ' + $process.ExitCode) }
+    # 使用独立 Process 句柄获取退出码，避免 Start-Process 返回对象已丢失快速结束进程的退出码。
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = $Installer
+    $startInfo.Arguments = $installArgs
+    $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $startInfo
+    try {
+        if (-not $process.Start()) { throw 'Installer did not start' }
+        $process.WaitForExit()
+        if ($process.ExitCode -ne 0) { throw ('Installer exit: ' + $process.ExitCode) }
+    } finally {
+        $process.Dispose()
+    }
     Save-Result 'success'
 } catch {
+    [IO.File]::WriteAllText((Join-Path $Job 'helper-error.txt'), $_.Exception.ToString(), $utf8)
     [Console]::Error.WriteLine($_.Exception.ToString())
     if ($backedUp) {
         # 安装器可能已卸载旧文件；恢复应用文件，用户数据始终位于独立目录。

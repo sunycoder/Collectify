@@ -5,18 +5,15 @@ const { transferMeter } = require('../src/distribution/transfer');
 const { createProvider } = require('../src/distribution/providers');
 const { validateConfig } = require('../src/distribution/config');
 test('持续传输按空闲时间计时，超过连接时限仍可完成，并报告真实字节进度', async () => {
-    let controller;
+    let chunks = 0;
     const progress = [];
     const body = new ReadableStream({
-        start(c) {
-            controller = c;
+        async pull(controller) {
+            await new Promise((resolve) => setTimeout(resolve, 30));
+            controller.enqueue(new Uint8Array([1, 2]));
+            if (++chunks === 8) controller.close();
         }
     });
-    const timer = setInterval(() => controller.enqueue(new Uint8Array([1, 2])), 30);
-    setTimeout(() => {
-        clearInterval(timer);
-        controller.close();
-    }, 250);
     const bytes = await request('https://example.com/file', {
         fetcher: async () => new Response(body),
         connectTimeoutMs: 100,
@@ -24,7 +21,7 @@ test('持续传输按空闲时间计时，超过连接时限仍可完成，并�
         totalTimeoutMs: 3000,
         progress: (n, t) => progress.push(n)
     });
-    assert.ok(bytes.length >= 4);
+    assert.equal(bytes.length, 16);
     assert.equal(progress[0], 0);
     assert.equal(progress.at(-1), bytes.length);
 });

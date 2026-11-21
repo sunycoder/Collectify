@@ -301,7 +301,12 @@ test(
             assert.equal(
                 result.status,
                 corrupt ? 'error' : 'success',
-                fs.readFileSync(path.join(dir, 'data', 'updates', result.job, 'helper.log'), 'utf8')
+                ['helper.log', 'helper-error.log', 'helper-error.txt']
+                    .map((name) => {
+                        const log = path.join(dir, 'data', 'updates', result.job, name);
+                        return fs.existsSync(log) ? fs.readFileSync(log, 'utf8') : '';
+                    })
+                    .join('\n')
             );
             if (corrupt) assert.equal(fs.existsSync(file + '.invoked'), false);
             else {
